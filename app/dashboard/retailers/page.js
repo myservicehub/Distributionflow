@@ -199,7 +199,7 @@ export default function RetailersPage() {
                     <SelectValue placeholder="Select rep" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No assignment</SelectItem>
+                    <SelectItem value="none">No assignment</SelectItem>
                     {staff.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
