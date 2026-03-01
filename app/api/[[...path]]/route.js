@@ -626,9 +626,6 @@ async function handleRoute(request, { params }) {
 
       const body = await request.json()
       
-      // Generate temporary password
-      const tempPassword = `Temp${Math.random().toString(36).slice(2, 10)}!${Math.floor(Math.random() * 100)}`
-      
       // Create service role client for admin operations
       const { createClient } = await import('@supabase/supabase-js')
       const supabaseAdmin = createClient(
@@ -642,20 +639,31 @@ async function handleRoute(request, { params }) {
         }
       )
 
-      // Create auth user with password (not invitation)
-      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: body.email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: {
-          name: body.name,
-          needs_password_change: true
+      // Get business name for email
+      const { data: business } = await supabaseAdmin
+        .from('businesses')
+        .select('name')
+        .eq('id', userContext.businessId)
+        .single()
+
+      // Use Supabase's inviteUserByEmail - sends professional invitation email
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+        body.email,
+        {
+          data: {
+            name: body.name,
+            role: body.role,
+            business_id: userContext.businessId,
+            business_name: business?.name || 'DistributionFlow',
+            needs_password_change: false // User sets their own password via invitation
+          },
+          redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard`
         }
-      })
+      )
 
       if (authError) {
-        console.error('Auth user creation error:', authError)
-        throw new Error(`Failed to create user account: ${authError.message}`)
+        console.error('Auth user invitation error:', authError)
+        throw new Error(`Failed to invite user: ${authError.message}`)
       }
 
       // Create user profile in users table using admin client to bypass RLS
@@ -688,14 +696,15 @@ async function handleRoute(request, { params }) {
         details: {
           staff_name: body.name,
           staff_email: body.email,
-          staff_role: body.role
+          staff_role: body.role,
+          invitation_method: 'supabase_invitation'
         }
       })
 
       return handleCORS(NextResponse.json({
         user: userProfile,
-        tempPassword: tempPassword,
-        message: 'Staff member created successfully. Share the temporary password with them.'
+        invitationSent: true,
+        message: 'Staff member created and secure invitation email sent. They will set their own password.'
       }))
     }
 
