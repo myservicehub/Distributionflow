@@ -122,15 +122,18 @@ backend:
         
   - task: "POST /api/staff - Create new staff member"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/app/api/[[...path]]/route.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented POST endpoint that generates temp password, creates Supabase auth user, and inserts user profile. Returns tempPassword to admin. NOTE: Requires SUPABASE_SERVICE_ROLE_KEY in .env - user needs to add this before testing."
+      - working: false
+        agent: "testing"
+        comment: "TESTED: POST /api/staff endpoint failing with 500 error. Root cause: SUPABASE_SERVICE_ROLE_KEY is missing from .env file. Server logs show 'supabaseKey is required' error. This is expected behavior until user adds the service role key from Supabase Dashboard as documented in STAFF_SETUP_GUIDE.md."
         
   - task: "PUT /api/staff/:id - Update staff member"
     implemented: true
