@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 
@@ -9,12 +9,23 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 // Helper to create authenticated Supabase client from request
 async function getSupabaseClient() {
   const cookieStore = await cookies()
-  const authToken = cookieStore.get('sb-access-token')?.value || 
-                    cookieStore.get('sb-ghleuwwnrerfanyfyclt-auth-token')?.value
   
-  const supabase = createClient(supabaseUrl, supabaseAnonKey)
-  
-  return supabase
+  return createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll()
+      },
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          )
+        } catch {
+          // Ignore
+        }
+      },
+    },
+  })
 }
 
 // Helper function to handle CORS
@@ -31,18 +42,32 @@ export async function OPTIONS() {
   return handleCORS(new NextResponse(null, { status: 200 }))
 }
 
-// Get current user's business ID
+// Get current user's business ID  
 async function getUserBusinessId(supabase) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('business_id, role')
-    .eq('auth_user_id', user.id)
+  // Get business directly using owner_id to avoid users table RLS
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_id', user.id)
     .single()
 
-  return userProfile ? { businessId: userProfile.business_id, role: userProfile.role, userId: userProfile.id } : null
+  if (!business) return null
+
+  // Get user profile
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('id, role')
+    .eq('auth_user_id', user.id)
+    .maybeSingle()
+
+  return { 
+    businessId: business.id, 
+    role: userProfile?.role || 'admin', 
+    userId: userProfile?.id 
+  }
 }
 
 // Route handler function
