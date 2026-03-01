@@ -751,6 +751,13 @@ async function handleRoute(request, { params }) {
         }
       )
 
+      // Get old data for audit log
+      const { data: oldData } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('id', staffId)
+        .single()
+
       const { data, error } = await supabaseAdmin
         .from('users')
         .update({
@@ -764,6 +771,26 @@ async function handleRoute(request, { params }) {
         .single()
 
       if (error) throw error
+
+      // Log the action
+      const changes = {}
+      if (oldData.name !== body.name) changes.name = { old: oldData.name, new: body.name }
+      if (oldData.role !== body.role) changes.role = { old: oldData.role, new: body.role }
+      if (oldData.status !== body.status) changes.status = { old: oldData.status, new: body.status }
+
+      await logAudit({
+        businessId: userContext.businessId,
+        userId: userContext.userId,
+        action: AUDIT_ACTIONS.STAFF_UPDATED,
+        resourceType: RESOURCE_TYPES.USER,
+        resourceId: staffId,
+        details: {
+          staff_name: data.name,
+          staff_email: data.email,
+          changes: changes
+        }
+      })
+
       return handleCORS(NextResponse.json(data))
     }
 
@@ -788,6 +815,13 @@ async function handleRoute(request, { params }) {
         }
       )
 
+      // Get staff data for audit log
+      const { data: staffData } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('id', staffId)
+        .single()
+
       // Soft delete - just mark as inactive
       const { data, error } = await supabaseAdmin
         .from('users')
@@ -798,6 +832,21 @@ async function handleRoute(request, { params }) {
         .single()
 
       if (error) throw error
+
+      // Log the action
+      await logAudit({
+        businessId: userContext.businessId,
+        userId: userContext.userId,
+        action: AUDIT_ACTIONS.STAFF_DEACTIVATED,
+        resourceType: RESOURCE_TYPES.USER,
+        resourceId: staffId,
+        details: {
+          staff_name: staffData.name,
+          staff_email: staffData.email,
+          staff_role: staffData.role
+        }
+      })
+
       return handleCORS(NextResponse.json(data))
     }
 
