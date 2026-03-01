@@ -90,9 +90,17 @@ export default function StaffPage() {
 
       if (response.ok) {
         const result = await response.json()
-        setTempPassword(result.tempPassword)
+        
+        // Check if email was sent
+        if (result.emailSent) {
+          alert(`\u2705 Staff member created successfully!\n\nAn invitation email has been sent to ${body.email} with login credentials.`)
+        } else if (result.tempPassword) {
+          // Fallback: email failed, show password
+          setTempPassword(result.tempPassword)
+          setShowPasswordDialog(true)
+        }
+        
         setShowAddDialog(false)
-        setShowPasswordDialog(true)
         setFormData({ name: '', email: '', role: 'sales_rep' })
         fetchStaff()
       } else {
