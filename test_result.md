@@ -107,15 +107,18 @@ user_problem_statement: "Add more staff members (different roles) - Build staff 
 backend:
   - task: "GET /api/staff - List all staff members"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/app/api/[[...path]]/route.js"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented GET endpoint with admin-only access control. Returns all users in the business. Needs testing with valid credentials."
+      - working: true
+        agent: "testing"
+        comment: "TESTED: GET /api/staff endpoint working correctly. Server logs show successful 200 responses with admin authentication. Admin access control functioning properly. Returns staff list for authenticated admin users."
         
   - task: "POST /api/staff - Create new staff member"
     implemented: true
