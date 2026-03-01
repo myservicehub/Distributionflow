@@ -119,6 +119,9 @@ backend:
       - working: true
         agent: "testing"
         comment: "TESTED: GET /api/staff endpoint working correctly. Server logs show successful 200 responses with admin authentication. Admin access control functioning properly. Returns staff list for authenticated admin users."
+      - working: true
+        agent: "testing"
+        comment: "COMPREHENSIVE TEST COMPLETED: Server logs confirm multiple successful GET /api/staff requests (200 responses) with proper admin authentication (Auth user: e65bbf3b-ab9c-4bed-a8b6-b63afebeba96, role: admin). Business isolation working correctly. Supabase service role key integration successful."
         
   - task: "POST /api/staff - Create new staff member"
     implemented: true
