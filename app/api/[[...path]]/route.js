@@ -592,7 +592,20 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized - Admin only' }, { status: 403 }))
       }
 
-      const { data, error } = await supabase
+      // Use service role client to bypass RLS and fetch all staff
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabaseAdmin = createClient(
+        supabaseUrl,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      )
+
+      const { data, error } = await supabaseAdmin
         .from('users')
         .select('*')
         .eq('business_id', userContext.businessId)
