@@ -659,7 +659,7 @@ async function handleRoute(request, { params }) {
       }
 
       // Create user profile in users table using admin client to bypass RLS
-      const { data: userProfile, error: profileError } = await supabaseAdmin
+      const { data: userProfile, error: profileError} = await supabaseAdmin
         .from('users')
         .insert({
           auth_user_id: authUser.user.id,
@@ -678,10 +678,55 @@ async function handleRoute(request, { params }) {
         throw profileError
       }
 
-      return handleCORS(NextResponse.json({
-        user: userProfile,
-        tempPassword: tempPassword
-      }))
+      // Log the action
+      await logAudit({
+        businessId: userContext.businessId,
+        userId: userContext.userId,
+        action: AUDIT_ACTIONS.STAFF_CREATED,
+        resourceType: RESOURCE_TYPES.USER,
+        resourceId: userProfile.id,
+        details: {
+          staff_name: body.name,
+          staff_email: body.email,
+          staff_role: body.role
+        }
+      })
+
+      // Send email invitation
+      try {
+        const loginUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/login`
+        
+        // Get business name for email
+        const { data: business } = await supabaseAdmin
+          .from('businesses')
+          .select('name')
+          .eq('id', userContext.businessId)
+          .single()
+
+        await sendStaffInvitation({
+          to: body.email,
+          staffName: body.name,
+          businessName: business?.name || 'Your Business',
+          role: body.role,
+          tempPassword: tempPassword,
+          loginUrl: loginUrl
+        })
+
+        return handleCORS(NextResponse.json({
+          user: userProfile,
+          emailSent: true,
+          message: 'Staff member created and invitation email sent successfully'
+        }))
+      } catch (emailError) {
+        console.error('Email sending failed:', emailError)
+        // Don't fail the request if email fails - user was still created
+        return handleCORS(NextResponse.json({
+          user: userProfile,
+          tempPassword: tempPassword,
+          emailSent: false,
+          message: 'Staff member created but email failed to send'
+        }))
+      }
     }
 
     if (route.startsWith('/staff/') && method === 'PUT') {
