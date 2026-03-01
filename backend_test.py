@@ -39,26 +39,44 @@ class StaffAPITester:
             self.log("Authenticating admin user...")
             
             # First try to sign in
+            self.log(f"Attempting signin to: {API_BASE}/auth/signin")
             response = self.session.post(f"{API_BASE}/auth/signin", 
                 json={
                     "email": self.admin_email,
                     "password": self.admin_password
                 })
             
+            self.log(f"Signin response: {response.status_code}")
+            self.log(f"Response headers: {dict(response.headers)}")
+            
             if response.status_code == 200:
+                try:
+                    signin_data = response.json()
+                    self.log(f"Signin successful: {signin_data}")
+                except:
+                    self.log("Signin successful but no JSON response")
+                
                 # Check if we have a valid session by testing user endpoint
+                self.log(f"Testing user endpoint: {API_BASE}/user")
                 user_response = self.session.get(f"{API_BASE}/user")
+                self.log(f"User response: {user_response.status_code}")
+                
                 if user_response.status_code == 200:
-                    user_data = user_response.json()
-                    self.log(f"Successfully authenticated as: {user_data.get('name')} ({user_data.get('role')})")
-                    if user_data.get('role') == 'admin':
-                        self.test_results['authentication'] = True
-                        return True
-                    else:
-                        self.log(f"ERROR: User is not admin, role: {user_data.get('role')}", "ERROR")
+                    try:
+                        user_data = user_response.json()
+                        self.log(f"Successfully authenticated as: {user_data.get('name')} ({user_data.get('role')})")
+                        if user_data.get('role') == 'admin':
+                            self.test_results['authentication'] = True
+                            return True
+                        else:
+                            self.log(f"ERROR: User is not admin, role: {user_data.get('role')}", "ERROR")
+                            return False
+                    except Exception as e:
+                        self.log(f"ERROR: Cannot parse user response: {str(e)}", "ERROR")
+                        self.log(f"User response text: {user_response.text}", "ERROR")
                         return False
                 else:
-                    self.log(f"ERROR: Could not verify user session: {user_response.status_code}", "ERROR")
+                    self.log(f"ERROR: Could not verify user session: {user_response.status_code} - {user_response.text}", "ERROR")
                     return False
             else:
                 self.log(f"ERROR: Authentication failed: {response.status_code} - {response.text}", "ERROR")
