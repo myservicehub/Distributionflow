@@ -20,61 +20,82 @@ function AcceptInviteContent() {
   const supabase = createClient()
 
   useEffect(() => {
-    // Give Supabase time to process the token from the URL
-    const timer = setTimeout(() => {
-      checkInvitation()
-    }, 1000) // Wait 1 second for Supabase to process
+    // Process the invitation token from the URL
+    const handleInvitation = async () => {
+      try {
+        // Get the hash from the URL which contains the token
+        const hashParams = new URLSearchParams(window.location.hash.substring(1))
+        const accessToken = hashParams.get('access_token')
+        const refreshToken = hashParams.get('refresh_token')
+        const type = hashParams.get('type')
 
+        console.log('Hash params:', {
+          accessToken: accessToken ? 'present' : 'missing',
+          refreshToken: refreshToken ? 'present' : 'missing',
+          type
+        })
+
+        // If we have tokens in the hash, set the session
+        if (accessToken && type === 'invite') {
+          console.log('Setting session from invitation token...')
+          
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || ''
+          })
+
+          if (error) {
+            console.error('Session error:', error)
+            setError(`Failed to validate invitation: ${error.message}`)
+            setValidating(false)
+            return
+          }
+
+          console.log('Session set successfully:', data)
+          setValidating(false)
+          return
+        }
+
+        // Otherwise check if we already have a session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        console.log('Existing session:', session)
+
+        if (sessionError || !session) {
+          setError('No active session found. The invitation link may have expired or is invalid. Please request a new invitation.')
+          setValidating(false)
+          return
+        }
+
+        // Check if password is already set
+        const { data: { user } } = await supabase.auth.getUser()
+        
+        if (!user) {
+          setError('Unable to verify user. Please request a new invitation.')
+          setValidating(false)
+          return
+        }
+
+        console.log('User:', user)
+
+        // If password is already set, redirect to dashboard
+        if (user.user_metadata?.password_set) {
+          router.push('/dashboard')
+          return
+        }
+
+        setValidating(false)
+      } catch (err) {
+        console.error('Validation error:', err)
+        setError('Failed to process invitation. Please try again or request a new invitation.')
+        setValidating(false)
+      }
+    }
+
+    // Give a moment for the page to load, then handle invitation
+    const timer = setTimeout(handleInvitation, 500)
     return () => clearTimeout(timer)
   }, [])
-
-  const checkInvitation = async () => {
-    try {
-      // Check if user is authenticated via the invitation token
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      console.log('Session:', session)
-      console.log('Session error:', sessionError)
-
-      if (sessionError) {
-        console.error('Session error:', sessionError)
-        setError('Invalid or expired invitation link. Please request a new invitation.')
-        setValidating(false)
-        return
-      }
-
-      if (!session) {
-        setError('No active session found. The invitation link may have expired. Please request a new invitation.')
-        setValidating(false)
-        return
-      }
-
-      // Check if password is already set
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        setError('Unable to verify user. Please request a new invitation.')
-        setValidating(false)
-        return
-      }
-
-      console.log('User:', user)
-      console.log('User metadata:', user.user_metadata)
-
-      // If password is already set, redirect to dashboard
-      if (user.user_metadata?.password_set) {
-        router.push('/dashboard')
-        return
-      }
-
-      // Valid invitation, show password setup form
-      setValidating(false)
-    } catch (err) {
-      console.error('Validation error:', err)
-      setError('Failed to validate invitation. Please try again or request a new invitation.')
-      setValidating(false)
-    }
-  }
 
   const handleSetupPassword = async (e) => {
     e.preventDefault()
