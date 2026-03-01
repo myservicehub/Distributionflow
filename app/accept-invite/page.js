@@ -114,8 +114,17 @@ function AcceptInviteContent() {
     setLoading(true)
 
     try {
+      // Get the current user first
+      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !currentUser) {
+        throw new Error('Unable to get current user')
+      }
+
+      console.log('Current user before password update:', currentUser)
+
       // Update the user's password
-      const { error: updateError } = await supabase.auth.updateUser({
+      const { data: updatedAuth, error: updateError } = await supabase.auth.updateUser({
         password: password,
         data: {
           password_set: true,
@@ -125,11 +134,28 @@ function AcceptInviteContent() {
 
       if (updateError) throw updateError
 
+      console.log('Password updated, user:', updatedAuth)
+
+      // Update the user profile in the database with the correct auth_user_id
+      // This ensures the profile has the right auth user ID after invitation acceptance
+      const { error: profileError } = await supabase
+        .from('users')
+        .update({
+          auth_user_id: currentUser.id
+        })
+        .eq('email', currentUser.email)
+
+      if (profileError) {
+        console.error('Profile update error:', profileError)
+        // Don't fail the whole flow if this fails
+      }
+
       setSuccess(true)
       
       // Redirect to dashboard after 2 seconds
       setTimeout(() => {
         router.push('/dashboard')
+        window.location.href = '/dashboard' // Force full page reload to refresh auth state
       }, 2000)
     } catch (err) {
       console.error('Password setup error:', err)
