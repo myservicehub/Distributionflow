@@ -690,7 +690,20 @@ async function handleRoute(request, { params }) {
       const staffId = route.split('/')[2]
       const body = await request.json()
       
-      const { data, error } = await supabase
+      // Use service role client to bypass RLS
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabaseAdmin = createClient(
+        supabaseUrl,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      )
+
+      const { data, error } = await supabaseAdmin
         .from('users')
         .update({
           name: body.name,
@@ -714,8 +727,21 @@ async function handleRoute(request, { params }) {
 
       const staffId = route.split('/')[2]
       
+      // Use service role client to bypass RLS
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabaseAdmin = createClient(
+        supabaseUrl,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      )
+
       // Soft delete - just mark as inactive
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('users')
         .update({ status: 'inactive' })
         .eq('id', staffId)
