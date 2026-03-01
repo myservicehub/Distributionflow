@@ -91,11 +91,11 @@ export default function StaffPage() {
       if (response.ok) {
         const result = await response.json()
         
-        // Check if email was sent
-        if (result.emailSent) {
-          alert(`\u2705 Staff member created successfully!\n\nAn invitation email has been sent to ${body.email} with login credentials.`)
+        // Check if invitation was sent via Supabase
+        if (result.invitationSent || result.emailSent) {
+          alert(`✅ Staff member created successfully!\n\nAn invitation email has been sent to ${formData.email} via Supabase.\n\nThey will receive a link to set up their password and access the account.`)
         } else if (result.tempPassword) {
-          // Fallback: email failed, show password
+          // Fallback: show password if email failed
           setTempPassword(result.tempPassword)
           setShowPasswordDialog(true)
         }
