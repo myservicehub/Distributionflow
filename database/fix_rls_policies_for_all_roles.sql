@@ -81,7 +81,7 @@ CREATE POLICY "authenticated_users_view_stock_movements" ON stock_movements
 -- ============================================
 -- ORDERS: Role-specific access
 -- - admin, manager, warehouse: See all orders in their business
--- - sales_rep: Only see their own orders (where assigned_to = their user_id)
+-- - sales_rep: Only see their own orders (where sales_rep_id = their user_id)
 -- ============================================
 CREATE POLICY "authenticated_users_view_orders" ON orders
   FOR SELECT
@@ -96,7 +96,7 @@ CREATE POLICY "authenticated_users_view_orders" ON orders
         users.role IN ('admin', 'manager', 'warehouse')
         OR 
         -- Sales rep can only see their own orders
-        (users.role = 'sales_rep' AND orders.assigned_to = users.id)
+        (users.role = 'sales_rep' AND orders.sales_rep_id = users.id)
       )
     )
   );
