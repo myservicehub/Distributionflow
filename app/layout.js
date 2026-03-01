@@ -1,8 +1,9 @@
 import './globals.css'
+import { Providers } from '@/components/providers'
 
 export const metadata = {
-  title: 'Next.js MongoDB Template',
-  description: 'A simple template with App Router, MongoDB, and shadcn/ui',
+  title: 'DistributionFlow - FMCG Distribution Management',
+  description: 'Debt & Distribution Control System for FMCG Distributors',
 }
 
 export default function RootLayout({ children }) {
@@ -12,7 +13,9 @@ export default function RootLayout({ children }) {
         <script dangerouslySetInnerHTML={{__html:'window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);'}} />
       </head>
       <body>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )
