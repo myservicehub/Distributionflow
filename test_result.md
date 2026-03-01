@@ -101,3 +101,130 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Add more staff members (different roles) - Build staff management feature for DistributionFlow FMCG SaaS application"
+
+backend:
+  - task: "GET /api/staff - List all staff members"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented GET endpoint with admin-only access control. Returns all users in the business. Needs testing with valid credentials."
+        
+  - task: "POST /api/staff - Create new staff member"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented POST endpoint that generates temp password, creates Supabase auth user, and inserts user profile. Returns tempPassword to admin. NOTE: Requires SUPABASE_SERVICE_ROLE_KEY in .env - user needs to add this before testing."
+        
+  - task: "PUT /api/staff/:id - Update staff member"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented PUT endpoint with admin-only access. Updates name, role, and status. Validates business_id match."
+        
+  - task: "DELETE /api/staff/:id - Deactivate staff member"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented DELETE endpoint (soft delete) that sets status to 'inactive'. Admin-only access."
+
+frontend:
+  - task: "Staff Management Page UI"
+    implemented: true
+    working: "NA"
+    file: "/app/app/dashboard/staff/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created complete staff management page with table, add/edit/deactivate dialogs, role selection, temp password display with copy button. Admin-only access enforced on frontend."
+        
+  - task: "Staff Navigation Item in Dashboard"
+    implemented: true
+    working: "NA"
+    file: "/app/app/dashboard/layout.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added 'Staff' navigation item with UserCog icon, visible only to admin users. Positioned before Settings in sidebar."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 0
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "POST /api/staff - Create new staff member"
+    - "GET /api/staff - List all staff members"
+    - "PUT /api/staff/:id - Update staff member"
+    - "DELETE /api/staff/:id - Deactivate staff member"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: |
+      I have implemented the complete Staff Management feature. Here's what's been done:
+      
+      BACKEND (4 endpoints):
+      1. GET /api/staff - List staff (admin only)
+      2. POST /api/staff - Create staff with auto-generated temp password (admin only) 
+      3. PUT /api/staff/:id - Update staff details (admin only)
+      4. DELETE /api/staff/:id - Soft delete/deactivate (admin only)
+      
+      FRONTEND:
+      1. Created /app/dashboard/staff/page.js with full UI
+      2. Added Staff navigation item (admin-only visibility)
+      
+      CRITICAL NOTE FOR TESTING:
+      - The POST /api/staff endpoint requires SUPABASE_SERVICE_ROLE_KEY to be added to /app/.env
+      - User needs to get this from Supabase Dashboard → Settings → API → service_role key
+      - I've created /app/STAFF_SETUP_GUIDE.md with instructions
+      - After adding the key, restart with: sudo supervisorctl restart nextjs
+      
+      RLS POLICIES:
+      - Created /app/database/add_staff_management_policies.sql
+      - These policies need to be executed in Supabase SQL Editor to allow admins to manage users
+      - The policies are designed to avoid circular dependencies by checking business owner + admin role
+      
+      TESTING PRIORITY:
+      1. First: GET endpoint (should work immediately with existing setup)
+      2. Then: POST endpoint (after user adds service role key)
+      3. Finally: PUT and DELETE endpoints
+      
+      Test credentials from previous session should still work:
+      - Email: newadmin@abcdist.com or similar
+      - This user should be an admin
