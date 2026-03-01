@@ -1,6 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { logAudit, AUDIT_ACTIONS, RESOURCE_TYPES } from '@/lib/audit-logger'
+import { sendStaffInvitation } from '@/lib/email'
+import { can } from '@/lib/permissions'
 
 // Initialize Supabase client (server-side with service role for admin operations)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
