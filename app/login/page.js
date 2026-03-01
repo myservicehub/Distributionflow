@@ -31,8 +31,8 @@ export default function LoginPage() {
       if (error) throw error
 
       toast.success('Logged in successfully!')
-      router.push('/dashboard')
-      router.refresh()
+      // Force redirect using window.location
+      window.location.href = '/dashboard'
     } catch (error) {
       toast.error(error.message || 'Failed to login')
     } finally {
