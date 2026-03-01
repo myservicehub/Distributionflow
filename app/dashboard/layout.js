@@ -91,6 +91,11 @@ export default function DashboardLayout({ children }) {
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
+              // Hide admin-only items from non-admins
+              if (item.adminOnly && userProfile?.role !== 'admin') {
+                return null
+              }
+              
               const Icon = item.icon
               const isActive = pathname === item.href
               return (
