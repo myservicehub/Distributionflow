@@ -932,6 +932,32 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json(data || []))
     }
 
+    // ============================================
+    // AUDIT LOGS ENDPOINT
+    // ============================================
+
+    if (route === '/audit-logs' && method === 'GET') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext || userContext.role !== 'admin') {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized - Admin only' }, { status: 403 }))
+      }
+
+      const { getAuditLogs } = await import('@/lib/audit-logger')
+      
+      const url = new URL(request.url)
+      const limit = parseInt(url.searchParams.get('limit') || '100')
+      const resourceType = url.searchParams.get('resource_type')
+      const userId = url.searchParams.get('user_id')
+
+      const logs = await getAuditLogs(userContext.businessId, {
+        limit,
+        resourceType,
+        userId
+      })
+
+      return handleCORS(NextResponse.json(logs))
+    }
+
     // Route not found
     return handleCORS(NextResponse.json(
       { error: `Route ${route} not found` }, 
