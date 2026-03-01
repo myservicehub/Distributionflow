@@ -642,24 +642,35 @@ async function handleRoute(request, { params }) {
         }
       )
 
-      // Create auth user
-      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: body.email,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: {
-          name: body.name,
-          needs_password_change: true
+      // Get business name for email
+      const { data: business } = await supabaseAdmin
+        .from('businesses')
+        .select('name')
+        .eq('id', userContext.businessId)
+        .single()
+
+      // Use Supabase's inviteUserByEmail - sends email automatically!
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+        body.email,
+        {
+          data: {
+            name: body.name,
+            role: body.role,
+            business_id: userContext.businessId,
+            business_name: business?.name || 'DistributionFlow',
+            needs_password_change: false // Supabase invitation requires password setup
+          },
+          redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard`
         }
-      })
+      )
 
       if (authError) {
-        console.error('Auth user creation error:', authError)
-        throw new Error(`Failed to create user account: ${authError.message}`)
+        console.error('Auth user invitation error:', authError)
+        throw new Error(`Failed to invite user: ${authError.message}`)
       }
 
       // Create user profile in users table using admin client to bypass RLS
-      const { data: userProfile, error: profileError} = await supabaseAdmin
+      const { data: userProfile, error: profileError } = await supabaseAdmin
         .from('users')
         .insert({
           auth_user_id: authUser.user.id,
@@ -688,45 +699,17 @@ async function handleRoute(request, { params }) {
         details: {
           staff_name: body.name,
           staff_email: body.email,
-          staff_role: body.role
+          staff_role: body.role,
+          invitation_method: 'supabase_email'
         }
       })
 
-      // Send email invitation
-      try {
-        const loginUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/login`
-        
-        // Get business name for email
-        const { data: business } = await supabaseAdmin
-          .from('businesses')
-          .select('name')
-          .eq('id', userContext.businessId)
-          .single()
-
-        await sendStaffInvitation({
-          to: body.email,
-          staffName: body.name,
-          businessName: business?.name || 'Your Business',
-          role: body.role,
-          tempPassword: tempPassword,
-          loginUrl: loginUrl
-        })
-
-        return handleCORS(NextResponse.json({
-          user: userProfile,
-          emailSent: true,
-          message: 'Staff member created and invitation email sent successfully'
-        }))
-      } catch (emailError) {
-        console.error('Email sending failed:', emailError)
-        // Don't fail the request if email fails - user was still created
-        return handleCORS(NextResponse.json({
-          user: userProfile,
-          tempPassword: tempPassword,
-          emailSent: false,
-          message: 'Staff member created but email failed to send'
-        }))
-      }
+      return handleCORS(NextResponse.json({
+        user: userProfile,
+        emailSent: true,
+        message: 'Staff member created and invitation email sent via Supabase',
+        invitationSent: true
+      }))
     }
 
     if (route.startsWith('/staff/') && method === 'PUT') {
