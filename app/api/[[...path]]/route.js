@@ -657,7 +657,7 @@ async function handleRoute(request, { params }) {
             business_name: business?.name || 'DistributionFlow',
             needs_password_change: false // User sets their own password via invitation
           },
-          redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard`
+          redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/accept-invite`
         }
       )
 
