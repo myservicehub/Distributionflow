@@ -588,8 +588,8 @@ async function handleRoute(request, { params }) {
 
     if (route === '/staff' && method === 'GET') {
       const userContext = await getUserBusinessId(supabase)
-      if (!userContext) {
-        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      if (!userContext || userContext.role !== 'admin') {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized - Admin only' }, { status: 403 }))
       }
 
       const { data, error } = await supabase
@@ -600,6 +600,118 @@ async function handleRoute(request, { params }) {
 
       if (error) throw error
       return handleCORS(NextResponse.json(data || []))
+    }
+
+    if (route === '/staff' && method === 'POST') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext || userContext.role !== 'admin') {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized - Admin only' }, { status: 403 }))
+      }
+
+      const body = await request.json()
+      
+      // Generate temporary password
+      const tempPassword = `Temp${Math.random().toString(36).slice(2, 10)}!${Math.floor(Math.random() * 100)}`
+      
+      // Create service role client for admin operations
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabaseAdmin = createClient(
+        supabaseUrl,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      )
+
+      // Create auth user
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: body.email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: {
+          name: body.name,
+          needs_password_change: true
+        }
+      })
+
+      if (authError) {
+        console.error('Auth user creation error:', authError)
+        throw new Error(`Failed to create user account: ${authError.message}`)
+      }
+
+      // Create user profile in users table
+      const { data: userProfile, error: profileError } = await supabase
+        .from('users')
+        .insert({
+          auth_user_id: authUser.user.id,
+          business_id: userContext.businessId,
+          email: body.email,
+          name: body.name,
+          role: body.role,
+          status: 'active'
+        })
+        .select()
+        .single()
+
+      if (profileError) {
+        // Rollback: delete auth user if profile creation fails
+        await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
+        throw profileError
+      }
+
+      return handleCORS(NextResponse.json({
+        user: userProfile,
+        tempPassword: tempPassword
+      }))
+    }
+
+    if (route.startsWith('/staff/') && method === 'PUT') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext || userContext.role !== 'admin') {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized - Admin only' }, { status: 403 }))
+      }
+
+      const staffId = route.split('/')[2]
+      const body = await request.json()
+      
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          name: body.name,
+          role: body.role,
+          status: body.status
+        })
+        .eq('id', staffId)
+        .eq('business_id', userContext.businessId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return handleCORS(NextResponse.json(data))
+    }
+
+    if (route.startsWith('/staff/') && method === 'DELETE') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext || userContext.role !== 'admin') {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized - Admin only' }, { status: 403 }))
+      }
+
+      const staffId = route.split('/')[2]
+      
+      // Soft delete - just mark as inactive
+      const { data, error } = await supabase
+        .from('users')
+        .update({ status: 'inactive' })
+        .eq('id', staffId)
+        .eq('business_id', userContext.businessId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return handleCORS(NextResponse.json(data))
     }
 
     // ============================================
