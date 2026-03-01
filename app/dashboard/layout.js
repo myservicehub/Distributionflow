@@ -18,7 +18,7 @@ import {
   UserCog,
   Activity
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 
 const navigation = [
@@ -39,6 +39,13 @@ export default function DashboardLayout({ children }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  // Handle redirect in useEffect to avoid render-time navigation
+  useEffect(() => {
+    if (!loading && (!user || !userProfile)) {
+      router.push('/login')
+    }
+  }, [loading, user, userProfile, router])
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -50,8 +57,8 @@ export default function DashboardLayout({ children }) {
     )
   }
 
+  // Show nothing while redirecting
   if (!user || !userProfile) {
-    router.push('/login')
     return null
   }
 
