@@ -5,7 +5,6 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/auth-context'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DollarSign, TrendingUp, AlertTriangle, Package, ShoppingCart, Users, Activity } from 'lucide-react'
-import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
@@ -24,10 +23,11 @@ export default function DashboardPage() {
       const response = await fetch('/api/dashboard/metrics')
       if (!response.ok) throw new Error('Failed to load metrics')
       const data = await response.json()
+      console.log('Dashboard metrics loaded:', data)
       setMetrics(data)
     } catch (error) {
-      toast.error('Failed to load dashboard metrics')
-      console.error(error)
+      console.error('Failed to load dashboard metrics:', error)
+      alert('Failed to load dashboard data. Please refresh the page.')
     } finally {
       setLoading(false)
     }
@@ -43,6 +43,10 @@ export default function DashboardPage() {
 
   // Role-specific dashboard rendering
   const role = userProfile?.role
+  
+  console.log('User profile:', userProfile)
+  console.log('User role:', role)
+  console.log('Metrics:', metrics)
 
   return (
     <div className="space-y-8">
