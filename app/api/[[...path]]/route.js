@@ -642,8 +642,8 @@ async function handleRoute(request, { params }) {
         throw new Error(`Failed to create user account: ${authError.message}`)
       }
 
-      // Create user profile in users table
-      const { data: userProfile, error: profileError } = await supabase
+      // Create user profile in users table using admin client to bypass RLS
+      const { data: userProfile, error: profileError } = await supabaseAdmin
         .from('users')
         .insert({
           auth_user_id: authUser.user.id,
