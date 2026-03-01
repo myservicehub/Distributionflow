@@ -119,7 +119,7 @@ CREATE POLICY "authenticated_users_view_order_items" ON order_items
         u.role IN ('admin', 'manager', 'warehouse')
         OR 
         -- Sales rep can only see order items for their own orders
-        (u.role = 'sales_rep' AND o.assigned_to = u.id)
+        (u.role = 'sales_rep' AND o.sales_rep_id = u.id)
       )
     )
   );
