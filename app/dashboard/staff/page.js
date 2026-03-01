@@ -91,10 +91,9 @@ export default function StaffPage() {
       if (response.ok) {
         const result = await response.json()
         
-        // Show temp password to admin
-        if (result.tempPassword) {
-          setTempPassword(result.tempPassword)
-          setShowPasswordDialog(true)
+        // Invitation sent - no password to display
+        if (result.invitationSent) {
+          alert(`✅ Staff member created successfully!\n\n📧 A secure invitation email has been sent to ${formData.email}\n\nThey will receive a link to:\n• Accept the invitation\n• Set their own password\n• Access the dashboard\n\nNo password needed - they create their own!`)
         }
         
         setShowAddDialog(false)
