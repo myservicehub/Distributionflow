@@ -14,7 +14,8 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  UserCog
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
