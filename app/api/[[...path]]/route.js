@@ -56,33 +56,29 @@ async function getUserBusinessId(supabase) {
       return null
     }
 
-    // Get business directly using owner_id to avoid users table RLS
-    const { data: business, error: businessError } = await supabase
-      .from('businesses')
-      .select('id')
-      .eq('owner_id', user.id)
-      .single()
-
-    console.log('Business query result:', business, 'Error:', businessError)
-
-    if (!business) {
-      console.log('No business found for user')
-      return null
-    }
-
-    // Get user profile
+    // Get user profile first - this works for ALL roles (admin, manager, sales_rep, warehouse)
     const { data: userProfile, error: profileError } = await supabase
       .from('users')
-      .select('id, role')
+      .select('id, role, business_id, status')
       .eq('auth_user_id', user.id)
       .maybeSingle()
 
     console.log('User profile:', userProfile, 'Error:', profileError)
 
+    if (!userProfile || !userProfile.business_id) {
+      console.log('No user profile or business_id found for user')
+      return null
+    }
+
+    if (userProfile.status !== 'active') {
+      console.log('User is not active:', userProfile.status)
+      return null
+    }
+
     return { 
-      businessId: business.id, 
-      role: userProfile?.role || 'admin', 
-      userId: userProfile?.id 
+      businessId: userProfile.business_id, 
+      role: userProfile.role, 
+      userId: userProfile.id 
     }
   } catch (error) {
     console.error('Error in getUserBusinessId:', error)
