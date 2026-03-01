@@ -44,29 +44,46 @@ export async function OPTIONS() {
 
 // Get current user's business ID  
 async function getUserBusinessId(supabase) {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    console.log('Auth user:', user?.id, 'Error:', authError)
+    
+    if (!user) {
+      console.log('No user found in auth')
+      return null
+    }
 
-  // Get business directly using owner_id to avoid users table RLS
-  const { data: business } = await supabase
-    .from('businesses')
-    .select('id')
-    .eq('owner_id', user.id)
-    .single()
+    // Get business directly using owner_id to avoid users table RLS
+    const { data: business, error: businessError } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('owner_id', user.id)
+      .single()
 
-  if (!business) return null
+    console.log('Business query result:', business, 'Error:', businessError)
 
-  // Get user profile
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('id, role')
-    .eq('auth_user_id', user.id)
-    .maybeSingle()
+    if (!business) {
+      console.log('No business found for user')
+      return null
+    }
 
-  return { 
-    businessId: business.id, 
-    role: userProfile?.role || 'admin', 
-    userId: userProfile?.id 
+    // Get user profile
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .select('id, role')
+      .eq('auth_user_id', user.id)
+      .maybeSingle()
+
+    console.log('User profile:', userProfile, 'Error:', profileError)
+
+    return { 
+      businessId: business.id, 
+      role: userProfile?.role || 'admin', 
+      userId: userProfile?.id 
+    }
+  } catch (error) {
+    console.error('Error in getUserBusinessId:', error)
+    return null
   }
 }
 
