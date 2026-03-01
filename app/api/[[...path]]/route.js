@@ -1,24 +1,26 @@
-import { MongoClient } from 'mongodb'
-import { v4 as uuidv4 } from 'uuid'
+import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 
-// MongoDB connection
-let client
-let db
+// Initialize Supabase client (server-side with service role for admin operations)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-async function connectToMongo() {
-  if (!client) {
-    client = new MongoClient(process.env.MONGO_URL)
-    await client.connect()
-    db = client.db(process.env.DB_NAME)
-  }
-  return db
+// Helper to create authenticated Supabase client from request
+async function getSupabaseClient() {
+  const cookieStore = await cookies()
+  const authToken = cookieStore.get('sb-access-token')?.value || 
+                    cookieStore.get('sb-ghleuwwnrerfanyfyclt-auth-token')?.value
+  
+  const supabase = createClient(supabaseUrl, supabaseAnonKey)
+  
+  return supabase
 }
 
 // Helper function to handle CORS
 function handleCORS(response) {
   response.headers.set('Access-Control-Allow-Origin', process.env.CORS_ORIGINS || '*')
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   response.headers.set('Access-Control-Allow-Credentials', 'true')
   return response
@@ -29,6 +31,20 @@ export async function OPTIONS() {
   return handleCORS(new NextResponse(null, { status: 200 }))
 }
 
+// Get current user's business ID
+async function getUserBusinessId(supabase) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('business_id, role')
+    .eq('auth_user_id', user.id)
+    .single()
+
+  return userProfile ? { businessId: userProfile.business_id, role: userProfile.role, userId: userProfile.id } : null
+}
+
 // Route handler function
 async function handleRoute(request, { params }) {
   const { path = [] } = params
@@ -36,49 +52,594 @@ async function handleRoute(request, { params }) {
   const method = request.method
 
   try {
-    const db = await connectToMongo()
+    const supabase = await getSupabaseClient()
 
-    // Root endpoint - GET /api/root (since /api/ is not accessible with catch-all)
-    if (route === '/root' && method === 'GET') {
-      return handleCORS(NextResponse.json({ message: "Hello World" }))
-    }
-    // Root endpoint - GET /api/root (since /api/ is not accessible with catch-all)
-    if (route === '/' && method === 'GET') {
-      return handleCORS(NextResponse.json({ message: "Hello World" }))
+    // ============================================
+    // DASHBOARD ENDPOINTS
+    // ============================================
+    
+    if (route === '/dashboard/metrics' && method === 'GET') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+
+      // Get total sales today
+      const { data: salesToday } = await supabase
+        .from('orders')
+        .select('total_amount')
+        .eq('business_id', userContext.businessId)
+        .gte('created_at', today.toISOString())
+        .eq('status', 'confirmed')
+
+      const totalSalesToday = salesToday?.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) || 0
+
+      // Get total sales this month
+      const { data: salesMonth } = await supabase
+        .from('orders')
+        .select('total_amount')
+        .eq('business_id', userContext.businessId)
+        .gte('created_at', startOfMonth.toISOString())
+        .eq('status', 'confirmed')
+
+      const totalSalesMonth = salesMonth?.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) || 0
+
+      // Get total outstanding debt
+      const { data: retailers } = await supabase
+        .from('retailers')
+        .select('current_balance')
+        .eq('business_id', userContext.businessId)
+
+      const totalDebt = retailers?.reduce((sum, retailer) => sum + parseFloat(retailer.current_balance), 0) || 0
+
+      // Get overdue retailers (balance > credit limit)
+      const { data: overdueRetailers } = await supabase
+        .from('retailers')
+        .select('id, shop_name, current_balance, credit_limit')
+        .eq('business_id', userContext.businessId)
+        .eq('status', 'blocked')
+
+      // Get low stock products
+      const { data: lowStockProducts } = await supabase
+        .from('products')
+        .select('id, name, stock_quantity, low_stock_threshold')
+        .eq('business_id', userContext.businessId)
+        .filter('stock_quantity', 'lte', 'low_stock_threshold')
+
+      // Get sales by rep
+      const { data: salesByRep } = await supabase
+        .from('orders')
+        .select('sales_rep_id, total_amount, users(name)')
+        .eq('business_id', userContext.businessId)
+        .eq('status', 'confirmed')
+
+      const repSales = {}
+      salesByRep?.forEach(order => {
+        const repName = order.users?.name || 'Unknown'
+        if (!repSales[repName]) {
+          repSales[repName] = 0
+        }
+        repSales[repName] += parseFloat(order.total_amount)
+      })
+
+      return handleCORS(NextResponse.json({
+        totalSalesToday,
+        totalSalesMonth,
+        totalDebt,
+        overdueRetailers: overdueRetailers || [],
+        lowStockProducts: lowStockProducts || [],
+        salesByRep: Object.entries(repSales).map(([name, total]) => ({ name, total }))
+      }))
     }
 
-    // Status endpoints - POST /api/status
-    if (route === '/status' && method === 'POST') {
+    // ============================================
+    // RETAILERS ENDPOINTS
+    // ============================================
+
+    if (route === '/retailers' && method === 'GET') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const { data, error } = await supabase
+        .from('retailers')
+        .select('*, users(name)')
+        .eq('business_id', userContext.businessId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return handleCORS(NextResponse.json(data || []))
+    }
+
+    if (route === '/retailers' && method === 'POST') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const body = await request.json()
+      const { data, error } = await supabase
+        .from('retailers')
+        .insert({
+          business_id: userContext.businessId,
+          shop_name: body.shop_name,
+          owner_name: body.owner_name,
+          phone: body.phone,
+          address: body.address,
+          assigned_rep_id: body.assigned_rep_id,
+          credit_limit: body.credit_limit || 0,
+          current_balance: 0,
+          status: 'active'
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return handleCORS(NextResponse.json(data))
+    }
+
+    if (route.startsWith('/retailers/') && method === 'PUT') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const retailerId = route.split('/')[2]
       const body = await request.json()
       
-      if (!body.client_name) {
-        return handleCORS(NextResponse.json(
-          { error: "client_name is required" }, 
-          { status: 400 }
-        ))
-      }
+      const { data, error } = await supabase
+        .from('retailers')
+        .update({
+          shop_name: body.shop_name,
+          owner_name: body.owner_name,
+          phone: body.phone,
+          address: body.address,
+          assigned_rep_id: body.assigned_rep_id,
+          credit_limit: body.credit_limit,
+          status: body.status
+        })
+        .eq('id', retailerId)
+        .eq('business_id', userContext.businessId)
+        .select()
+        .single()
 
-      const statusObj = {
-        id: uuidv4(),
-        client_name: body.client_name,
-        timestamp: new Date()
-      }
-
-      await db.collection('status_checks').insertOne(statusObj)
-      return handleCORS(NextResponse.json(statusObj))
+      if (error) throw error
+      return handleCORS(NextResponse.json(data))
     }
 
-    // Status endpoints - GET /api/status
-    if (route === '/status' && method === 'GET') {
-      const statusChecks = await db.collection('status_checks')
-        .find({})
-        .limit(1000)
-        .toArray()
+    if (route.startsWith('/retailers/') && method === 'DELETE') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext || userContext.role !== 'admin') {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 403 }))
+      }
 
-      // Remove MongoDB's _id field from response
-      const cleanedStatusChecks = statusChecks.map(({ _id, ...rest }) => rest)
+      const retailerId = route.split('/')[2]
+      const { error } = await supabase
+        .from('retailers')
+        .delete()
+        .eq('id', retailerId)
+        .eq('business_id', userContext.businessId)
+
+      if (error) throw error
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
+    // ============================================
+    // PRODUCTS ENDPOINTS
+    // ============================================
+
+    if (route === '/products' && method === 'GET') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('business_id', userContext.businessId)
+        .order('name')
+
+      if (error) throw error
+      return handleCORS(NextResponse.json(data || []))
+    }
+
+    if (route === '/products' && method === 'POST') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const body = await request.json()
+      const { data, error } = await supabase
+        .from('products')
+        .insert({
+          business_id: userContext.businessId,
+          name: body.name,
+          sku: body.sku,
+          cost_price: body.cost_price || 0,
+          selling_price: body.selling_price,
+          stock_quantity: body.stock_quantity || 0,
+          low_stock_threshold: body.low_stock_threshold || 10
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return handleCORS(NextResponse.json(data))
+    }
+
+    if (route.startsWith('/products/') && method === 'PUT') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const productId = route.split('/')[2]
+      const body = await request.json()
       
-      return handleCORS(NextResponse.json(cleanedStatusChecks))
+      const { data, error } = await supabase
+        .from('products')
+        .update({
+          name: body.name,
+          sku: body.sku,
+          cost_price: body.cost_price,
+          selling_price: body.selling_price,
+          stock_quantity: body.stock_quantity,
+          low_stock_threshold: body.low_stock_threshold
+        })
+        .eq('id', productId)
+        .eq('business_id', userContext.businessId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return handleCORS(NextResponse.json(data))
+    }
+
+    if (route.startsWith('/products/') && method === 'DELETE') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext || userContext.role !== 'admin') {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 403 }))
+      }
+
+      const productId = route.split('/')[2]
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productId)
+        .eq('business_id', userContext.businessId)
+
+      if (error) throw error
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
+    // ============================================
+    // ORDERS ENDPOINTS
+    // ============================================
+
+    if (route === '/orders' && method === 'GET') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*, retailers(shop_name), users(name)')
+        .eq('business_id', userContext.businessId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return handleCORS(NextResponse.json(data || []))
+    }
+
+    if (route === '/orders' && method === 'POST') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const body = await request.json()
+      
+      // Check retailer credit limit if payment is credit
+      if (body.payment_status === 'credit' || body.payment_status === 'partial') {
+        const { data: retailer } = await supabase
+          .from('retailers')
+          .select('current_balance, credit_limit, status')
+          .eq('id', body.retailer_id)
+          .single()
+
+        if (retailer && retailer.status === 'blocked') {
+          return handleCORS(NextResponse.json({ 
+            error: 'Retailer is blocked due to credit limit exceeded' 
+          }, { status: 400 }))
+        }
+
+        const newBalance = parseFloat(retailer.current_balance) + parseFloat(body.total_amount)
+        if (newBalance > parseFloat(retailer.credit_limit)) {
+          return handleCORS(NextResponse.json({ 
+            error: 'Order would exceed retailer credit limit' 
+          }, { status: 400 }))
+        }
+      }
+
+      // Create order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          business_id: userContext.businessId,
+          retailer_id: body.retailer_id,
+          sales_rep_id: userContext.userId,
+          total_amount: body.total_amount,
+          payment_status: body.payment_status,
+          status: 'pending'
+        })
+        .select()
+        .single()
+
+      if (orderError) throw orderError
+
+      // Create order items and update stock
+      for (const item of body.items) {
+        // Insert order item
+        const { error: itemError } = await supabase
+          .from('order_items')
+          .insert({
+            order_id: order.id,
+            product_id: item.product_id,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total_price
+          })
+
+        if (itemError) throw itemError
+
+        // Deduct stock
+        const { data: product } = await supabase
+          .from('products')
+          .select('stock_quantity')
+          .eq('id', item.product_id)
+          .single()
+
+        const newStock = product.stock_quantity - item.quantity
+        if (newStock < 0) {
+          throw new Error(`Insufficient stock for product ${item.product_id}`)
+        }
+
+        await supabase
+          .from('products')
+          .update({ stock_quantity: newStock })
+          .eq('id', item.product_id)
+
+        // Record stock movement
+        await supabase
+          .from('stock_movements')
+          .insert({
+            business_id: userContext.businessId,
+            product_id: item.product_id,
+            type: 'OUT',
+            quantity: item.quantity,
+            reference: `Order ${order.id}`,
+            created_by: userContext.userId
+          })
+      }
+
+      // Update retailer balance if credit
+      if (body.payment_status === 'credit') {
+        const { data: retailer } = await supabase
+          .from('retailers')
+          .select('current_balance')
+          .eq('id', body.retailer_id)
+          .single()
+
+        const newBalance = parseFloat(retailer.current_balance) + parseFloat(body.total_amount)
+        
+        await supabase
+          .from('retailers')
+          .update({ current_balance: newBalance })
+          .eq('id', body.retailer_id)
+      }
+
+      // Update order status to confirmed
+      await supabase
+        .from('orders')
+        .update({ status: 'confirmed' })
+        .eq('id', order.id)
+
+      return handleCORS(NextResponse.json(order))
+    }
+
+    if (route.startsWith('/orders/') && route.endsWith('/items') && method === 'GET') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const orderId = route.split('/')[2]
+      const { data, error } = await supabase
+        .from('order_items')
+        .select('*, products(name, sku)')
+        .eq('order_id', orderId)
+
+      if (error) throw error
+      return handleCORS(NextResponse.json(data || []))
+    }
+
+    // ============================================
+    // PAYMENTS ENDPOINTS
+    // ============================================
+
+    if (route === '/payments' && method === 'GET') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*, retailers(shop_name), users(name)')
+        .eq('business_id', userContext.businessId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return handleCORS(NextResponse.json(data || []))
+    }
+
+    if (route === '/payments' && method === 'POST') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const body = await request.json()
+      
+      // Create payment record
+      const { data: payment, error: paymentError } = await supabase
+        .from('payments')
+        .insert({
+          business_id: userContext.businessId,
+          retailer_id: body.retailer_id,
+          order_id: body.order_id || null,
+          amount_paid: body.amount_paid,
+          payment_method: body.payment_method,
+          notes: body.notes,
+          recorded_by: userContext.userId
+        })
+        .select()
+        .single()
+
+      if (paymentError) throw paymentError
+
+      // Update retailer balance
+      const { data: retailer } = await supabase
+        .from('retailers')
+        .select('current_balance, credit_limit')
+        .eq('id', body.retailer_id)
+        .single()
+
+      const newBalance = parseFloat(retailer.current_balance) - parseFloat(body.amount_paid)
+      const finalBalance = Math.max(0, newBalance) // Don't allow negative balance
+
+      // Update status based on new balance
+      const newStatus = finalBalance <= parseFloat(retailer.credit_limit) ? 'active' : 'blocked'
+
+      await supabase
+        .from('retailers')
+        .update({ 
+          current_balance: finalBalance,
+          status: newStatus
+        })
+        .eq('id', body.retailer_id)
+
+      return handleCORS(NextResponse.json(payment))
+    }
+
+    // ============================================
+    // STAFF/USERS ENDPOINTS
+    // ============================================
+
+    if (route === '/staff' && method === 'GET') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('business_id', userContext.businessId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return handleCORS(NextResponse.json(data || []))
+    }
+
+    // ============================================
+    // REPORTS ENDPOINTS
+    // ============================================
+
+    if (route === '/reports/debt-aging' && method === 'GET') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const { data, error } = await supabase
+        .from('retailers')
+        .select('shop_name, current_balance, credit_limit, created_at')
+        .eq('business_id', userContext.businessId)
+        .gt('current_balance', 0)
+        .order('current_balance', { ascending: false })
+
+      if (error) throw error
+
+      // Calculate aging (simplified - based on account creation date)
+      const now = new Date()
+      const aging = data?.map(retailer => {
+        const daysSinceCreation = Math.floor((now - new Date(retailer.created_at)) / (1000 * 60 * 60 * 24))
+        let category = '0-30 days'
+        if (daysSinceCreation > 90) category = '90+ days'
+        else if (daysSinceCreation > 60) category = '60-90 days'
+        else if (daysSinceCreation > 30) category = '30-60 days'
+
+        return {
+          ...retailer,
+          aging_category: category,
+          days_outstanding: daysSinceCreation
+        }
+      })
+
+      return handleCORS(NextResponse.json(aging || []))
+    }
+
+    if (route === '/reports/sales-by-rep' && method === 'GET') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const { data, error } = await supabase
+        .from('orders')
+        .select('sales_rep_id, total_amount, status, users(name)')
+        .eq('business_id', userContext.businessId)
+        .eq('status', 'confirmed')
+
+      if (error) throw error
+
+      // Group by rep
+      const repSales = {}
+      data?.forEach(order => {
+        const repName = order.users?.name || 'Unknown'
+        if (!repSales[repName]) {
+          repSales[repName] = { name: repName, total: 0, orders: 0 }
+        }
+        repSales[repName].total += parseFloat(order.total_amount)
+        repSales[repName].orders += 1
+      })
+
+      return handleCORS(NextResponse.json(Object.values(repSales)))
+    }
+
+    if (route === '/reports/inventory' && method === 'GET') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('business_id', userContext.businessId)
+        .order('stock_quantity')
+
+      if (error) throw error
+      return handleCORS(NextResponse.json(data || []))
     }
 
     // Route not found
@@ -90,7 +651,7 @@ async function handleRoute(request, { params }) {
   } catch (error) {
     console.error('API Error:', error)
     return handleCORS(NextResponse.json(
-      { error: "Internal server error" }, 
+      { error: error.message || "Internal server error" }, 
       { status: 500 }
     ))
   }
