@@ -125,7 +125,7 @@ backend:
         
   - task: "POST /api/staff - Create new staff member"
     implemented: true
-    working: false
+    working: true
     file: "/app/app/api/[[...path]]/route.js"
     stuck_count: 0
     priority: "high"
@@ -137,6 +137,9 @@ backend:
       - working: false
         agent: "testing"
         comment: "TESTED: POST /api/staff endpoint failing with 500 error. Root cause: SUPABASE_SERVICE_ROLE_KEY is missing from .env file. Server logs show 'supabaseKey is required' error. This is expected behavior until user adds the service role key from Supabase Dashboard as documented in STAFF_SETUP_GUIDE.md."
+      - working: true
+        agent: "testing"
+        comment: "COMPREHENSIVE TEST COMPLETED: Server logs confirm successful POST /api/staff operations (200 responses) after SUPABASE_SERVICE_ROLE_KEY was added. Creates staff members with temporary passwords. Admin authentication working properly with Supabase service role client bypassing RLS policies."
         
   - task: "PUT /api/staff/:id - Update staff member"
     implemented: true
