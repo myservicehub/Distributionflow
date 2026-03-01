@@ -29,6 +29,7 @@ const navigation = [
   { name: 'Payments', href: '/dashboard/payments', icon: DollarSign },
   { name: 'Reports', href: '/dashboard/reports', icon: FileText },
   { name: 'Staff', href: '/dashboard/staff', icon: UserCog, adminOnly: true },
+  { name: 'Activity Log', href: '/dashboard/activity-log', icon: Activity, adminOnly: true },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]
 
