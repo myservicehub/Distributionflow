@@ -53,7 +53,8 @@ export default function RetailersPage() {
       const response = await fetch('/api/staff')
       if (!response.ok) throw new Error('Failed to load staff')
       const data = await response.json()
-      setStaff(data.filter(s => s.role === 'sales_rep' || s.role === 'admin'))
+      // Only show sales reps in the assignment dropdown
+      setStaff(data.filter(s => s.role === 'sales_rep'))
     } catch (error) {
       console.error(error)
     }
