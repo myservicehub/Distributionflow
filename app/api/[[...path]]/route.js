@@ -253,20 +253,54 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
-      // Build query
+      // Build query without the user join (will fetch separately)
       let query = supabase
         .from('retailers')
-        .select('*, users(name)')
+        .select('*')
         .eq('business_id', userContext.businessId)
         .order('created_at', { ascending: false })
 
       // Apply sales rep filter - sales reps only see their assigned retailers
       query = applySalesRepFilter(query, userContext, 'assigned_rep_id')
 
-      const { data, error } = await query
+      const { data: retailers, error } = await query
 
       if (error) throw error
-      return handleCORS(NextResponse.json(data || []))
+
+      // Use admin client to fetch sales rep data (to bypass RLS)
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabaseAdmin = createClient(
+        supabaseUrl,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      )
+
+      // Manually fetch assigned rep data for each retailer using admin client
+      const retailersWithRep = await Promise.all(
+        (retailers || []).map(async (retailer) => {
+          if (retailer.assigned_rep_id) {
+            const { data: assignedRep, error: repError } = await supabaseAdmin
+              .from('users')
+              .select('id, name, email, role')
+              .eq('id', retailer.assigned_rep_id)
+              .single()
+            
+            if (repError) {
+              console.error('Error fetching assigned rep for retailer', retailer.id, ':', repError)
+            }
+            
+            return { ...retailer, users: assignedRep }
+          }
+          return { ...retailer, users: null }
+        })
+      )
+
+      return handleCORS(NextResponse.json(retailersWithRep))
     }
 
     if (route === '/retailers' && method === 'POST') {
