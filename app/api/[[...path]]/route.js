@@ -595,10 +595,10 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
-      // Build simple query first
+      // Build query with order items and products
       let query = supabase
         .from('orders')
-        .select('*, retailers(shop_name, owner_name)')
+        .select('*, retailers(shop_name, owner_name), order_items(*, product:products(name, sku))')
         .eq('business_id', userContext.businessId)
         .order('created_at', { ascending: false })
 
