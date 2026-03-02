@@ -188,6 +188,7 @@ export default function ReportsPage() {
                                       <TableHead className="text-right">Quantity Sold</TableHead>
                                       <TableHead className="text-right">Unit Price</TableHead>
                                       <TableHead className="text-right">Total Value</TableHead>
+                                      <TableHead>Sale Dates</TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
@@ -203,6 +204,20 @@ export default function ReportsPage() {
                                         </TableCell>
                                         <TableCell className="text-right font-semibold text-green-600">
                                           ₦{parseFloat(product.totalValue).toLocaleString()}
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="space-y-1 max-h-32 overflow-y-auto">
+                                            {product.sales && product.sales.map((sale, sIdx) => (
+                                              <div key={sIdx} className="text-xs flex justify-between gap-2 py-1 border-b border-gray-100 last:border-0">
+                                                <span className="text-muted-foreground">
+                                                  {new Date(sale.date).toLocaleDateString()}
+                                                </span>
+                                                <span className="font-medium">
+                                                  {sale.quantity} × ₦{parseFloat(sale.value / sale.quantity).toLocaleString()} = ₦{parseFloat(sale.value).toLocaleString()}
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
                                         </TableCell>
                                       </TableRow>
                                     ))}
