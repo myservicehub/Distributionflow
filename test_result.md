@@ -210,12 +210,16 @@ metadata:
 
 test_plan:
   current_focus:
-    - "POST /api/staff - Create new staff member"
-    - "GET /api/staff - List all staff members"
-    - "PUT /api/staff/:id - Update staff member"
-    - "DELETE /api/staff/:id - Deactivate staff member"
+    - "Role-Based Access Control - Orders API"
+    - "Role-Based Access Control - Retailers API"
+    - "Role-Based Access Control - Products API"
+    - "Order Approval System"
+    - "Business Rules - Stock Validation"
+    - "Business Rules - Credit Limit Management"
+    - "Business Rules - Stock Movement Tracking"
+    - "Business Rules - Payment and Balance Updates"
   stuck_tasks: []
-  test_all: false
+  test_all: true
   test_priority: "high_first"
 
   - task: "GET /api/audit-logs - Audit Logs API"
