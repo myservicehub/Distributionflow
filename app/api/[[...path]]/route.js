@@ -86,6 +86,72 @@ async function getUserBusinessId(supabase) {
   }
 }
 
+// ============================================
+// PERMISSION ENFORCEMENT HELPERS
+// ============================================
+
+function canEditCreditLimit(role) {
+  return role === 'admin'
+}
+
+function canDeleteRecords(role) {
+  return role === 'admin'
+}
+
+function canManageStaff(role) {
+  return role === 'admin'
+}
+
+function canViewAllRetailers(role) {
+  return ['admin', 'manager'].includes(role)
+}
+
+function canViewAllOrders(role) {
+  return ['admin', 'manager', 'warehouse'].includes(role)
+}
+
+function canCreateOrders(role) {
+  return ['admin', 'manager', 'sales_rep'].includes(role)
+}
+
+function canConfirmOrders(role) {
+  return ['admin', 'manager'].includes(role)
+}
+
+function canManageInventory(role) {
+  return ['admin', 'manager', 'warehouse'].includes(role)
+}
+
+function canEditProducts(role) {
+  return ['admin', 'manager'].includes(role)
+}
+
+// Sales rep data filtering
+function applySalesRepFilter(query, userContext, foreignKeyColumn = 'assigned_rep_id') {
+  if (userContext.role === 'sales_rep') {
+    return query.eq(foreignKeyColumn, userContext.userId)
+  }
+  return query
+}
+
+// Audit logging helper
+async function logAuditEvent(supabase, userContext, action, details, entityType, resourceId) {
+  try {
+    await supabase
+      .from('audit_logs')
+      .insert({
+        business_id: userContext.businessId,
+        user_id: userContext.userId,
+        action,
+        details,
+        entity_type: entityType,
+        resource_id: resourceId
+      })
+  } catch (error) {
+    console.error('Audit log error:', error)
+  }
+}
+
 // Route handler function
 async function handleRoute(request, { params }) {
   const { path = [] } = params
