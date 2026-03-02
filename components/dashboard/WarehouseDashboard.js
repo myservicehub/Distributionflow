@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import KPICard from './KPICard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 import { 
   Package,
   TrendingUp,
@@ -15,10 +17,12 @@ import Link from 'next/link'
 
 export default function WarehouseDashboard() {
   const [metrics, setMetrics] = useState(null)
+  const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchMetrics()
+    fetchProducts()
   }, [])
 
   const fetchMetrics = async () => {
@@ -32,6 +36,18 @@ export default function WarehouseDashboard() {
       console.error('Error fetching metrics:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch('/api/products')
+      if (response.ok) {
+        const data = await response.json()
+        setProducts(data)
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error)
     }
   }
 
