@@ -162,6 +162,50 @@ export default function OrdersPage() {
     }
   }
 
+  const handleApproveOrder = async (orderId) => {
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'confirmed' })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to approve order')
+      }
+
+      toast.success('Order approved successfully!')
+      loadOrders()
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
+  const handleRejectOrder = async (orderId) => {
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to reject order')
+      }
+
+      toast.success('Order rejected')
+      loadOrders()
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
+  const canApproveOrders = () => {
+    return userProfile && ['admin', 'manager'].includes(userProfile.role)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
