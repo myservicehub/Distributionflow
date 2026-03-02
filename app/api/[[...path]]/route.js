@@ -487,10 +487,14 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
-      // Build query
+      // Build query - explicitly join with sales_rep_id
       let query = supabase
         .from('orders')
-        .select('*, retailers(shop_name), users(name)')
+        .select(`
+          *,
+          retailers(shop_name),
+          sales_rep:users!orders_sales_rep_id_fkey(name, email)
+        `)
         .eq('business_id', userContext.businessId)
         .order('created_at', { ascending: false })
 
@@ -499,7 +503,11 @@ async function handleRoute(request, { params }) {
 
       const { data, error } = await query
 
-      if (error) throw error
+      if (error) {
+        console.error('Orders query error:', error)
+        throw error
+      }
+      
       return handleCORS(NextResponse.json(data || []))
     }
 
