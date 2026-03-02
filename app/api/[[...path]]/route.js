@@ -158,8 +158,6 @@ async function handleRoute(request, { params }) {
   const route = `/${path.join('/')}`
   const method = request.method
 
-  console.log(`API Route: ${method} ${route}`)
-
   try {
     const supabase = await getSupabaseClient()
 
