@@ -1363,23 +1363,67 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
-      const { data, error } = await supabase
+      // Fetch orders with order items (to get quantities)
+      const { data: orders, error } = await supabase
         .from('orders')
-        .select('sales_rep_id, total_amount, status, users(name)')
+        .select('id, sales_rep_id, total_amount, status, order_items(quantity)')
         .eq('business_id', userContext.businessId)
         .eq('status', 'confirmed')
 
       if (error) throw error
 
+      // Use admin client to fetch sales rep names (to bypass RLS)
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabaseAdmin = createClient(
+        supabaseUrl,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      )
+
+      // Get unique sales rep IDs
+      const repIds = [...new Set(orders?.map(o => o.sales_rep_id).filter(Boolean))]
+      
+      // Fetch all sales reps data
+      const { data: salesReps } = await supabaseAdmin
+        .from('users')
+        .select('id, name, email')
+        .in('id', repIds)
+
+      // Create a map of rep ID to rep data
+      const repMap = {}
+      salesReps?.forEach(rep => {
+        repMap[rep.id] = rep
+      })
+
       // Group by rep
       const repSales = {}
-      data?.forEach(order => {
-        const repName = order.users?.name || 'Unknown'
+      orders?.forEach(order => {
+        const repId = order.sales_rep_id
+        const repData = repMap[repId]
+        const repName = repData?.name || 'Unassigned'
+        
         if (!repSales[repName]) {
-          repSales[repName] = { name: repName, total: 0, orders: 0 }
+          repSales[repName] = { 
+            name: repName, 
+            email: repData?.email || '',
+            total: 0, 
+            orders: 0,
+            items: 0 
+          }
         }
+        
         repSales[repName].total += parseFloat(order.total_amount)
         repSales[repName].orders += 1
+        
+        // Count total items/quantities
+        order.order_items?.forEach(item => {
+          repSales[repName].items += item.quantity
+        })
       })
 
       return handleCORS(NextResponse.json(Object.values(repSales)))
