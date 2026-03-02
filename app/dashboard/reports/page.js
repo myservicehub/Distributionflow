@@ -139,6 +139,7 @@ export default function ReportsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10"></TableHead>
                       <TableHead>Sales Representative</TableHead>
                       <TableHead>Total Orders</TableHead>
                       <TableHead>Total Items Sold</TableHead>
@@ -148,17 +149,70 @@ export default function ReportsPage() {
                   </TableHeader>
                   <TableBody>
                     {salesByRep.map((rep, idx) => (
-                      <TableRow key={`${rep.name}-${idx}`}>
-                        <TableCell className="font-medium">{rep.name}</TableCell>
-                        <TableCell>{rep.orders}</TableCell>
-                        <TableCell className="font-semibold text-blue-600">{rep.items || 0}</TableCell>
-                        <TableCell className="font-semibold text-green-600">
-                          ₦{parseFloat(rep.total).toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          ₦{(parseFloat(rep.total) / rep.orders).toLocaleString(undefined, {maximumFractionDigits: 2})}
-                        </TableCell>
-                      </TableRow>
+                      <>
+                        <TableRow key={`${rep.name}-${idx}`} className="cursor-pointer hover:bg-muted/50">
+                          <TableCell>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => toggleRepExpand(rep.name)}
+                              className="p-0 h-auto"
+                            >
+                              {expandedReps[rep.name] ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </TableCell>
+                          <TableCell className="font-medium">{rep.name}</TableCell>
+                          <TableCell>{rep.orders}</TableCell>
+                          <TableCell className="font-semibold text-blue-600">{rep.items || 0}</TableCell>
+                          <TableCell className="font-semibold text-green-600">
+                            ₦{parseFloat(rep.total).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            ₦{(parseFloat(rep.total) / rep.orders).toLocaleString(undefined, {maximumFractionDigits: 2})}
+                          </TableCell>
+                        </TableRow>
+                        {expandedReps[rep.name] && rep.products && rep.products.length > 0 && (
+                          <TableRow key={`${rep.name}-details-${idx}`}>
+                            <TableCell colSpan={6} className="bg-muted/30 p-4">
+                              <div className="space-y-2">
+                                <h4 className="font-semibold text-sm mb-3">Products Sold by {rep.name}</h4>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Product Name</TableHead>
+                                      <TableHead>SKU</TableHead>
+                                      <TableHead className="text-right">Quantity Sold</TableHead>
+                                      <TableHead className="text-right">Unit Price</TableHead>
+                                      <TableHead className="text-right">Total Value</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {rep.products.map((product, pIdx) => (
+                                      <TableRow key={pIdx}>
+                                        <TableCell className="font-medium">{product.name}</TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">{product.sku || '-'}</TableCell>
+                                        <TableCell className="text-right font-semibold text-blue-600">
+                                          {product.quantity}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                          ₦{parseFloat(product.unitPrice).toLocaleString()}
+                                        </TableCell>
+                                        <TableCell className="text-right font-semibold text-green-600">
+                                          ₦{parseFloat(product.totalValue).toLocaleString()}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
                     ))}
                   </TableBody>
                 </Table>
