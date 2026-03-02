@@ -380,8 +380,8 @@ export default function OrdersPage() {
               </TableHeader>
               <TableBody>
                 {orders.map((order) => (
-                  <>
-                    <TableRow key={order.id} className="cursor-pointer hover:bg-muted/50">
+                  <React.Fragment key={order.id}>
+                    <TableRow className="cursor-pointer hover:bg-muted/50">
                       <TableCell>
                         <Button 
                           variant="ghost" 
@@ -440,7 +440,7 @@ export default function OrdersPage() {
                       )}
                     </TableRow>
                     {expandedOrders[order.id] && (
-                      <TableRow key={`${order.id}-details`}>
+                      <TableRow>
                         <TableCell colSpan={canApproveOrders() ? 9 : 8} className="bg-muted/30">
                           <div className="p-4">
                             <h4 className="font-semibold mb-3">Order Items</h4>
@@ -478,7 +478,7 @@ export default function OrdersPage() {
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </React.Fragment>
                 ))}
               </TableBody>
             </Table>
