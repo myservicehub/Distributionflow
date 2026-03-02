@@ -11,8 +11,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { toast } from 'sonner'
-import { Plus, Eye, Trash2, CheckCircle, XCircle } from 'lucide-react'
+import { Plus, Eye, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react'
 
 export default function OrdersPage() {
   const { userProfile } = useAuth()
@@ -21,12 +22,20 @@ export default function OrdersPage() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [expandedOrders, setExpandedOrders] = useState({})
   const [orderItems, setOrderItems] = useState([{ product_id: '', quantity: 1, unit_price: 0, total_price: 0 }])
   const [formData, setFormData] = useState({
     retailer_id: '',
     payment_status: 'paid'
   })
   const supabase = createClient()
+
+  const toggleOrderExpand = (orderId) => {
+    setExpandedOrders(prev => ({
+      ...prev,
+      [orderId]: !prev[orderId]
+    }))
+  }
 
   useEffect(() => {
     loadOrders()
