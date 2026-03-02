@@ -642,6 +642,112 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json(data || []))
     }
 
+    // Update order status (approve/reject)
+    if (route.startsWith('/orders/') && method === 'PUT') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      // Only admin and manager can approve/update orders
+      if (!canConfirmOrders(userContext.role)) {
+        return handleCORS(NextResponse.json({ 
+          error: 'Forbidden: Only admins and managers can approve orders' 
+        }, { status: 403 }))
+      }
+
+      const orderId = route.split('/')[2]
+      const body = await request.json()
+
+      // Get order details
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .select('*, order_items(*)')
+        .eq('id', orderId)
+        .eq('business_id', userContext.businessId)
+        .single()
+
+      if (orderError) throw orderError
+      if (!order) {
+        return handleCORS(NextResponse.json({ error: 'Order not found' }, { status: 404 }))
+      }
+
+      // If confirming order, validate stock and deduct
+      if (body.status === 'confirmed' && order.status !== 'confirmed') {
+        // Validate stock availability
+        for (const item of order.order_items) {
+          const { data: product } = await supabase
+            .from('products')
+            .select('stock_quantity, name')
+            .eq('id', item.product_id)
+            .single()
+
+          if (product.stock_quantity < item.quantity) {
+            return handleCORS(NextResponse.json({ 
+              error: `Insufficient stock for ${product.name}: requested ${item.quantity}, available ${product.stock_quantity}` 
+            }, { status: 400 }))
+          }
+        }
+
+        // Deduct stock (if not using triggers)
+        // Note: If you applied the business_rules_triggers.sql, this happens automatically
+        // Uncomment below if you want manual control:
+        /*
+        for (const item of order.order_items) {
+          await supabase
+            .from('products')
+            .update({ 
+              stock_quantity: supabase.raw(`stock_quantity - ${item.quantity}`) 
+            })
+            .eq('id', item.product_id)
+
+          await supabase
+            .from('stock_movements')
+            .insert({
+              business_id: userContext.businessId,
+              product_id: item.product_id,
+              movement_type: 'out',
+              quantity: item.quantity,
+              notes: `Order ${orderId} confirmed`
+            })
+        }
+
+        // Update retailer balance for credit orders
+        if (order.payment_status === 'credit' || order.payment_status === 'partial') {
+          await supabase
+            .from('retailers')
+            .update({ 
+              current_balance: supabase.raw(`current_balance + ${order.total_amount}`) 
+            })
+            .eq('id', order.retailer_id)
+        }
+        */
+      }
+
+      // Update order status
+      const { data: updatedOrder, error: updateError } = await supabase
+        .from('orders')
+        .update({ status: body.status })
+        .eq('id', orderId)
+        .eq('business_id', userContext.businessId)
+        .select()
+        .single()
+
+      if (updateError) throw updateError
+
+      // Log audit event
+      await logAuditEvent(
+        supabase,
+        userContext,
+        body.status === 'confirmed' ? 'APPROVE_ORDER' : 'UPDATE_ORDER',
+        `Order ${orderId} status changed to ${body.status}`,
+        'order',
+        orderId
+      )
+
+      return handleCORS(NextResponse.json(updatedOrder))
+    }
+
     // ============================================
     // PAYMENTS ENDPOINTS
     // ============================================
