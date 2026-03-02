@@ -373,7 +373,7 @@ export default function OrdersPage() {
                   <TableRow key={order.id}>
                     <TableCell className="font-mono text-xs">{order.id.slice(0, 8)}</TableCell>
                     <TableCell className="font-medium">{order.retailers?.shop_name || 'N/A'}</TableCell>
-                    <TableCell>{order.users?.name || 'N/A'}</TableCell>
+                    <TableCell>{order.sales_rep?.name || 'Unassigned'}</TableCell>
                     <TableCell className="font-semibold">₦{parseFloat(order.total_amount).toLocaleString()}</TableCell>
                     <TableCell>
                       <Badge variant={getPaymentStatusColor(order.payment_status)}>
