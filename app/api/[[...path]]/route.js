@@ -963,7 +963,7 @@ async function handleRoute(request, { params }) {
 
       if (error) throw error
 
-      // Use admin client to fetch retailer data (to bypass RLS)
+      // Use admin client to fetch retailer and user data (to bypass RLS)
       const { createClient } = await import('@supabase/supabase-js')
       const supabaseAdmin = createClient(
         supabaseUrl,
@@ -976,11 +976,13 @@ async function handleRoute(request, { params }) {
         }
       )
 
-      // Manually fetch retailer data for each payment using admin client
-      const paymentsWithRetailer = await Promise.all(
+      // Manually fetch retailer and user data for each payment using admin client
+      const paymentsWithDetails = await Promise.all(
         (payments || []).map(async (payment) => {
           let retailerData = null
+          let userData = null
           
+          // Fetch retailer data
           if (payment.retailer_id) {
             const { data: retailer, error: retailerError } = await supabaseAdmin
               .from('retailers')
@@ -995,11 +997,26 @@ async function handleRoute(request, { params }) {
             }
           }
           
-          return { ...payment, retailers: retailerData }
+          // Fetch user data (who recorded the payment)
+          if (payment.created_by) {
+            const { data: user, error: userError } = await supabaseAdmin
+              .from('users')
+              .select('id, name, email, role')
+              .eq('id', payment.created_by)
+              .single()
+            
+            if (userError) {
+              console.error('Error fetching user for payment', payment.id, ':', userError)
+            } else {
+              userData = user
+            }
+          }
+          
+          return { ...payment, retailers: retailerData, users: userData }
         })
       )
 
-      return handleCORS(NextResponse.json(paymentsWithRetailer))
+      return handleCORS(NextResponse.json(paymentsWithDetails))
     }
 
     if (route === '/payments' && method === 'POST') {
