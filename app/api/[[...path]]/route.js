@@ -137,13 +137,16 @@ function applySalesRepFilter(query, userContext, foreignKeyColumn = 'assigned_re
 // Audit logging helper
 async function logAuditEvent(supabase, userContext, action, details, entityType, resourceId) {
   try {
+    // Ensure details is a JSON object if it's a string
+    const detailsObj = typeof details === 'string' ? { message: details } : details
+    
     await supabase
       .from('audit_logs')
       .insert({
         business_id: userContext.businessId,
         user_id: userContext.userId,
         action,
-        details,
+        details: detailsObj,
         entity_type: entityType,
         resource_id: resourceId
       })
