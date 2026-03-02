@@ -581,7 +581,8 @@ async function handleRoute(request, { params }) {
         .insert({
           business_id: userContext.businessId,
           retailer_id: body.retailer_id,
-          sales_rep_id: userContext.role === 'sales_rep' ? userContext.userId : body.sales_rep_id,
+          // Always set sales_rep_id: use body value, or current user's ID, or null
+          sales_rep_id: body.sales_rep_id || (userContext.role === 'sales_rep' ? userContext.userId : userContext.userId),
           total_amount: body.total_amount,
           payment_status: body.payment_status,
           status: 'pending'
