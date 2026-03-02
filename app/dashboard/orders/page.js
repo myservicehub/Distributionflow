@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,9 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { Plus, Eye, Trash2 } from 'lucide-react'
+import { Plus, Eye, Trash2, CheckCircle, XCircle } from 'lucide-react'
 
 export default function OrdersPage() {
+  const { userProfile } = useAuth()
   const [orders, setOrders] = useState([])
   const [retailers, setRetailers] = useState([])
   const [products, setProducts] = useState([])
