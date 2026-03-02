@@ -370,7 +370,7 @@ export default function InventoryPage() {
                           {movement.product?.name || 'Unknown Product'}
                         </TableCell>
                         <TableCell>
-                          {movement.movement_type === 'in' ? (
+                          {movement.type === 'in' ? (
                             <Badge variant="success" className="bg-green-500">
                               <ArrowUpCircle className="h-3 w-3 mr-1" />
                               Stock In
