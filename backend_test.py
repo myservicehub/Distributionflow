@@ -63,6 +63,15 @@ def make_request(method, endpoint, data=None, headers=None):
             response = requests.delete(url, headers=headers, timeout=30)
         
         print(f"Response: {response.status_code}")
+        if response.status_code == 200:
+            # Check if response looks like HTML (Next.js page) or JSON
+            content_type = response.headers.get('content-type', '').lower()
+            if 'text/html' in content_type:
+                print(f"   Warning: Got HTML response (probably a Next.js page redirect)")
+                print(f"   Content preview: {response.text[:200]}...")
+            else:
+                print(f"   Content-Type: {content_type}")
+        
         return response
     except requests.exceptions.RequestException as e:
         print(f"Request error for {method} {url}: {e}")
