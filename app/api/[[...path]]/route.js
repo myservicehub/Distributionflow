@@ -478,6 +478,114 @@ async function handleRoute(request, { params }) {
     }
 
     // ============================================
+    // STOCK MOVEMENTS ENDPOINTS
+    // ============================================
+
+    if (route === '/stock-movements' && method === 'GET') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const { data, error } = await supabase
+        .from('stock_movements')
+        .select('*, product:products(name, sku)')
+        .eq('business_id', userContext.businessId)
+        .order('created_at', { ascending: false })
+        .limit(100)
+
+      if (error) throw error
+      return handleCORS(NextResponse.json(data || []))
+    }
+
+    if (route === '/stock-movements' && method === 'POST') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      // Check permission - admin, manager, or warehouse can manage inventory
+      if (!canManageInventory(userContext.role)) {
+        return handleCORS(NextResponse.json({ error: 'Forbidden: Insufficient permissions' }, { status: 403 }))
+      }
+
+      const body = await request.json()
+      const { product_id, movement_type, quantity, notes } = body
+
+      // Validate inputs
+      if (!product_id || !movement_type || !quantity) {
+        return handleCORS(NextResponse.json({ error: 'Missing required fields' }, { status: 400 }))
+      }
+
+      if (!['in', 'out'].includes(movement_type)) {
+        return handleCORS(NextResponse.json({ error: 'Invalid movement_type. Must be "in" or "out"' }, { status: 400 }))
+      }
+
+      const qty = parseInt(quantity)
+      if (isNaN(qty) || qty <= 0) {
+        return handleCORS(NextResponse.json({ error: 'Quantity must be a positive number' }, { status: 400 }))
+      }
+
+      // Get current product stock
+      const { data: product, error: productError } = await supabase
+        .from('products')
+        .select('stock_quantity, name')
+        .eq('id', product_id)
+        .eq('business_id', userContext.businessId)
+        .single()
+
+      if (productError || !product) {
+        return handleCORS(NextResponse.json({ error: 'Product not found' }, { status: 404 }))
+      }
+
+      // Calculate new stock quantity
+      const currentStock = product.stock_quantity || 0
+      const newStock = movement_type === 'in' ? currentStock + qty : currentStock - qty
+
+      if (newStock < 0) {
+        return handleCORS(NextResponse.json({ 
+          error: `Insufficient stock. Current: ${currentStock}, Requested: ${qty}` 
+        }, { status: 400 }))
+      }
+
+      // Update product stock
+      const { error: updateError } = await supabase
+        .from('products')
+        .update({ stock_quantity: newStock })
+        .eq('id', product_id)
+        .eq('business_id', userContext.businessId)
+
+      if (updateError) throw updateError
+
+      // Create stock movement record
+      const { data: movement, error: movementError } = await supabase
+        .from('stock_movements')
+        .insert({
+          business_id: userContext.businessId,
+          product_id,
+          movement_type,
+          quantity: qty,
+          notes: notes || null
+        })
+        .select()
+        .single()
+
+      if (movementError) throw movementError
+
+      // Log audit event
+      await logAuditEvent(
+        supabase,
+        userContext,
+        'STOCK_MOVEMENT',
+        `${movement_type === 'in' ? 'Added' : 'Removed'} ${qty} units of ${product.name}. New stock: ${newStock}`,
+        'stock_movement',
+        movement.id
+      )
+
+      return handleCORS(NextResponse.json(movement))
+    }
+
+    // ============================================
     // ORDERS ENDPOINTS
     // ============================================
 
