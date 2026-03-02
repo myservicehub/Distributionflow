@@ -379,50 +379,105 @@ export default function OrdersPage() {
               </TableHeader>
               <TableBody>
                 {orders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-mono text-xs">{order.id.slice(0, 8)}</TableCell>
-                    <TableCell className="font-medium">{order.retailers?.shop_name || 'N/A'}</TableCell>
-                    <TableCell>{order.sales_rep?.name || 'Unassigned'}</TableCell>
-                    <TableCell className="font-semibold">₦{parseFloat(order.total_amount).toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge variant={getPaymentStatusColor(order.payment_status)}>
-                        {order.payment_status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusColor(order.status)}>
-                        {order.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
-                    {canApproveOrders() && (
+                  <>
+                    <TableRow key={order.id} className="cursor-pointer hover:bg-muted/50">
                       <TableCell>
-                        {order.status === 'pending' && (
-                          <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
-                              variant="default"
-                              onClick={() => handleApproveOrder(order.id)}
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Approve
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="destructive"
-                              onClick={() => handleRejectOrder(order.id)}
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />
-                              Reject
-                            </Button>
-                          </div>
-                        )}
-                        {order.status !== 'pending' && (
-                          <span className="text-sm text-muted-foreground">No action needed</span>
-                        )}
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => toggleOrderExpand(order.id)}
+                          className="p-0 h-auto"
+                        >
+                          {expandedOrders[order.id] ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
+                        </Button>
                       </TableCell>
+                      <TableCell className="font-mono text-xs">{order.id.slice(0, 8)}</TableCell>
+                      <TableCell className="font-medium">{order.retailers?.shop_name || 'N/A'}</TableCell>
+                      <TableCell>{order.sales_rep?.name || 'Unassigned'}</TableCell>
+                      <TableCell className="font-semibold">₦{parseFloat(order.total_amount).toLocaleString()}</TableCell>
+                      <TableCell>
+                        <Badge variant={getPaymentStatusColor(order.payment_status)}>
+                          {order.payment_status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusColor(order.status)}>
+                          {order.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
+                      {canApproveOrders() && (
+                        <TableCell>
+                          {order.status === 'pending' && (
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="default"
+                                onClick={() => handleApproveOrder(order.id)}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Approve
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="destructive"
+                                onClick={() => handleRejectOrder(order.id)}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Reject
+                              </Button>
+                            </div>
+                          )}
+                          {order.status !== 'pending' && (
+                            <span className="text-sm text-muted-foreground">No action needed</span>
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                    {expandedOrders[order.id] && (
+                      <TableRow key={`${order.id}-details`}>
+                        <TableCell colSpan={canApproveOrders() ? 9 : 8} className="bg-muted/30">
+                          <div className="p-4">
+                            <h4 className="font-semibold mb-3">Order Items</h4>
+                            {order.order_items && order.order_items.length > 0 ? (
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Product</TableHead>
+                                    <TableHead>SKU</TableHead>
+                                    <TableHead className="text-right">Quantity</TableHead>
+                                    <TableHead className="text-right">Unit Price</TableHead>
+                                    <TableHead className="text-right">Total Price</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {order.order_items.map((item, idx) => (
+                                    <TableRow key={idx}>
+                                      <TableCell className="font-medium">
+                                        {item.product?.name || 'Unknown Product'}
+                                      </TableCell>
+                                      <TableCell>{item.product?.sku || '-'}</TableCell>
+                                      <TableCell className="text-right">{item.quantity}</TableCell>
+                                      <TableCell className="text-right">₦{parseFloat(item.unit_price).toLocaleString()}</TableCell>
+                                      <TableCell className="text-right font-semibold">
+                                        ₦{parseFloat(item.total_price).toLocaleString()}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">No items found for this order</p>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </TableRow>
+                  </>
                 ))}
               </TableBody>
             </Table>
