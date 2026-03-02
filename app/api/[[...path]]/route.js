@@ -508,17 +508,30 @@ async function handleRoute(request, { params }) {
       const ordersWithSalesRep = await Promise.all(
         (orders || []).map(async (order) => {
           if (order.sales_rep_id) {
-            const { data: salesRep } = await supabase
+            console.log('Fetching sales rep for order:', order.id, 'sales_rep_id:', order.sales_rep_id)
+            
+            const { data: salesRep, error: repError } = await supabase
               .from('users')
               .select('id, name, email, role')
               .eq('id', order.sales_rep_id)
               .single()
+            
+            if (repError) {
+              console.error('Error fetching sales rep:', repError)
+            } else {
+              console.log('Found sales rep:', salesRep)
+            }
             
             return { ...order, sales_rep: salesRep }
           }
           return { ...order, sales_rep: null }
         })
       )
+      
+      console.log('Orders with sales reps:', ordersWithSalesRep.map(o => ({ 
+        id: o.id.slice(0, 8), 
+        sales_rep: o.sales_rep?.name || 'NULL' 
+      })))
       
       return handleCORS(NextResponse.json(ordersWithSalesRep))
     }
