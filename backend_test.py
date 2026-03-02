@@ -120,28 +120,39 @@ def test_orders_api_comprehensive():
         log_result("Orders API - GET", True, "Authentication required (401) - Security working")
     elif response.status_code == 200:
         try:
-            orders = response.json()
-            log_result("Orders API - GET", True, 
-                      f"Retrieved {len(orders) if isinstance(orders, list) else 'data'} orders")
-            
-            # Test sales rep name display (P0 bug fix)
-            if isinstance(orders, list) and orders:
-                orders_with_reps = [o for o in orders if o.get('sales_rep')]
-                if orders_with_reps:
-                    sample_order = orders_with_reps[0]
-                    sales_rep_name = sample_order.get('sales_rep', {}).get('name')
-                    if sales_rep_name and sales_rep_name != 'Unassigned':
-                        log_result("P0 Bug Fix - Sales Rep Names", True, 
-                                  f"Sales rep name displayed: {sales_rep_name}")
+            # Check content type first
+            content_type = response.headers.get('content-type', '').lower()
+            if 'text/html' in content_type:
+                log_result("Orders API - GET", False, 
+                          "Got HTML response - likely redirected to login (authentication required)")
+            else:
+                orders = response.json()
+                log_result("Orders API - GET", True, 
+                          f"Retrieved {len(orders) if isinstance(orders, list) else 'data'} orders")
+                
+                # Test sales rep name display (P0 bug fix)
+                if isinstance(orders, list) and orders:
+                    orders_with_reps = [o for o in orders if o.get('sales_rep')]
+                    if orders_with_reps:
+                        sample_order = orders_with_reps[0]
+                        sales_rep_name = sample_order.get('sales_rep', {}).get('name')
+                        if sales_rep_name and sales_rep_name != 'Unassigned':
+                            log_result("P0 Bug Fix - Sales Rep Names", True, 
+                                      f"Sales rep name displayed: {sales_rep_name}")
+                        else:
+                            log_result("P0 Bug Fix - Sales Rep Names", False, 
+                                      "Sales rep name still showing as 'Unassigned'")
                     else:
-                        log_result("P0 Bug Fix - Sales Rep Names", False, 
-                                  "Sales rep name still showing as 'Unassigned'")
-                else:
-                    log_result("P0 Bug Fix - Sales Rep Names", True, 
-                              "No orders with sales reps to test")
-            
+                        log_result("P0 Bug Fix - Sales Rep Names", True, 
+                                  "No orders with sales reps to test")
+                
         except json.JSONDecodeError:
-            log_result("Orders API - GET", False, "Invalid JSON response")
+            content_type = response.headers.get('content-type', '').lower()
+            if 'text/html' in content_type:
+                log_result("Orders API - GET", False, 
+                          "Got HTML response - authentication required")
+            else:
+                log_result("Orders API - GET", False, "Invalid JSON response")
     else:
         log_result("Orders API - GET", False, 
                   f"Unexpected status: {response.status_code}")
