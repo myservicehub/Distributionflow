@@ -200,7 +200,8 @@ export async function POST(request) {
         product_id,
         type: movement_type, // Note: table uses "type" not "movement_type"
         quantity: qty,
-        notes: notes || null
+        notes: notes || null,
+        created_by: userContext.userId // Add the user who created the movement
       })
       .select()
       .single()
