@@ -1366,9 +1366,10 @@ async function handleRoute(request, { params }) {
       // Fetch orders with order items and products
       const { data: orders, error } = await supabase
         .from('orders')
-        .select('id, sales_rep_id, total_amount, status, order_items(quantity, unit_price, total_price, product_id, products(name, sku))')
+        .select('id, sales_rep_id, total_amount, status, created_at, order_items(quantity, unit_price, total_price, product_id, products(name, sku))')
         .eq('business_id', userContext.businessId)
         .eq('status', 'confirmed')
+        .order('created_at', { ascending: false })
 
       if (error) throw error
 
@@ -1400,12 +1401,13 @@ async function handleRoute(request, { params }) {
         repMap[rep.id] = rep
       })
 
-      // Group by rep with product details
+      // Group by rep with product details including dates
       const repSales = {}
       orders?.forEach(order => {
         const repId = order.sales_rep_id
         const repData = repMap[repId]
         const repName = repData?.name || 'Unassigned'
+        const orderDate = order.created_at
         
         if (!repSales[repName]) {
           repSales[repName] = { 
@@ -1414,7 +1416,8 @@ async function handleRoute(request, { params }) {
             total: 0, 
             orders: 0,
             items: 0,
-            products: {} // Track individual products
+            products: {}, // Track individual products
+            sales: [] // Track individual sales with dates
           }
         }
         
@@ -1435,19 +1438,31 @@ async function handleRoute(request, { params }) {
               sku: productSku,
               quantity: 0,
               totalValue: 0,
-              unitPrice: item.unit_price
+              unitPrice: item.unit_price,
+              sales: [] // Individual sales of this product
             }
           }
           
           repSales[repName].products[productKey].quantity += item.quantity
           repSales[repName].products[productKey].totalValue += parseFloat(item.total_price)
+          
+          // Track individual sale with date
+          repSales[repName].products[productKey].sales.push({
+            date: orderDate,
+            quantity: item.quantity,
+            value: item.total_price,
+            orderId: order.id
+          })
         })
       })
 
       // Convert products object to array for easier frontend consumption
       const result = Object.values(repSales).map(rep => ({
         ...rep,
-        products: Object.values(rep.products)
+        products: Object.values(rep.products).map(product => ({
+          ...product,
+          sales: product.sales.sort((a, b) => new Date(b.date) - new Date(a.date)) // Sort by date desc
+        }))
       }))
 
       return handleCORS(NextResponse.json(result))
