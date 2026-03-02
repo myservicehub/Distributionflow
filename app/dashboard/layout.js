@@ -160,7 +160,16 @@ export default function DashboardLayout({ children }) {
             >
               <Menu className="h-6 w-6" />
             </button>
-            <h1 className="text-xl font-semibold text-gray-900">DistributionFlow</h1>
+            <div className="flex items-center space-x-3">
+              <h1 className="text-xl font-semibold text-gray-900">
+                {business?.name || 'DistributionFlow'}
+              </h1>
+              {business?.name && (
+                <span className="hidden sm:inline-block px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
+                  {business.name}
+                </span>
+              )}
+            </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600 hidden sm:block">{userProfile?.email}</span>
             </div>
