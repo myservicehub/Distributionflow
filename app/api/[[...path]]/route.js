@@ -1363,10 +1363,10 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
-      // Fetch orders with order items (to get quantities)
+      // Fetch orders with order items and products
       const { data: orders, error } = await supabase
         .from('orders')
-        .select('id, sales_rep_id, total_amount, status, order_items(quantity)')
+        .select('id, sales_rep_id, total_amount, status, order_items(quantity, unit_price, total_price, product_id, products(name, sku))')
         .eq('business_id', userContext.businessId)
         .eq('status', 'confirmed')
 
@@ -1400,7 +1400,7 @@ async function handleRoute(request, { params }) {
         repMap[rep.id] = rep
       })
 
-      // Group by rep
+      // Group by rep with product details
       const repSales = {}
       orders?.forEach(order => {
         const repId = order.sales_rep_id
@@ -1413,20 +1413,44 @@ async function handleRoute(request, { params }) {
             email: repData?.email || '',
             total: 0, 
             orders: 0,
-            items: 0 
+            items: 0,
+            products: {} // Track individual products
           }
         }
         
         repSales[repName].total += parseFloat(order.total_amount)
         repSales[repName].orders += 1
         
-        // Count total items/quantities
+        // Track individual products and their details
         order.order_items?.forEach(item => {
           repSales[repName].items += item.quantity
+          
+          const productName = item.products?.name || item.product_id
+          const productSku = item.products?.sku || ''
+          const productKey = `${productName}_${productSku}`
+          
+          if (!repSales[repName].products[productKey]) {
+            repSales[repName].products[productKey] = {
+              name: productName,
+              sku: productSku,
+              quantity: 0,
+              totalValue: 0,
+              unitPrice: item.unit_price
+            }
+          }
+          
+          repSales[repName].products[productKey].quantity += item.quantity
+          repSales[repName].products[productKey].totalValue += parseFloat(item.total_price)
         })
       })
 
-      return handleCORS(NextResponse.json(Object.values(repSales)))
+      // Convert products object to array for easier frontend consumption
+      const result = Object.values(repSales).map(rep => ({
+        ...rep,
+        products: Object.values(rep.products)
+      }))
+
+      return handleCORS(NextResponse.json(result))
     }
 
     if (route === '/reports/inventory' && method === 'GET') {
