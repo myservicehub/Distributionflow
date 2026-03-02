@@ -131,15 +131,17 @@ export default function ReportsPage() {
                     <TableRow>
                       <TableHead>Sales Representative</TableHead>
                       <TableHead>Total Orders</TableHead>
+                      <TableHead>Total Items Sold</TableHead>
                       <TableHead>Total Sales</TableHead>
                       <TableHead>Average Order Value</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {salesByRep.map((rep) => (
-                      <TableRow key={rep.name}>
+                    {salesByRep.map((rep, idx) => (
+                      <TableRow key={`${rep.name}-${idx}`}>
                         <TableCell className="font-medium">{rep.name}</TableCell>
                         <TableCell>{rep.orders}</TableCell>
+                        <TableCell className="font-semibold text-blue-600">{rep.items || 0}</TableCell>
                         <TableCell className="font-semibold text-green-600">
                           ₦{parseFloat(rep.total).toLocaleString()}
                         </TableCell>
