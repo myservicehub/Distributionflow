@@ -65,13 +65,24 @@ export default function RetailersPage() {
       const url = editingRetailer ? `/api/retailers/${editingRetailer.id}` : '/api/retailers'
       const method = editingRetailer ? 'PUT' : 'POST'
       
+      // Prepare data - convert "none" to empty string for assigned_rep_id
+      const submitData = {
+        ...formData,
+        assigned_rep_id: formData.assigned_rep_id === 'none' || formData.assigned_rep_id === '' 
+          ? '' 
+          : formData.assigned_rep_id
+      }
+      
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(submitData)
       })
 
-      if (!response.ok) throw new Error('Failed to save retailer')
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to save retailer')
+      }
 
       toast.success(editingRetailer ? 'Retailer updated!' : 'Retailer created!')
       setDialogOpen(false)
