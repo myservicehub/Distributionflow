@@ -253,11 +253,17 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
-      const { data, error } = await supabase
+      // Build query
+      let query = supabase
         .from('retailers')
         .select('*, users(name)')
         .eq('business_id', userContext.businessId)
         .order('created_at', { ascending: false })
+
+      // Apply sales rep filter - sales reps only see their assigned retailers
+      query = applySalesRepFilter(query, userContext, 'assigned_rep_id')
+
+      const { data, error } = await query
 
       if (error) throw error
       return handleCORS(NextResponse.json(data || []))
@@ -269,6 +275,13 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
+      // Check permission - only admin and manager can create retailers
+      if (!['admin', 'manager'].includes(userContext.role)) {
+        return handleCORS(NextResponse.json({ 
+          error: 'Forbidden: Only admins and managers can create retailers' 
+        }, { status: 403 }))
+      }
+
       const body = await request.json()
       const { data, error } = await supabase
         .from('retailers')
@@ -278,7 +291,7 @@ async function handleRoute(request, { params }) {
           owner_name: body.owner_name,
           phone: body.phone,
           address: body.address,
-          assigned_rep_id: body.assigned_rep_id || null, // Convert empty string to null
+          assigned_rep_id: body.assigned_rep_id || null,
           credit_limit: body.credit_limit || 0,
           current_balance: 0,
           status: 'active'
@@ -287,6 +300,17 @@ async function handleRoute(request, { params }) {
         .single()
 
       if (error) throw error
+
+      // Log audit event
+      await logAuditEvent(
+        supabase,
+        userContext,
+        'CREATE_RETAILER',
+        `Created retailer: ${body.shop_name}`,
+        'retailer',
+        data.id
+      )
+
       return handleCORS(NextResponse.json(data))
     }
 
@@ -296,8 +320,22 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
+      // Check permission - only admin and manager can edit retailers
+      if (!['admin', 'manager'].includes(userContext.role)) {
+        return handleCORS(NextResponse.json({ 
+          error: 'Forbidden: Only admins and managers can edit retailers' 
+        }, { status: 403 }))
+      }
+
       const retailerId = route.split('/')[2]
       const body = await request.json()
+
+      // Check if trying to edit credit limit without permission
+      if (body.credit_limit !== undefined && !canEditCreditLimit(userContext.role)) {
+        return handleCORS(NextResponse.json({ 
+          error: 'Forbidden: Only admins can edit credit limits' 
+        }, { status: 403 }))
+      }
       
       const { data, error } = await supabase
         .from('retailers')
@@ -306,7 +344,7 @@ async function handleRoute(request, { params }) {
           owner_name: body.owner_name,
           phone: body.phone,
           address: body.address,
-          assigned_rep_id: body.assigned_rep_id || null, // Convert empty string to null
+          assigned_rep_id: body.assigned_rep_id || null,
           credit_limit: body.credit_limit,
           status: body.status
         })
@@ -316,6 +354,19 @@ async function handleRoute(request, { params }) {
         .single()
 
       if (error) throw error
+
+      // Log audit event for credit limit changes
+      if (body.credit_limit !== undefined) {
+        await logAuditEvent(
+          supabase,
+          userContext,
+          'UPDATE_CREDIT_LIMIT',
+          `Updated credit limit for ${body.shop_name} to ${body.credit_limit}`,
+          'retailer',
+          retailerId
+        )
+      }
+
       return handleCORS(NextResponse.json(data))
     }
 
