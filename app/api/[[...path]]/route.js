@@ -487,55 +487,40 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
-      // Build query - use simpler join syntax
+      // Build simple query first
       let query = supabase
         .from('orders')
-        .select(`
-          *,
-          retailers(shop_name, owner_name),
-          sales_rep:users!sales_rep_id(id, name, email, role)
-        `)
+        .select('*, retailers(shop_name, owner_name)')
         .eq('business_id', userContext.businessId)
         .order('created_at', { ascending: false })
 
       // Apply sales rep filter - sales reps only see their own orders
       query = applySalesRepFilter(query, userContext, 'sales_rep_id')
 
-      const { data, error } = await query
+      const { data: orders, error } = await query
 
       if (error) {
         console.error('Orders query error:', error)
-        // Try alternative query if foreign key name is different
-        query = supabase
-          .from('orders')
-          .select('*, retailers(shop_name, owner_name)')
-          .eq('business_id', userContext.businessId)
-          .order('created_at', { ascending: false })
-        
-        query = applySalesRepFilter(query, userContext, 'sales_rep_id')
-        const { data: fallbackData, error: fallbackError } = await query
-        
-        if (fallbackError) throw fallbackError
-        
-        // Manually fetch sales rep names
-        const ordersWithReps = await Promise.all(
-          (fallbackData || []).map(async (order) => {
-            if (order.sales_rep_id) {
-              const { data: rep } = await supabase
-                .from('users')
-                .select('name, email')
-                .eq('id', order.sales_rep_id)
-                .single()
-              return { ...order, sales_rep: rep }
-            }
-            return { ...order, sales_rep: null }
-          })
-        )
-        
-        return handleCORS(NextResponse.json(ordersWithReps))
+        throw error
       }
+
+      // Manually fetch sales rep data for each order
+      const ordersWithSalesRep = await Promise.all(
+        (orders || []).map(async (order) => {
+          if (order.sales_rep_id) {
+            const { data: salesRep } = await supabase
+              .from('users')
+              .select('id, name, email, role')
+              .eq('id', order.sales_rep_id)
+              .single()
+            
+            return { ...order, sales_rep: salesRep }
+          }
+          return { ...order, sales_rep: null }
+        })
+      )
       
-      return handleCORS(NextResponse.json(data || []))
+      return handleCORS(NextResponse.json(ordersWithSalesRep))
     }
 
     if (route === '/orders' && method === 'POST') {
