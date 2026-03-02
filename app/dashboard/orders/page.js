@@ -367,6 +367,7 @@ export default function OrdersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10"></TableHead>
                   <TableHead>Order ID</TableHead>
                   <TableHead>Retailer</TableHead>
                   <TableHead>Sales Rep</TableHead>
