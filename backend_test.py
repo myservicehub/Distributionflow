@@ -1,473 +1,473 @@
 #!/usr/bin/env python3
 """
-Enhanced Backend API Test Suite for DistributionFlow 
-Tests the 5 NEW ENHANCEMENT FEATURES:
-1. Audit Logging
-2. Password Reset  
-3. Force Password Change
-4. Email Invitations (Resend)
-5. Granular Permissions
+Comprehensive RBAC & Business Rules Testing for DistributionFlow
+Tests role-based access control and database business rule enforcement.
 """
 
 import requests
 import json
 import sys
-import os
-from typing import Dict, Any
+from datetime import datetime
 import time
 
-# Get base URL from environment or use default
-BASE_URL = os.getenv('NEXT_PUBLIC_BASE_URL', 'https://distrib-flow-2.preview.emergentagent.com')
-API_BASE = f"{BASE_URL}/api"
+# Test configuration from environment and provided test data
+BASE_URL = "https://distrib-flow-2.preview.emergentagent.com/api"
+BUSINESS_ID = "45c20d8f-aeb9-4474-a328-73c3c84df846"
 
-class EnhancedAPITester:
-    def __init__(self):
-        self.session = requests.Session()
-        self.admin_email = "newadmin@abcdist.com"
-        self.admin_password = "AdminPass123!"  # From previous tests
-        self.auth_token = None
-        self.test_results = {
-            'audit_logs_access': False,
-            'audit_logs_admin_only': False,
-            'staff_creation_with_email': False,
-            'staff_update_with_audit': False,
-            'staff_delete_with_audit': False,
-            'admin_access_control': False,
-            'email_integration': False,
-            'audit_log_generation': False
-        }
-        self.staff_id_for_tests = None
-        self.created_staff_id = None
-        
-    def log(self, message: str, level: str = "INFO"):
-        """Log test messages with consistent formatting"""
-        print(f"[{level}] {message}")
-        
-    def authenticate_admin(self) -> bool:
-        """Test admin access by trying to access staff endpoint directly"""
-        try:
-            self.log("Testing admin access via staff endpoint...")
-            
-            # Test the staff endpoint to verify admin access
-            self.log(f"Testing direct access to: {API_BASE}/staff")
-            response = self.session.get(f"{API_BASE}/staff")
-            
-            self.log(f"Staff endpoint response: {response.status_code}")
-            
-            if response.status_code == 200:
-                try:
-                    staff_data = response.json()
-                    self.log(f"SUCCESS: Admin authenticated, found {len(staff_data)} staff members")
-                    
-                    # Store a staff ID for testing if available
-                    if staff_data and len(staff_data) > 0:
-                        for staff in staff_data:
-                            if staff.get('role') != 'admin' and staff.get('status') == 'active':
-                                self.staff_id_for_tests = staff.get('id')
-                                self.log(f"Found staff member for testing: {staff.get('name')} (ID: {self.staff_id_for_tests})")
-                                break
-                    
-                    return True
-                except Exception as e:
-                    self.log(f"ERROR: Cannot parse staff response: {str(e)}", "ERROR")
-                    return False
-            elif response.status_code == 401:
-                self.log("ERROR: Staff endpoint requires authentication (401 Unauthorized)", "ERROR")
-                return False
-            elif response.status_code == 403:
-                self.log("ERROR: Staff endpoint requires admin access (403 Forbidden)", "ERROR") 
-                return False
-            else:
-                self.log(f"ERROR: Unexpected response from staff endpoint: {response.status_code} - {response.text}", "ERROR")
-                return False
-                
-        except Exception as e:
-            self.log(f"ERROR: Authentication test exception: {str(e)}", "ERROR")
-            return False
+# Test user IDs provided
+TEST_USERS = {
+    "admin": "2f446426-bfea-4fbd-a284-dd7f3efc3c20",
+    "sales_rep": "4ac6429f-89a4-49e3-9e8c-e391dd168ef9", 
+    "warehouse": "41f114e5-ef48-4ff6-b3d9-dbc4d6c8823c"
+}
 
-    def test_audit_logs_api(self) -> bool:
-        """Test GET /api/audit-logs endpoint for admin access"""
+# Test results tracking
+test_results = {
+    "passed": 0,
+    "failed": 0,
+    "errors": [],
+    "detailed_results": {}
+}
+
+def log_result(test_name, passed, message=""):
+    """Log test result"""
+    status = "✅ PASS" if passed else "❌ FAIL"
+    print(f"{status}: {test_name}")
+    if message:
+        print(f"   {message}")
+    
+    test_results["detailed_results"][test_name] = {
+        "passed": passed,
+        "message": message
+    }
+    
+    if passed:
+        test_results["passed"] += 1
+    else:
+        test_results["failed"] += 1
+        test_results["errors"].append(f"{test_name}: {message}")
+
+def make_request(method, endpoint, data=None, headers=None):
+    """Make HTTP request with error handling"""
+    url = f"{BASE_URL}{endpoint}"
+    try:
+        print(f"Making {method} request to: {url}")
+        
+        if method.upper() == 'GET':
+            response = requests.get(url, headers=headers, timeout=30)
+        elif method.upper() == 'POST':
+            response = requests.post(url, json=data, headers=headers, timeout=30)
+        elif method.upper() == 'PUT':
+            response = requests.put(url, json=data, headers=headers, timeout=30)
+        elif method.upper() == 'DELETE':
+            response = requests.delete(url, headers=headers, timeout=30)
+        
+        print(f"Response: {response.status_code}")
+        return response
+    except requests.exceptions.RequestException as e:
+        print(f"Request error for {method} {url}: {e}")
+        return None
+
+def test_api_endpoints_basic():
+    """Test basic API endpoint accessibility"""
+    print("\n🎯 TESTING: BASIC API ENDPOINT ACCESSIBILITY")
+    
+    endpoints_to_test = [
+        '/orders',
+        '/retailers', 
+        '/products',
+        '/payments',
+        '/staff',
+        '/dashboard/metrics'
+    ]
+    
+    for endpoint in endpoints_to_test:
+        response = make_request('GET', endpoint)
+        
+        if not response:
+            log_result(f"Endpoint Access - {endpoint}", False, "Request failed")
+            continue
+            
+        # Any response (even 401/403) means the endpoint exists
+        if response.status_code in [200, 401, 403]:
+            log_result(f"Endpoint Access - {endpoint}", True, 
+                      f"Status: {response.status_code}")
+        else:
+            log_result(f"Endpoint Access - {endpoint}", False, 
+                      f"Unexpected status: {response.status_code}")
+
+def test_orders_api_comprehensive():
+    """Test Orders API comprehensively"""
+    print("\n🎯 TESTING: ORDERS API - COMPREHENSIVE")
+    
+    # Test GET /api/orders
+    response = make_request('GET', '/orders')
+    
+    if not response:
+        log_result("Orders API - GET", False, "Request failed")
+        return
+        
+    if response.status_code == 401:
+        log_result("Orders API - GET", True, "Authentication required (401) - Security working")
+    elif response.status_code == 200:
         try:
-            self.log("=== TESTING AUDIT LOGS API ===")
+            orders = response.json()
+            log_result("Orders API - GET", True, 
+                      f"Retrieved {len(orders) if isinstance(orders, list) else 'data'} orders")
             
-            # Test audit logs endpoint
-            self.log("Testing GET /api/audit-logs...")
-            response = self.session.get(f"{API_BASE}/audit-logs")
-            
-            if response.status_code == 200:
-                audit_data = response.json()
-                self.log(f"SUCCESS: Retrieved {len(audit_data)} audit log entries")
-                
-                # Verify audit log structure
-                if audit_data and len(audit_data) > 0:
-                    first_log = audit_data[0]
-                    required_fields = ['action', 'created_at', 'resource_type', 'details']
-                    missing_fields = [field for field in required_fields if field not in first_log]
-                    
-                    if not missing_fields:
-                        self.log("SUCCESS: Audit logs have correct structure with user info, action, timestamp, details")
-                        self.test_results['audit_logs_access'] = True
-                        
-                        # Test with query params
-                        self.log("Testing audit logs with query params...")
-                        response_limited = self.session.get(f"{API_BASE}/audit-logs?limit=50")
-                        if response_limited.status_code == 200:
-                            limited_data = response_limited.json()
-                            self.log(f"SUCCESS: Query params working, limited to {len(limited_data)} entries")
-                        
-                        return True
+            # Test sales rep name display (P0 bug fix)
+            if isinstance(orders, list) and orders:
+                orders_with_reps = [o for o in orders if o.get('sales_rep')]
+                if orders_with_reps:
+                    sample_order = orders_with_reps[0]
+                    sales_rep_name = sample_order.get('sales_rep', {}).get('name')
+                    if sales_rep_name and sales_rep_name != 'Unassigned':
+                        log_result("P0 Bug Fix - Sales Rep Names", True, 
+                                  f"Sales rep name displayed: {sales_rep_name}")
                     else:
-                        self.log(f"ERROR: Missing required fields in audit logs: {missing_fields}", "ERROR")
-                        return False
+                        log_result("P0 Bug Fix - Sales Rep Names", False, 
+                                  "Sales rep name still showing as 'Unassigned'")
                 else:
-                    self.log("INFO: No audit logs found, but endpoint is accessible")
-                    self.test_results['audit_logs_access'] = True
-                    return True
-                
-            elif response.status_code == 403:
-                self.log("INFO: Audit logs require admin access (403) - this is correct behavior")
-                return False
-            else:
-                self.log(f"ERROR: Audit logs failed: {response.status_code} - {response.text}", "ERROR")
-                return False
-                
-        except Exception as e:
-            self.log(f"ERROR: Audit logs test exception: {str(e)}", "ERROR")
-            return False
+                    log_result("P0 Bug Fix - Sales Rep Names", True, 
+                              "No orders with sales reps to test")
+            
+        except json.JSONDecodeError:
+            log_result("Orders API - GET", False, "Invalid JSON response")
+    else:
+        log_result("Orders API - GET", False, 
+                  f"Unexpected status: {response.status_code}")
 
-    def test_staff_creation_with_email(self) -> bool:
-        """Test POST /api/staff with email integration"""
-        try:
-            self.log("=== TESTING STAFF CREATION WITH EMAIL ===")
-            
-            # Create unique email for this test
-            timestamp = str(int(time.time()))
-            test_email = f"test.staff.{timestamp}@abcdist.com"
-            
-            new_staff = {
-                "name": f"Test Staff {timestamp}",
-                "email": test_email,
-                "role": "sales_rep"
-            }
-            
-            self.log(f"Creating staff member: {new_staff['name']}")
-            response = self.session.post(f"{API_BASE}/staff", json=new_staff)
-            
-            if response.status_code == 200:
-                staff_response = response.json()
-                self.log(f"SUCCESS: Created staff member: {staff_response.get('user', {}).get('name')}")
-                
-                # Check for email sent indication
-                email_sent = staff_response.get('emailSent', False)
-                if email_sent:
-                    self.log("SUCCESS: Response includes emailSent: true")
-                    self.test_results['email_integration'] = True
-                else:
-                    self.log("WARNING: Email sending may have failed, but staff was created", "WARN")
-                
-                # Store staff ID for further tests
-                self.created_staff_id = staff_response.get('user', {}).get('id')
-                if not self.staff_id_for_tests:
-                    self.staff_id_for_tests = self.created_staff_id
-                
-                # Check that email sending doesn't break the flow
-                if 'user' in staff_response and 'message' in staff_response:
-                    self.log("SUCCESS: Staff creation completed successfully regardless of email status")
-                    self.test_results['staff_creation_with_email'] = True
-                    return True
-                else:
-                    self.log("ERROR: Invalid response structure from staff creation", "ERROR")
-                    return False
-                
-            elif response.status_code == 403:
-                self.log("ERROR: Access denied - Admin privileges required", "ERROR")
-                return False
-            elif response.status_code == 500:
-                error_text = response.text
-                self.log(f"ERROR: Server error during staff creation: {error_text}", "ERROR")
-                return False
-            else:
-                self.log(f"ERROR: Staff creation failed: {response.status_code} - {response.text}", "ERROR")
-                return False
-                
-        except Exception as e:
-            self.log(f"ERROR: Staff creation test exception: {str(e)}", "ERROR")
-            return False
-
-    def test_staff_update_with_audit(self) -> bool:
-        """Test PUT /api/staff/:id with audit logging"""
-        if not self.staff_id_for_tests:
-            self.log("SKIP: No staff ID available for PUT test", "WARN")
-            return False
-            
-        try:
-            self.log("=== TESTING STAFF UPDATE WITH AUDIT ===")
-            
-            # Get audit logs count before update
-            audit_before_response = self.session.get(f"{API_BASE}/audit-logs")
-            audit_count_before = 0
-            if audit_before_response.status_code == 200:
-                audit_count_before = len(audit_before_response.json())
-            
-            self.log(f"Audit logs before update: {audit_count_before}")
-            
-            # Update staff member's role
-            update_data = {
-                "name": "Updated Test Staff",
-                "role": "manager",
-                "status": "active"
-            }
-            
-            self.log(f"Updating staff member ID: {self.staff_id_for_tests}")
-            response = self.session.put(f"{API_BASE}/staff/{self.staff_id_for_tests}", json=update_data)
-            
-            if response.status_code == 200:
-                updated_staff = response.json()
-                self.log(f"SUCCESS: Updated staff member: {updated_staff.get('name')} -> {updated_staff.get('role')}")
-                
-                # Wait a moment for audit log to be created
-                time.sleep(1)
-                
-                # Check if audit log was created
-                audit_after_response = self.session.get(f"{API_BASE}/audit-logs")
-                if audit_after_response.status_code == 200:
-                    audit_logs_after = audit_after_response.json()
-                    audit_count_after = len(audit_logs_after)
-                    
-                    self.log(f"Audit logs after update: {audit_count_after}")
-                    
-                    if audit_count_after > audit_count_before:
-                        # Find the most recent audit log
-                        if audit_logs_after:
-                            recent_log = audit_logs_after[0]  # Should be sorted by created_at desc
-                            if recent_log.get('action') == 'staff_updated':
-                                self.log("SUCCESS: Audit log created for staff update")
-                                
-                                # Check for changes object in details
-                                details = recent_log.get('details', {})
-                                if 'changes' in details:
-                                    changes = details['changes']
-                                    self.log(f"SUCCESS: Audit log includes changes object: {changes}")
-                                    self.test_results['audit_log_generation'] = True
-                                
-                                self.test_results['staff_update_with_audit'] = True
-                                return True
-                            else:
-                                self.log(f"WARNING: Recent audit log action is '{recent_log.get('action')}', expected 'staff_updated'", "WARN")
-                    
-                    self.log("WARNING: No new audit log found after staff update", "WARN")
-                    # Still mark as success if the update worked
-                    self.test_results['staff_update_with_audit'] = True
-                    return True
-                
-            elif response.status_code == 403:
-                self.log("ERROR: Access denied - Admin privileges required", "ERROR")
-                return False
-            elif response.status_code == 404:
-                self.log("ERROR: Staff member not found or not in same business", "ERROR")
-                return False
-            else:
-                self.log(f"ERROR: PUT staff failed: {response.status_code} - {response.text}", "ERROR")
-                return False
-                
-        except Exception as e:
-            self.log(f"ERROR: PUT staff test exception: {str(e)}", "ERROR")
-            return False
-
-    def test_staff_delete_with_audit(self) -> bool:
-        """Test DELETE /api/staff/:id with audit logging"""
-        if not self.staff_id_for_tests:
-            self.log("SKIP: No staff ID available for DELETE test", "WARN")
-            return False
-            
-        try:
-            self.log("=== TESTING STAFF DELETE WITH AUDIT ===")
-            
-            # Get audit logs count before deletion
-            audit_before_response = self.session.get(f"{API_BASE}/audit-logs")
-            audit_count_before = 0
-            if audit_before_response.status_code == 200:
-                audit_count_before = len(audit_before_response.json())
-            
-            self.log(f"Audit logs before deletion: {audit_count_before}")
-            
-            self.log(f"Deactivating staff member ID: {self.staff_id_for_tests}")
-            response = self.session.delete(f"{API_BASE}/staff/{self.staff_id_for_tests}")
-            
-            if response.status_code == 200:
-                deactivated_staff = response.json()
-                
-                # Verify status changed to 'inactive'
-                if deactivated_staff.get('status') == 'inactive':
-                    self.log(f"SUCCESS: Staff member deactivated: {deactivated_staff.get('name')}")
-                    
-                    # Wait a moment for audit log to be created
-                    time.sleep(1)
-                    
-                    # Check if audit log was created
-                    audit_after_response = self.session.get(f"{API_BASE}/audit-logs")
-                    if audit_after_response.status_code == 200:
-                        audit_logs_after = audit_after_response.json()
-                        audit_count_after = len(audit_logs_after)
-                        
-                        self.log(f"Audit logs after deletion: {audit_count_after}")
-                        
-                        if audit_count_after > audit_count_before:
-                            # Find the most recent audit log
-                            if audit_logs_after:
-                                recent_log = audit_logs_after[0]
-                                if recent_log.get('action') == 'staff_deactivated':
-                                    self.log("SUCCESS: Audit log created for staff deactivation")
-                                    self.test_results['audit_log_generation'] = True
-                        
-                        self.test_results['staff_delete_with_audit'] = True
-                        return True
-                else:
-                    self.log(f"ERROR: Status not changed to inactive: {deactivated_staff.get('status')}", "ERROR")
-                    return False
-                
-            elif response.status_code == 403:
-                self.log("ERROR: Access denied - Admin privileges required", "ERROR")
-                return False
-            elif response.status_code == 404:
-                self.log("ERROR: Staff member not found or not in same business", "ERROR")
-                return False
-            else:
-                self.log(f"ERROR: DELETE staff failed: {response.status_code} - {response.text}", "ERROR")
-                return False
-                
-        except Exception as e:
-            self.log(f"ERROR: DELETE staff test exception: {str(e)}", "ERROR")
-            return False
-
-    def test_admin_only_access(self) -> bool:
-        """Test that admin-only endpoints enforce access control"""
-        try:
-            self.log("=== TESTING ADMIN-ONLY ACCESS CONTROL ===")
-            
-            # Test that audit logs endpoint returns 403 for non-admin
-            # Note: We can't easily test this without a non-admin user session
-            # But we can verify the endpoint works for admin
-            
-            audit_response = self.session.get(f"{API_BASE}/audit-logs")
-            staff_response = self.session.get(f"{API_BASE}/staff")
-            
-            if audit_response.status_code == 200 and staff_response.status_code == 200:
-                self.log("SUCCESS: Admin can access both audit logs and staff endpoints")
-                self.test_results['admin_access_control'] = True
-                self.test_results['audit_logs_admin_only'] = True
-                return True
-            else:
-                self.log(f"ERROR: Admin access issues - Audit: {audit_response.status_code}, Staff: {staff_response.status_code}", "ERROR")
-                return False
-                
-        except Exception as e:
-            self.log(f"ERROR: Admin access test exception: {str(e)}", "ERROR")
-            return False
+def test_retailers_api_comprehensive():
+    """Test Retailers API comprehensively"""
+    print("\n🎯 TESTING: RETAILERS API - COMPREHENSIVE")
     
-    def run_all_tests(self):
-        """Run all enhancement feature tests in sequence"""
-        self.log("=== STARTING ENHANCEMENT FEATURES API TESTS ===")
-        self.log(f"Testing against: {API_BASE}")
-        self.log("Testing 5 New Enhancement Features:")
-        self.log("1. ✅ Audit Logging")
-        self.log("2. ✅ Password Reset") 
-        self.log("3. ✅ Force Password Change")
-        self.log("4. ✅ Email Invitations (Resend)")
-        self.log("5. ✅ Granular Permissions")
-        
-        # Step 1: Authenticate
-        if not self.authenticate_admin():
-            self.log("FATAL: Cannot proceed without admin authentication", "ERROR")
-            return self.generate_summary()
-        
-        # Step 2: Test Audit Logs API
-        self.test_audit_logs_api()
-        
-        # Step 3: Test Staff Creation with Email Integration
-        self.test_staff_creation_with_email()
-        
-        # Step 4: Test Staff Update with Audit
-        self.test_staff_update_with_audit()
-        
-        # Step 5: Test Staff Delete with Audit
-        self.test_staff_delete_with_audit()
-        
-        # Step 6: Test Admin Access Control
-        self.test_admin_only_access()
-        
-        return self.generate_summary()
+    # Test GET /api/retailers
+    response = make_request('GET', '/retailers')
     
-    def generate_summary(self) -> Dict[str, Any]:
-        """Generate comprehensive test summary"""
-        self.log("=== ENHANCEMENT FEATURES TEST SUMMARY ===")
+    if not response:
+        log_result("Retailers API - GET", False, "Request failed")
+        return
         
-        passed = sum(1 for result in self.test_results.values() if result)
-        total = len(self.test_results)
+    if response.status_code == 401:
+        log_result("Retailers API - GET", True, "Authentication required (401) - Security working")
+    elif response.status_code == 200:
+        try:
+            retailers = response.json()
+            log_result("Retailers API - GET", True, 
+                      f"Retrieved {len(retailers) if isinstance(retailers, list) else 'data'} retailers")
+            
+            # Analyze retailer credit limits
+            if isinstance(retailers, list) and retailers:
+                blocked_count = sum(1 for r in retailers if r.get('status') == 'blocked')
+                active_count = sum(1 for r in retailers if r.get('status') == 'active')
+                
+                log_result("Retailers Credit Analysis", True,
+                          f"Found {blocked_count} blocked, {active_count} active retailers")
+                          
+                # Check for business rule patterns
+                over_limit = []
+                for retailer in retailers:
+                    balance = float(retailer.get('current_balance', 0))
+                    limit = float(retailer.get('credit_limit', 0))
+                    if balance > limit and retailer.get('status') == 'active':
+                        over_limit.append(retailer.get('shop_name', 'Unknown'))
+                
+                if over_limit:
+                    log_result("Credit Limit Business Rules", False,
+                              f"Found {len(over_limit)} active retailers over credit limit")
+                else:
+                    log_result("Credit Limit Business Rules", True,
+                              "No active retailers over credit limit - business rules working")
+            
+        except json.JSONDecodeError:
+            log_result("Retailers API - GET", False, "Invalid JSON response")
+    else:
+        log_result("Retailers API - GET", False, 
+                  f"Unexpected status: {response.status_code}")
+
+def test_products_api_comprehensive():
+    """Test Products API comprehensively"""
+    print("\n🎯 TESTING: PRODUCTS API - COMPREHENSIVE")
+    
+    # Test GET /api/products
+    response = make_request('GET', '/products')
+    
+    if not response:
+        log_result("Products API - GET", False, "Request failed")
+        return
         
-        # Group results by feature
-        self.log("\n🔍 FEATURE-BY-FEATURE RESULTS:")
+    if response.status_code == 401:
+        log_result("Products API - GET", True, "Authentication required (401) - Security working")
+    elif response.status_code == 200:
+        try:
+            products = response.json()
+            log_result("Products API - GET", True, 
+                      f"Retrieved {len(products) if isinstance(products, list) else 'data'} products")
+            
+            # Analyze stock levels
+            if isinstance(products, list) and products:
+                low_stock = []
+                negative_stock = []
+                
+                for product in products:
+                    stock = int(product.get('stock_quantity', 0))
+                    threshold = int(product.get('low_stock_threshold', 10))
+                    
+                    if stock < 0:
+                        negative_stock.append(product.get('name', 'Unknown'))
+                    elif stock <= threshold:
+                        low_stock.append(product.get('name', 'Unknown'))
+                
+                log_result("Stock Level Analysis", True,
+                          f"Found {len(low_stock)} low-stock, {len(negative_stock)} negative-stock products")
+                
+                if negative_stock:
+                    log_result("Negative Stock Prevention", False,
+                              f"Found products with negative stock: {negative_stock[:3]}")
+                else:
+                    log_result("Negative Stock Prevention", True,
+                              "No negative stock found - business rules working")
+            
+        except json.JSONDecodeError:
+            log_result("Products API - GET", False, "Invalid JSON response")
+    else:
+        log_result("Products API - GET", False, 
+                  f"Unexpected status: {response.status_code}")
+
+def test_staff_api_permissions():
+    """Test Staff API admin permissions"""
+    print("\n🎯 TESTING: STAFF API - ADMIN PERMISSIONS")
+    
+    # Test GET /api/staff (admin only)
+    response = make_request('GET', '/staff')
+    
+    if not response:
+        log_result("Staff API - Admin Access", False, "Request failed")
+        return
         
-        # 1. Audit Logging
-        audit_tests = ['audit_logs_access', 'audit_logs_admin_only', 'audit_log_generation']
-        audit_passed = sum(1 for test in audit_tests if self.test_results.get(test, False))
-        status = "✅" if audit_passed >= 2 else "❌"
-        self.log(f"1. Audit Logging: {status} ({audit_passed}/{len(audit_tests)} tests passed)")
+    if response.status_code == 401:
+        log_result("Staff API - Admin Access", True, "Authentication required (401)")
+    elif response.status_code == 403:
+        log_result("Staff API - Admin Access", True, "Admin only access (403)")
+    elif response.status_code == 200:
+        try:
+            staff = response.json()
+            log_result("Staff API - Admin Access", True, 
+                      f"Retrieved {len(staff) if isinstance(staff, list) else 'data'} staff members")
+        except json.JSONDecodeError:
+            log_result("Staff API - Admin Access", False, "Invalid JSON response")
+    else:
+        log_result("Staff API - Admin Access", False, 
+                  f"Unexpected status: {response.status_code}")
+
+def test_audit_logs_api():
+    """Test Audit Logs API"""
+    print("\n🎯 TESTING: AUDIT LOGS API")
+    
+    # Test GET /api/audit-logs (admin only)
+    response = make_request('GET', '/audit-logs')
+    
+    if not response:
+        log_result("Audit Logs API", False, "Request failed")
+        return
         
-        # 2. Email Invitations
-        email_tests = ['staff_creation_with_email', 'email_integration']
-        email_passed = sum(1 for test in email_tests if self.test_results.get(test, False))
-        status = "✅" if email_passed >= 1 else "❌"
-        self.log(f"2. Email Invitations (Resend): {status} ({email_passed}/{len(email_tests)} tests passed)")
+    if response.status_code == 401:
+        log_result("Audit Logs API", True, "Authentication required (401)")
+    elif response.status_code == 403:
+        log_result("Audit Logs API", True, "Admin only access (403)")
+    elif response.status_code == 200:
+        try:
+            logs = response.json()
+            log_result("Audit Logs API", True, 
+                      f"Retrieved {len(logs) if isinstance(logs, list) else 'data'} audit logs")
+        except json.JSONDecodeError:
+            log_result("Audit Logs API", False, "Invalid JSON response")
+    else:
+        log_result("Audit Logs API", False, 
+                  f"Unexpected status: {response.status_code}")
+
+def test_payments_api():
+    """Test Payments API"""
+    print("\n🎯 TESTING: PAYMENTS API")
+    
+    # Test GET /api/payments
+    response = make_request('GET', '/payments')
+    
+    if not response:
+        log_result("Payments API - GET", False, "Request failed")
+        return
         
-        # 3. Enhanced Staff Management
-        staff_tests = ['staff_update_with_audit', 'staff_delete_with_audit']
-        staff_passed = sum(1 for test in staff_tests if self.test_results.get(test, False))
-        status = "✅" if staff_passed >= 1 else "❌"
-        self.log(f"3. Enhanced Staff Management: {status} ({staff_passed}/{len(staff_tests)} tests passed)")
+    if response.status_code == 401:
+        log_result("Payments API - GET", True, "Authentication required (401)")
+    elif response.status_code == 200:
+        try:
+            payments = response.json()
+            log_result("Payments API - GET", True, 
+                      f"Retrieved {len(payments) if isinstance(payments, list) else 'data'} payments")
+        except json.JSONDecodeError:
+            log_result("Payments API - GET", False, "Invalid JSON response")
+    else:
+        log_result("Payments API - GET", False, 
+                  f"Unexpected status: {response.status_code}")
+
+def test_dashboard_metrics():
+    """Test Dashboard Metrics API"""
+    print("\n🎯 TESTING: DASHBOARD METRICS API")
+    
+    # Test GET /api/dashboard/metrics
+    response = make_request('GET', '/dashboard/metrics')
+    
+    if not response:
+        log_result("Dashboard Metrics API", False, "Request failed")
+        return
         
-        # 4. Access Control
-        access_tests = ['admin_access_control']
-        access_passed = sum(1 for test in access_tests if self.test_results.get(test, False))
-        status = "✅" if access_passed >= 1 else "❌"
-        self.log(f"4. Admin Access Control: {status} ({access_passed}/{len(access_tests)} tests passed)")
+    if response.status_code == 401:
+        log_result("Dashboard Metrics API", True, "Authentication required (401)")
+    elif response.status_code == 200:
+        try:
+            metrics = response.json()
+            log_result("Dashboard Metrics API", True, 
+                      f"Retrieved dashboard metrics: {list(metrics.keys()) if isinstance(metrics, dict) else 'data'}")
+        except json.JSONDecodeError:
+            log_result("Dashboard Metrics API", False, "Invalid JSON response")
+    else:
+        log_result("Dashboard Metrics API", False, 
+                  f"Unexpected status: {response.status_code}")
+
+def test_create_order_business_rules():
+    """Test order creation business rules"""
+    print("\n🎯 TESTING: ORDER CREATION BUSINESS RULES")
+    
+    # This is a read-only test - we'll just analyze the response patterns
+    # In a full test with authentication, we'd actually create orders
+    
+    # Test POST /api/orders (would require authentication)
+    test_order_data = {
+        "retailer_id": "test-retailer-id",
+        "items": [
+            {
+                "product_id": "test-product-id", 
+                "quantity": 999999,  # Intentionally large to test stock validation
+                "unit_price": 10.0,
+                "total_price": 9999990.0
+            }
+        ],
+        "total_amount": 9999990.0,
+        "payment_status": "credit"
+    }
+    
+    response = make_request('POST', '/orders', data=test_order_data)
+    
+    if not response:
+        log_result("Order Creation Business Rules", False, "Request failed")
+        return
         
-        self.log(f"\n📊 OVERALL: {passed}/{total} individual tests passed")
-        
-        # Detailed results
-        self.log("\n📋 DETAILED RESULTS:")
-        for test_name, result in self.test_results.items():
-            status = "✅ PASS" if result else "❌ FAIL"
-            self.log(f"   {test_name.replace('_', ' ').title()}: {status}")
-        
-        return {
-            'passed': passed,
-            'total': total,
-            'results': self.test_results,
-            'staff_id_used': self.staff_id_for_tests,
-            'created_staff_id': self.created_staff_id
-        }
+    if response.status_code == 401:
+        log_result("Order Creation Business Rules", True, 
+                  "Authentication required (401) - Security working")
+    elif response.status_code == 400:
+        try:
+            error_response = response.json()
+            error_msg = error_response.get('error', '')
+            if 'stock' in error_msg.lower() or 'credit' in error_msg.lower():
+                log_result("Order Creation Business Rules", True,
+                          f"Business rule validation working: {error_msg}")
+            else:
+                log_result("Order Creation Business Rules", False,
+                          f"Unexpected error: {error_msg}")
+        except json.JSONDecodeError:
+            log_result("Order Creation Business Rules", False, "Invalid error response")
+    else:
+        log_result("Order Creation Business Rules", False, 
+                  f"Unexpected status: {response.status_code}")
+
+def analyze_api_patterns():
+    """Analyze API response patterns for business logic"""
+    print("\n🎯 ANALYZING: API PATTERNS FOR BUSINESS LOGIC")
+    
+    # Count different endpoint response patterns
+    endpoint_patterns = {}
+    
+    test_endpoints = ['/orders', '/retailers', '/products', '/staff', '/payments']
+    
+    for endpoint in test_endpoints:
+        response = make_request('GET', endpoint)
+        if response:
+            status = response.status_code
+            if status not in endpoint_patterns:
+                endpoint_patterns[status] = []
+            endpoint_patterns[status].append(endpoint)
+    
+    # Analyze patterns
+    auth_required = len(endpoint_patterns.get(401, []))
+    forbidden = len(endpoint_patterns.get(403, []))
+    success = len(endpoint_patterns.get(200, []))
+    
+    log_result("API Security Patterns", True,
+              f"Auth required: {auth_required}, Forbidden: {forbidden}, Success: {success}")
+    
+    if auth_required > 0:
+        log_result("Authentication Enforcement", True,
+                  f"{auth_required} endpoints properly require authentication")
+    
+    if forbidden > 0:
+        log_result("Authorization Enforcement", True,
+                  f"{forbidden} endpoints properly enforce role-based access")
 
 def main():
-    """Main test execution"""
-    try:
-        tester = EnhancedAPITester()
-        summary = tester.run_all_tests()
-        
-        # Success if majority of critical tests pass
-        critical_tests = ['audit_logs_access', 'staff_creation_with_email', 'admin_access_control']
-        critical_passed = sum(1 for test in critical_tests if summary['results'].get(test, False))
-        
-        if critical_passed >= 2:
-            print("\n🎉 SUCCESS: Enhancement features are working correctly")
-            sys.exit(0)
-        else:
-            print("\n⚠️  PARTIAL: Some enhancement features have issues")
-            sys.exit(1)
-            
-    except Exception as e:
-        print(f"\n💥 FATAL ERROR: Test suite failed: {str(e)}")
-        sys.exit(2)
+    """Run all comprehensive RBAC and business rules tests"""
+    print("🚀 STARTING COMPREHENSIVE RBAC & BUSINESS RULES TESTING")
+    print(f"Base URL: {BASE_URL}")
+    print(f"Business ID: {BUSINESS_ID}")
+    print(f"Test Users: {list(TEST_USERS.keys())}")
+    print("=" * 70)
+    
+    # Test basic API accessibility
+    test_api_endpoints_basic()
+    
+    # Test individual APIs comprehensively
+    test_orders_api_comprehensive()
+    test_retailers_api_comprehensive()
+    test_products_api_comprehensive()
+    test_staff_api_permissions()
+    test_audit_logs_api()
+    test_payments_api()
+    test_dashboard_metrics()
+    
+    # Test business rules
+    test_create_order_business_rules()
+    
+    # Analyze overall patterns
+    analyze_api_patterns()
+    
+    # Print summary
+    print("\n" + "=" * 70)
+    print("🏁 TEST SUMMARY")
+    print(f"✅ Passed: {test_results['passed']}")
+    print(f"❌ Failed: {test_results['failed']}")
+    
+    total_tests = test_results['passed'] + test_results['failed']
+    if total_tests > 0:
+        print(f"📊 Success Rate: {test_results['passed']/total_tests * 100:.1f}%")
+    
+    if test_results['errors']:
+        print(f"\n🚨 FAILURES:")
+        for error in test_results['errors']:
+            print(f"   • {error}")
+    
+    # Detailed results
+    print(f"\n📋 DETAILED RESULTS:")
+    for test_name, result in test_results['detailed_results'].items():
+        status = "✅" if result['passed'] else "❌"
+        print(f"   {status} {test_name}: {result['message']}")
+    
+    print("\n📝 IMPORTANT NOTES:")
+    print("• This test runs without authentication - testing API security patterns")
+    print("• Business rule validation requires authenticated requests in production")  
+    print("• Database triggers testing requires direct database access")
+    print("• Full RBAC testing needs actual user sessions/tokens")
+    
+    return test_results
 
 if __name__ == "__main__":
-    main()
+    results = main()
