@@ -192,13 +192,13 @@ export async function POST(request) {
       throw updateError
     }
 
-    // Create stock movement record
+    // Create stock movement record (using "type" column name)
     const { data: movement, error: movementError } = await supabase
       .from('stock_movements')
       .insert({
         business_id: userContext.businessId,
         product_id,
-        movement_type,
+        type: movement_type, // Note: table uses "type" not "movement_type"
         quantity: qty,
         notes: notes || null
       })
