@@ -954,14 +954,52 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
-      const { data, error } = await supabase
+      // Fetch payments without joins first
+      const { data: payments, error } = await supabase
         .from('payments')
-        .select('*, retailers(shop_name), users(name)')
+        .select('*')
         .eq('business_id', userContext.businessId)
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      return handleCORS(NextResponse.json(data || []))
+
+      // Use admin client to fetch retailer data (to bypass RLS)
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabaseAdmin = createClient(
+        supabaseUrl,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      )
+
+      // Manually fetch retailer data for each payment using admin client
+      const paymentsWithRetailer = await Promise.all(
+        (payments || []).map(async (payment) => {
+          let retailerData = null
+          
+          if (payment.retailer_id) {
+            const { data: retailer, error: retailerError } = await supabaseAdmin
+              .from('retailers')
+              .select('id, shop_name, owner_name, current_balance')
+              .eq('id', payment.retailer_id)
+              .single()
+            
+            if (retailerError) {
+              console.error('Error fetching retailer for payment', payment.id, ':', retailerError)
+            } else {
+              retailerData = retailer
+            }
+          }
+          
+          return { ...payment, retailers: retailerData }
+        })
+      )
+
+      return handleCORS(NextResponse.json(paymentsWithRetailer))
     }
 
     if (route === '/payments' && method === 'POST') {
