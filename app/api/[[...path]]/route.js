@@ -212,7 +212,7 @@ async function handleRoute(request, { params }) {
           owner_name: body.owner_name,
           phone: body.phone,
           address: body.address,
-          assigned_rep_id: body.assigned_rep_id,
+          assigned_rep_id: body.assigned_rep_id || null, // Convert empty string to null
           credit_limit: body.credit_limit || 0,
           current_balance: 0,
           status: 'active'
