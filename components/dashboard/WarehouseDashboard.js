@@ -64,11 +64,11 @@ export default function WarehouseDashboard() {
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
-          title="Stock In Today"
-          value="0"
-          icon={TrendingUp}
+          title="Total Products"
+          value={products?.length || 0}
+          icon={Package}
           loading={loading}
-          description="Items received"
+          description="In inventory"
         />
         <KPICard
           title="Stock Out Today"
@@ -79,8 +79,8 @@ export default function WarehouseDashboard() {
         />
         <KPICard
           title="Low Stock Products"
-          value={metrics?.lowStockProducts?.length || 0}
-          icon={Package}
+          value={products?.filter(p => p.stock_quantity <= (p.low_stock_threshold || 10))?.length || 0}
+          icon={AlertTriangle}
           loading={loading}
           description="Need restocking"
         />
@@ -92,6 +92,69 @@ export default function WarehouseDashboard() {
           description="Ready to dispatch"
         />
       </div>
+
+      {/* All Products Inventory */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Product Inventory</CardTitle>
+          <CardDescription>
+            All products in warehouse
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-12 bg-muted animate-pulse rounded" />
+              ))}
+            </div>
+          ) : products.length > 0 ? (
+            <div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product Name</TableHead>
+                    <TableHead>SKU</TableHead>
+                    <TableHead className="text-right">Stock Quantity</TableHead>
+                    <TableHead className="text-right">Threshold</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {products.map((product) => (
+                    <TableRow key={product.id}>
+                      <TableCell className="font-medium">{product.name}</TableCell>
+                      <TableCell>{product.sku || '-'}</TableCell>
+                      <TableCell className="text-right">{product.stock_quantity || 0}</TableCell>
+                      <TableCell className="text-right">{product.low_stock_threshold || 10}</TableCell>
+                      <TableCell>
+                        {product.stock_quantity === 0 ? (
+                          <Badge variant="destructive">Out of Stock</Badge>
+                        ) : product.stock_quantity <= (product.low_stock_threshold || 10) ? (
+                          <Badge variant="warning" className="bg-yellow-500">Low Stock</Badge>
+                        ) : (
+                          <Badge variant="success" className="bg-green-500">In Stock</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <Button asChild variant="link" className="w-full mt-4">
+                <Link href="/dashboard/inventory">Manage inventory</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>No products in inventory</p>
+              <Button asChild variant="link" className="mt-2">
+                <Link href="/dashboard/products">Add products</Link>
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Orders Ready for Dispatch */}
       <Card>
