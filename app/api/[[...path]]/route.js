@@ -717,8 +717,13 @@ async function handleRoute(request, { params }) {
 
     if (route === '/staff' && method === 'GET') {
       const userContext = await getUserBusinessId(supabase)
-      if (!userContext || userContext.role !== 'admin') {
-        return handleCORS(NextResponse.json({ error: 'Unauthorized - Admin only' }, { status: 403 }))
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      // Allow admin and manager to VIEW staff (for assigning sales reps)
+      if (!['admin', 'manager'].includes(userContext.role)) {
+        return handleCORS(NextResponse.json({ error: 'Forbidden - Admin or Manager only' }, { status: 403 }))
       }
 
       // Use service role client to bypass RLS and fetch all staff
@@ -746,8 +751,10 @@ async function handleRoute(request, { params }) {
 
     if (route === '/staff' && method === 'POST') {
       const userContext = await getUserBusinessId(supabase)
+      
+      // Only admin can CREATE/MANAGE staff
       if (!userContext || userContext.role !== 'admin') {
-        return handleCORS(NextResponse.json({ error: 'Unauthorized - Admin only' }, { status: 403 }))
+        return handleCORS(NextResponse.json({ error: 'Forbidden - Admin only' }, { status: 403 }))
       }
 
       const body = await request.json()
