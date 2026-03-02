@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Add more staff members (different roles) - Build staff management feature for DistributionFlow FMCG SaaS application"
+user_problem_statement: "Implement comprehensive role-based access control (RBAC) for DistributionFlow FMCG SaaS application with role-specific dashboards, dynamic sidebar navigation, backend permission enforcement, and business rule triggers for stock validation and credit limit management"
 
 backend:
   - task: "GET /api/staff - List all staff members"
