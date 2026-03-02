@@ -138,20 +138,31 @@ function applySalesRepFilter(query, userContext, foreignKeyColumn = 'assigned_re
 async function logAuditEvent(supabase, userContext, action, details, entityType, resourceId) {
   try {
     // Ensure details is a JSON object if it's a string
-    const detailsObj = typeof details === 'string' ? { message: details } : details
+    let detailsObj = details
+    if (typeof details === 'string') {
+      detailsObj = { message: details }
+    }
     
-    await supabase
+    const logData = {
+      business_id: userContext.businessId,
+      user_id: userContext.userId,
+      action,
+      details: detailsObj,
+      entity_type: entityType,
+      resource_id: resourceId
+    }
+    
+    console.log('Audit log data:', JSON.stringify(logData))
+    
+    const { error } = await supabase
       .from('audit_logs')
-      .insert({
-        business_id: userContext.businessId,
-        user_id: userContext.userId,
-        action,
-        details: detailsObj,
-        entity_type: entityType,
-        resource_id: resourceId
-      })
+      .insert(logData)
+    
+    if (error) {
+      console.error('Audit log insert error:', error)
+    }
   } catch (error) {
-    console.error('Audit log error:', error)
+    console.error('Audit log exception:', error)
   }
 }
 
