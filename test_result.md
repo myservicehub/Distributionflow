@@ -323,7 +323,162 @@ test_plan:
         agent: "testing"
         comment: "COMPREHENSIVE ANALYSIS: Granular permissions system confirmed implemented with comprehensive PERMISSIONS matrix, role-based access control functions (can, canAccess, isAdmin, isManagerOrAdmin), support for 4 user roles with different permission levels, and proper resource-based permissions (staff, retailers, products, etc.)."
 
+  - task: "Role-Based Access Control - Orders API"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Need to test GET /api/orders endpoint with different roles. Should show: admin/manager see all orders, sales_rep see only their own orders. Sales rep name display bug was fixed using admin client."
+
+  - task: "Role-Based Access Control - Retailers API"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Need to test GET /api/retailers endpoint with different roles. Should show: admin/manager see all retailers, sales_rep see only their assigned retailers."
+
+  - task: "Role-Based Access Control - Products API"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Need to test GET /api/products endpoint with different roles. All roles should see products. Warehouse role should be able to update stock."
+
+  - task: "Order Approval System"
+    implemented: true
+    working: "NA"
+    file: "/app/app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "PUT /api/orders endpoint allows admin/manager to approve or reject orders. Sales rep can only create orders. Need to test the approval workflow."
+
+  - task: "Business Rules - Stock Validation"
+    implemented: true
+    working: "NA"
+    file: "/app/database/business_rules_triggers.sql"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Database triggers applied by user. Need to test: 1) Creating order with insufficient stock should fail, 2) Confirming order should auto-deduct stock, 3) Stock should never go negative."
+
+  - task: "Business Rules - Credit Limit Management"
+    implemented: true
+    working: "NA"
+    file: "/app/database/business_rules_triggers.sql"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Database triggers applied by user. Need to test: 1) Retailer auto-blocked when balance exceeds credit limit, 2) Retailer auto-unblocked when balance is within limit, 3) Audit logs created for block/unblock events."
+
+  - task: "Business Rules - Stock Movement Tracking"
+    implemented: true
+    working: "NA"
+    file: "/app/database/business_rules_triggers.sql"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Database triggers applied by user. Need to test: Stock movements are automatically created when orders are confirmed."
+
+  - task: "Business Rules - Payment and Balance Updates"
+    implemented: true
+    working: "NA"
+    file: "/app/database/business_rules_triggers.sql"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Database triggers applied by user. Need to test: Retailer balance is automatically updated when payments are recorded."
+
 agent_communication:
+  - agent: "main"
+    message: |
+      🎯 PHASE 2: ROLE-BASED ACCESS CONTROL & BUSINESS RULES TESTING
+      
+      USER STATUS UPDATE:
+      ✅ P0 Bug FIXED - Sales rep names now showing correctly on orders page (was showing "Unassigned")
+      ✅ Business rules SQL triggers applied successfully by user
+      
+      WHAT NEEDS TESTING:
+      
+      1. ROLE-BASED API ACCESS:
+         - GET /api/orders - Test with admin, manager, sales_rep roles
+         - GET /api/retailers - Test with admin, manager, sales_rep roles
+         - GET /api/products - Test with all roles
+         - PUT /api/orders - Test order approval by admin/manager
+      
+      2. BUSINESS RULES (DATABASE TRIGGERS):
+         - Stock validation: Try creating order with insufficient stock
+         - Auto-deduct stock: Confirm an order and verify stock decreases
+         - Credit limit auto-block: Update retailer balance to exceed credit limit
+         - Credit limit auto-unblock: Make payment to bring balance within limit
+         - Stock movement tracking: Verify records are created on order confirmation
+         - Payment balance updates: Record a payment and verify balance updates
+      
+      3. TEST SCENARIOS:
+         Scenario A: Sales Rep Flow
+         - Login as sales_rep
+         - Should only see their own orders/retailers
+         - Create an order (should work)
+         - Try to approve an order (should fail - permission denied)
+         
+         Scenario B: Manager Flow
+         - Login as manager
+         - Should see all orders/retailers in the business
+         - Approve a pending order
+         - Verify stock is deducted after approval
+         
+         Scenario C: Stock Validation
+         - Find a product with low stock (e.g., 5 units)
+         - Try to create an order for more than available (e.g., 10 units)
+         - Should get error: "Insufficient stock"
+         
+         Scenario D: Credit Limit
+         - Find a retailer with credit_limit = 10000, current_balance = 5000
+         - Update current_balance to 12000 (exceeds limit)
+         - Retailer status should automatically change to 'blocked'
+         - Check audit_logs for AUTO_BLOCK_RETAILER entry
+      
+      CRITICAL FILES:
+      - /app/app/api/[[...path]]/route.js (all backend APIs)
+      - /app/database/business_rules_triggers.sql (applied by user)
+      - /app/lib/permissions.js (role definitions)
+      
+      AUTHENTICATION DETAILS:
+      - User has existing test accounts set up
+      - Server logs show active sales_rep: 4ac6429f-89a4-49e3-9e8c-e391dd168ef9
+      - Business ID: 45c20d8f-aeb9-4474-a328-73c3c84df846
+      
+      Please test all role-based access controls and business rule triggers comprehensively!
   - agent: "main"
     message: |
       I have implemented the complete Staff Management feature. Here's what's been done:
