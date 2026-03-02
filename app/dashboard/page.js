@@ -1,37 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/auth-context'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DollarSign, TrendingUp, AlertTriangle, Package, ShoppingCart, Users, Activity } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import Link from 'next/link'
+import AdminDashboard from '@/components/dashboard/AdminDashboard'
+import ManagerDashboard from '@/components/dashboard/ManagerDashboard'
+import SalesRepDashboard from '@/components/dashboard/SalesRepDashboard'
+import WarehouseDashboard from '@/components/dashboard/WarehouseDashboard'
 
 export default function DashboardPage() {
-  const { userProfile } = useAuth()
-  const [metrics, setMetrics] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const supabase = createClient()
-
-  useEffect(() => {
-    loadMetrics()
-  }, [])
-
-  const loadMetrics = async () => {
-    try {
-      const response = await fetch('/api/dashboard/metrics')
-      if (!response.ok) throw new Error('Failed to load metrics')
-      const data = await response.json()
-      console.log('Dashboard metrics loaded:', data)
-      setMetrics(data)
-    } catch (error) {
-      console.error('Failed to load dashboard metrics:', error)
-      alert('Failed to load dashboard data. Please refresh the page.')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { userProfile, loading } = useAuth()
 
   if (loading) {
     return (
@@ -41,12 +17,31 @@ export default function DashboardPage() {
     )
   }
 
-  // Role-specific dashboard rendering
-  const role = userProfile?.role
-  
-  console.log('User profile:', userProfile)
-  console.log('User role:', role)
-  console.log('Metrics:', metrics)
+  if (!userProfile) {
+    return null
+  }
+
+  // Render role-specific dashboard
+  switch (userProfile.role) {
+    case 'admin':
+      return <AdminDashboard />
+    case 'manager':
+      return <ManagerDashboard />
+    case 'sales_rep':
+      return <SalesRepDashboard />
+    case 'warehouse':
+      return <WarehouseDashboard />
+    default:
+      return (
+        <div className="text-center py-12">
+          <p className="text-lg text-muted-foreground">
+            Unknown role: {userProfile.role}
+          </p>
+        </div>
+      )
+  }
+}
+
 
   return (
     <div className="space-y-8">
