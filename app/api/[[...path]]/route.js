@@ -487,13 +487,13 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
-      // Build query - explicitly join with sales_rep_id
+      // Build query - use simpler join syntax
       let query = supabase
         .from('orders')
         .select(`
           *,
-          retailers(shop_name),
-          sales_rep:users!orders_sales_rep_id_fkey(name, email)
+          retailers(shop_name, owner_name),
+          sales_rep:users!sales_rep_id(id, name, email, role)
         `)
         .eq('business_id', userContext.businessId)
         .order('created_at', { ascending: false })
@@ -505,7 +505,34 @@ async function handleRoute(request, { params }) {
 
       if (error) {
         console.error('Orders query error:', error)
-        throw error
+        // Try alternative query if foreign key name is different
+        query = supabase
+          .from('orders')
+          .select('*, retailers(shop_name, owner_name)')
+          .eq('business_id', userContext.businessId)
+          .order('created_at', { ascending: false })
+        
+        query = applySalesRepFilter(query, userContext, 'sales_rep_id')
+        const { data: fallbackData, error: fallbackError } = await query
+        
+        if (fallbackError) throw fallbackError
+        
+        // Manually fetch sales rep names
+        const ordersWithReps = await Promise.all(
+          (fallbackData || []).map(async (order) => {
+            if (order.sales_rep_id) {
+              const { data: rep } = await supabase
+                .from('users')
+                .select('name, email')
+                .eq('id', order.sales_rep_id)
+                .single()
+              return { ...order, sales_rep: rep }
+            }
+            return { ...order, sales_rep: null }
+          })
+        )
+        
+        return handleCORS(NextResponse.json(ordersWithReps))
       }
       
       return handleCORS(NextResponse.json(data || []))
