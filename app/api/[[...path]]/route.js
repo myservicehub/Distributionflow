@@ -836,22 +836,43 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json(data || []))
     }
 
-    // Update order status (approve/reject)
+    // Update order status (approve/reject/dispatch/deliver)
     if (route.startsWith('/orders/') && method === 'PUT') {
       const userContext = await getUserBusinessId(supabase)
       if (!userContext) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
-      // Only admin and manager can approve/update orders
-      if (!canConfirmOrders(userContext.role)) {
-        return handleCORS(NextResponse.json({ 
-          error: 'Forbidden: Only admins and managers can approve orders' 
-        }, { status: 403 }))
-      }
-
       const orderId = route.split('/')[2]
       const body = await request.json()
+      const requestedStatus = body.status
+
+      // Check permissions based on the action
+      // Admin/Manager: Can approve/reject/confirm orders
+      // Warehouse: Can mark as dispatched/delivered
+      const canApprove = canConfirmOrders(userContext.role) // admin, manager
+      const canDispatch = ['admin', 'manager', 'warehouse'].includes(userContext.role)
+      
+      if (requestedStatus === 'confirmed' || requestedStatus === 'approved' || requestedStatus === 'rejected') {
+        if (!canApprove) {
+          return handleCORS(NextResponse.json({ 
+            error: 'Forbidden: Only admins and managers can approve/reject orders' 
+          }, { status: 403 }))
+        }
+      } else if (requestedStatus === 'dispatched' || requestedStatus === 'delivered') {
+        if (!canDispatch) {
+          return handleCORS(NextResponse.json({ 
+            error: 'Forbidden: Insufficient permissions for dispatch operations' 
+          }, { status: 403 }))
+        }
+      } else {
+        // For any other status changes, require admin/manager
+        if (!canApprove) {
+          return handleCORS(NextResponse.json({ 
+            error: 'Forbidden: Insufficient permissions' 
+          }, { status: 403 }))
+        }
+      }
 
       // Get order details
       const { data: order, error: orderError } = await supabase
