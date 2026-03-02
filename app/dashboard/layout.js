@@ -4,34 +4,42 @@ import { useAuth } from '@/lib/auth-context'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import { getNavigationItems } from '@/lib/permissions'
 import { 
   LayoutDashboard, 
   Users, 
   Package, 
   ShoppingCart, 
-  DollarSign, 
+  CreditCard, 
   FileText,
   Settings,
   LogOut,
   Menu,
   X,
-  UserCog,
+  Store,
+  Warehouse,
+  BarChart3,
+  Truck,
   Activity
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Retailers', href: '/dashboard/retailers', icon: Users },
-  { name: 'Products', href: '/dashboard/products', icon: Package },
-  { name: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
-  { name: 'Payments', href: '/dashboard/payments', icon: DollarSign },
-  { name: 'Reports', href: '/dashboard/reports', icon: FileText },
-  { name: 'Staff', href: '/dashboard/staff', icon: UserCog, adminOnly: true },
-  { name: 'Activity Log', href: '/dashboard/activity-log', icon: Activity, adminOnly: true },
-  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
-]
+// Icon mapping
+const ICON_MAP = {
+  LayoutDashboard,
+  Store,
+  Package,
+  Warehouse,
+  ShoppingCart,
+  CreditCard,
+  BarChart3,
+  Users,
+  FileText,
+  Settings,
+  Truck,
+  Activity
+}
 
 export default function DashboardLayout({ children }) {
   const { user, userProfile, business, loading, signOut } = useAuth()
@@ -62,6 +70,9 @@ export default function DashboardLayout({ children }) {
     return null
   }
 
+  // Get navigation items based on role
+  const navigationItems = getNavigationItems(userProfile)
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile sidebar overlay */}
@@ -82,10 +93,13 @@ export default function DashboardLayout({ children }) {
           <div className="p-6 border-b">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">{business?.name}</h2>
+                <h2 className="text-xl font-bold text-gray-900">{business?.name || 'DistributionFlow'}</h2>
                 <p className="text-sm text-gray-500 mt-1">{userProfile?.name}</p>
                 <span className="inline-block px-2 py-1 text-xs font-medium text-indigo-600 bg-indigo-50 rounded mt-2">
-                  {userProfile?.role?.toUpperCase()}
+                  {userProfile?.role === 'admin' && 'ADMINISTRATOR'}
+                  {userProfile?.role === 'manager' && 'MANAGER'}
+                  {userProfile?.role === 'sales_rep' && 'SALES REP'}
+                  {userProfile?.role === 'warehouse' && 'WAREHOUSE'}
                 </span>
               </div>
               <button 
@@ -97,16 +111,11 @@ export default function DashboardLayout({ children }) {
             </div>
           </div>
 
-          {/* Navigation */}
+          {/* Navigation - Role-based */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {navigation.map((item) => {
-              // Hide admin-only items from non-admins
-              if (item.adminOnly && userProfile?.role !== 'admin') {
-                return null
-              }
-              
-              const Icon = item.icon
-              const isActive = pathname === item.href
+            {navigationItems.map((item) => {
+              const Icon = ICON_MAP[item.icon] || LayoutDashboard
+              const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
               return (
                 <Link
                   key={item.name}
