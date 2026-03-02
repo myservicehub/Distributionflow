@@ -4,13 +4,23 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 
 export default function ReportsPage() {
   const [debtAging, setDebtAging] = useState([])
   const [salesByRep, setSalesByRep] = useState([])
   const [inventory, setInventory] = useState([])
   const [loading, setLoading] = useState(true)
+  const [expandedReps, setExpandedReps] = useState({})
+
+  const toggleRepExpand = (repName) => {
+    setExpandedReps(prev => ({
+      ...prev,
+      [repName]: !prev[repName]
+    }))
+  }
 
   useEffect(() => {
     loadReports()
