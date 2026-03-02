@@ -365,6 +365,7 @@ export default function OrdersPage() {
                   <TableHead>Payment Status</TableHead>
                   <TableHead>Order Status</TableHead>
                   <TableHead>Date</TableHead>
+                  {canApproveOrders() && <TableHead>Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -385,6 +386,33 @@ export default function OrdersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
+                    {canApproveOrders() && (
+                      <TableCell>
+                        {order.status === 'pending' && (
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="default"
+                              onClick={() => handleApproveOrder(order.id)}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Approve
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="destructive"
+                              onClick={() => handleRejectOrder(order.id)}
+                            >
+                              <XCircle className="h-4 w-4 mr-1" />
+                              Reject
+                            </Button>
+                          </div>
+                        )}
+                        {order.status !== 'pending' && (
+                          <span className="text-sm text-muted-foreground">No action needed</span>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
