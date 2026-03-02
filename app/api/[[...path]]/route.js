@@ -487,11 +487,17 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
-      const { data, error } = await supabase
+      // Build query
+      let query = supabase
         .from('orders')
         .select('*, retailers(shop_name), users(name)')
         .eq('business_id', userContext.businessId)
         .order('created_at', { ascending: false })
+
+      // Apply sales rep filter - sales reps only see their own orders
+      query = applySalesRepFilter(query, userContext, 'sales_rep_id')
+
+      const { data, error } = await query
 
       if (error) throw error
       return handleCORS(NextResponse.json(data || []))
@@ -501,6 +507,13 @@ async function handleRoute(request, { params }) {
       const userContext = await getUserBusinessId(supabase)
       if (!userContext) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      // Check permission
+      if (!canCreateOrders(userContext.role)) {
+        return handleCORS(NextResponse.json({ 
+          error: 'Forbidden: You do not have permission to create orders' 
+        }, { status: 403 }))
       }
 
       const body = await request.json()
@@ -527,13 +540,13 @@ async function handleRoute(request, { params }) {
         }
       }
 
-      // Create order
+      // Create order - auto-assign to current user if sales rep
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
           business_id: userContext.businessId,
           retailer_id: body.retailer_id,
-          sales_rep_id: userContext.userId,
+          sales_rep_id: userContext.role === 'sales_rep' ? userContext.userId : body.sales_rep_id,
           total_amount: body.total_amount,
           payment_status: body.payment_status,
           status: 'pending'
