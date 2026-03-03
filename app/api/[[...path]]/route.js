@@ -712,48 +712,84 @@ async function handleRoute(request, { params }) {
 
       const body = await request.json()
       
-      // Check retailer credit limit if payment is credit
-      if (body.payment_status === 'credit' || body.payment_status === 'partial') {
-        const { data: retailer } = await supabase
-          .from('retailers')
-          .select('current_balance, credit_limit, status')
-          .eq('id', body.retailer_id)
+      // STEP 1: Validate stock availability for all items
+      for (const item of body.items) {
+        const { data: product } = await supabase
+          .from('products')
+          .select('stock_quantity, name')
+          .eq('id', item.product_id)
+          .eq('business_id', userContext.businessId)
           .single()
 
-        if (retailer && retailer.status === 'blocked') {
+        if (!product) {
           return handleCORS(NextResponse.json({ 
-            error: 'Retailer is blocked due to credit limit exceeded' 
-          }, { status: 400 }))
+            error: `Product not found: ${item.product_id}` 
+          }, { status: 404 }))
         }
 
-        const newBalance = parseFloat(retailer.current_balance) + parseFloat(body.total_amount)
-        if (newBalance > parseFloat(retailer.credit_limit)) {
+        if (product.stock_quantity < item.quantity) {
           return handleCORS(NextResponse.json({ 
-            error: 'Order would exceed retailer credit limit' 
+            error: `Insufficient stock for ${product.name}. Available: ${product.stock_quantity}, Requested: ${item.quantity}` 
           }, { status: 400 }))
         }
       }
 
-      // Create order - auto-assign to current user if sales rep
+      // STEP 2: Get retailer details and check credit limit
+      const { data: retailer } = await supabase
+        .from('retailers')
+        .select('current_balance, credit_limit, status, shop_name')
+        .eq('id', body.retailer_id)
+        .single()
+
+      if (!retailer) {
+        return handleCORS(NextResponse.json({ 
+          error: 'Retailer not found' 
+        }, { status: 404 }))
+      }
+
+      if (retailer.status === 'blocked') {
+        return handleCORS(NextResponse.json({ 
+          error: 'Retailer is blocked due to credit limit exceeded' 
+        }, { status: 400 }))
+      }
+
+      // STEP 3: Determine order status based on credit validation
+      let orderStatus = 'pending'
+      let deliveryStatus = 'not_started'
+      let requiresCreditApproval = false
+
+      if (body.payment_status === 'credit' || body.payment_status === 'partial') {
+        const projectedBalance = parseFloat(retailer.current_balance) + parseFloat(body.total_amount)
+        const creditLimit = parseFloat(retailer.credit_limit)
+        
+        if (projectedBalance > creditLimit) {
+          // Exceeds credit limit - requires approval
+          orderStatus = 'awaiting_credit_approval'
+          requiresCreditApproval = true
+        }
+      }
+
+      // STEP 4: Create order with new workflow fields
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
           business_id: userContext.businessId,
           retailer_id: body.retailer_id,
-          // Always set sales_rep_id: use body value, or current user's ID, or null
           sales_rep_id: body.sales_rep_id || (userContext.role === 'sales_rep' ? userContext.userId : userContext.userId),
           total_amount: body.total_amount,
           payment_status: body.payment_status,
-          status: 'pending'
+          status: 'pending', // Keep old status for backward compatibility
+          order_status: orderStatus, // New structured status
+          delivery_status: deliveryStatus,
+          is_legacy_order: false // Mark as new workflow order
         })
         .select()
         .single()
 
       if (orderError) throw orderError
 
-      // Create order items and update stock
+      // STEP 5: Create order items (DO NOT deduct stock yet - wait for approval)
       for (const item of body.items) {
-        // Insert order item
         const { error: itemError } = await supabase
           .from('order_items')
           .insert({
@@ -765,60 +801,58 @@ async function handleRoute(request, { params }) {
           })
 
         if (itemError) throw itemError
-
-        // Deduct stock
-        const { data: product } = await supabase
-          .from('products')
-          .select('stock_quantity')
-          .eq('id', item.product_id)
-          .single()
-
-        const newStock = product.stock_quantity - item.quantity
-        if (newStock < 0) {
-          throw new Error(`Insufficient stock for product ${item.product_id}`)
-        }
-
-        await supabase
-          .from('products')
-          .update({ stock_quantity: newStock })
-          .eq('id', item.product_id)
-
-        // Record stock movement
-        await supabase
-          .from('stock_movements')
-          .insert({
-            business_id: userContext.businessId,
-            product_id: item.product_id,
-            type: 'OUT',
-            quantity: item.quantity,
-            reference: `Order ${order.id}`,
-            created_by: userContext.userId
-          })
       }
 
-      // Update retailer balance if credit
-      if (body.payment_status === 'credit') {
-        const { data: retailer } = await supabase
-          .from('retailers')
-          .select('current_balance')
-          .eq('id', body.retailer_id)
-          .single()
-
-        const newBalance = parseFloat(retailer.current_balance) + parseFloat(body.total_amount)
+      // STEP 6: Send notifications based on order status
+      try {
+        const {createClient: createAdminClient} = await import('@supabase/supabase-js')
+        const supabaseAdmin = createAdminClient(
+          supabaseUrl,
+          process.env.SUPABASE_SERVICE_ROLE_KEY
+        )
         
-        await supabase
-          .from('retailers')
-          .update({ current_balance: newBalance })
-          .eq('id', body.retailer_id)
+        const {data: salesRep} = await supabaseAdmin
+          .from('users')
+          .select('name')
+          .eq('id', order.sales_rep_id)
+          .single()
+
+        if (requiresCreditApproval) {
+          // CRITICAL: Credit approval required
+          await sendNotification({
+            title: 'Credit Approval Required',
+            message: `Order #${order.id.substring(0, 8)} for ${retailer.shop_name} (₦${parseFloat(body.total_amount).toLocaleString()}) exceeds credit limit. Created by ${salesRep?.name || 'Sales Rep'}. Approval required.`,
+            type: 'credit',
+            targetRole: 'all',
+            businessId: userContext.businessId,
+            triggeredBy: userContext.userId,
+            relatedTable: 'orders',
+            relatedRecordId: order.id
+          })
+        } else {
+          // Regular order notification
+          await sendNotification({
+            title: 'New Order Created',
+            message: `Order #${order.id.substring(0, 8)} for ${retailer.shop_name} (₦${parseFloat(body.total_amount).toLocaleString()}) created by ${salesRep?.name || 'Sales Rep'}. Awaiting approval.`,
+            type: 'order',
+            targetRole: 'all',
+            businessId: userContext.businessId,
+            triggeredBy: userContext.userId,
+            relatedTable: 'orders',
+            relatedRecordId: order.id
+          })
+        }
+      } catch (notifError) {
+        console.error('Failed to send order notification:', notifError)
       }
 
-      // Update order status to confirmed
-      await supabase
-        .from('orders')
-        .update({ status: 'confirmed' })
-        .eq('id', order.id)
-
-      return handleCORS(NextResponse.json(order))
+      return handleCORS(NextResponse.json({
+        ...order,
+        requires_credit_approval: requiresCreditApproval,
+        message: requiresCreditApproval 
+          ? 'Order created. Awaiting credit approval from manager/admin.'
+          : 'Order created successfully. Awaiting manager approval.'
+      }))
     }
 
     if (route.startsWith('/orders/') && route.endsWith('/items') && method === 'GET') {
@@ -837,7 +871,7 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json(data || []))
     }
 
-    // Update order status (approve/reject/dispatch/deliver)
+    // Update order status (NEW WORKFLOW - approve/reject/dispatch/deliver)
     if (route.startsWith('/orders/') && method === 'PUT') {
       const userContext = await getUserBusinessId(supabase)
       if (!userContext) {
@@ -846,36 +880,8 @@ async function handleRoute(request, { params }) {
 
       const orderId = route.split('/')[2]
       const body = await request.json()
-      const requestedStatus = body.status
-
-      // Check permissions based on the action
-      // Admin/Manager: Can approve/reject/confirm orders
-      // Warehouse: Can mark as dispatched/delivered
-      const canApprove = canConfirmOrders(userContext.role) // admin, manager
-      const canDispatch = ['admin', 'manager', 'warehouse'].includes(userContext.role)
       
-      if (requestedStatus === 'confirmed' || requestedStatus === 'approved' || requestedStatus === 'rejected') {
-        if (!canApprove) {
-          return handleCORS(NextResponse.json({ 
-            error: 'Forbidden: Only admins and managers can approve/reject orders' 
-          }, { status: 403 }))
-        }
-      } else if (requestedStatus === 'dispatched' || requestedStatus === 'delivered') {
-        if (!canDispatch) {
-          return handleCORS(NextResponse.json({ 
-            error: 'Forbidden: Insufficient permissions for dispatch operations' 
-          }, { status: 403 }))
-        }
-      } else {
-        // For any other status changes, require admin/manager
-        if (!canApprove) {
-          return handleCORS(NextResponse.json({ 
-            error: 'Forbidden: Insufficient permissions' 
-          }, { status: 403 }))
-        }
-      }
-
-      // Get order details
+      // Get current order state
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .select('*, order_items(*)')
@@ -888,9 +894,26 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Order not found' }, { status: 404 }))
       }
 
-      // If confirming order, validate stock and deduct
-      if (body.status === 'confirmed' && order.status !== 'confirmed') {
-        // Validate stock availability
+      // Initialize update object
+      let updateData = {}
+      let shouldReserveStock = false
+      let shouldReleaseStock = false
+      let notificationTitle = ''
+      let notificationMessage = ''
+
+      // ========================================
+      // WORKFLOW ACTIONS
+      // ========================================
+
+      // ACTION 1: APPROVE ORDER (Manager/Admin)
+      if (body.action === 'approve') {
+        if (!['admin', 'manager'].includes(userContext.role)) {
+          return handleCORS(NextResponse.json({ 
+            error: 'Forbidden: Only admins and managers can approve orders' 
+          }, { status: 403 }))
+        }
+
+        // Validate stock availability before approval
         for (const item of order.order_items) {
           const { data: product } = await supabase
             .from('products')
@@ -905,45 +928,219 @@ async function handleRoute(request, { params }) {
           }
         }
 
-        // Deduct stock (if not using triggers)
-        // Note: If you applied the business_rules_triggers.sql, this happens automatically
-        // Uncomment below if you want manual control:
-        /*
-        for (const item of order.order_items) {
-          await supabase
-            .from('products')
-            .update({ 
-              stock_quantity: supabase.raw(`stock_quantity - ${item.quantity}`) 
-            })
-            .eq('id', item.product_id)
+        updateData = {
+          order_status: 'confirmed',
+          delivery_status: 'preparing',
+          confirmed_by: userContext.userId,
+          confirmed_at: new Date().toISOString(),
+          status: 'confirmed' // Keep old status for compatibility
+        }
+        
+        shouldReserveStock = true
+        notificationTitle = 'Order Approved'
+        notificationMessage = `Order #${orderId.substring(0, 8)} has been approved and is now being prepared for delivery.`
+      }
 
-          await supabase
-            .from('stock_movements')
-            .insert({
-              business_id: userContext.businessId,
-              product_id: item.product_id,
-              movement_type: 'out',
-              quantity: item.quantity,
-              notes: `Order ${orderId} confirmed`
-            })
+      // ACTION 2: REJECT ORDER (Manager/Admin)
+      else if (body.action === 'reject') {
+        if (!['admin', 'manager'].includes(userContext.role)) {
+          return handleCORS(NextResponse.json({ 
+            error: 'Forbidden: Only admins and managers can reject orders' 
+          }, { status: 403 }))
+        }
+
+        updateData = {
+          order_status: 'cancelled',
+          delivery_status: 'not_started',
+          status: 'cancelled'
+        }
+        
+        notificationTitle = 'Order Rejected'
+        notificationMessage = `Order #${orderId.substring(0, 8)} has been rejected. Reason: ${body.reason || 'Not specified'}.`
+      }
+
+      // ACTION 3: MARK AS PACKED (Warehouse)
+      else if (body.action === 'pack') {
+        if (!['admin', 'manager', 'warehouse'].includes(userContext.role)) {
+          return handleCORS(NextResponse.json({ 
+            error: 'Forbidden: Only warehouse staff can pack orders' 
+          }, { status: 403 }))
+        }
+
+        if (order.order_status !== 'confirmed' || order.delivery_status !== 'preparing') {
+          return handleCORS(NextResponse.json({ 
+            error: 'Order must be in "preparing" status to be packed' 
+          }, { status: 400 }))
+        }
+
+        updateData = {
+          delivery_status: 'packed',
+          packed_at: new Date().toISOString()
+        }
+        
+        notificationTitle = 'Order Packed'
+        notificationMessage = `Order #${orderId.substring(0, 8)} has been packed and is ready for dispatch.`
+      }
+
+      // ACTION 4: MARK AS OUT FOR DELIVERY (Warehouse)
+      else if (body.action === 'dispatch') {
+        if (!['admin', 'manager', 'warehouse'].includes(userContext.role)) {
+          return handleCORS(NextResponse.json({ 
+            error: 'Forbidden: Only warehouse staff can dispatch orders' 
+          }, { status: 403 }))
+        }
+
+        if (order.delivery_status !== 'packed') {
+          return handleCORS(NextResponse.json({ 
+            error: 'Order must be packed before dispatch' 
+          }, { status: 400 }))
+        }
+
+        updateData = {
+          delivery_status: 'out_for_delivery',
+          dispatched_at: new Date().toISOString(),
+          driver_name: body.driver_name || null,
+          vehicle_number: body.vehicle_number || null,
+          delivery_reference: body.delivery_reference || `DEL-${Date.now()}`
+        }
+        
+        notificationTitle = 'Order Dispatched'
+        notificationMessage = `Order #${orderId.substring(0, 8)} is out for delivery. Driver: ${body.driver_name || 'N/A'}, Vehicle: ${body.vehicle_number || 'N/A'}.`
+      }
+
+      // ACTION 5: MARK AS DELIVERED (Warehouse/Manager)
+      else if (body.action === 'deliver') {
+        if (!['admin', 'manager', 'warehouse'].includes(userContext.role)) {
+          return handleCORS(NextResponse.json({ 
+            error: 'Forbidden: Only warehouse staff can mark as delivered' 
+          }, { status: 403 }))
+        }
+
+        if (order.delivery_status !== 'out_for_delivery') {
+          return handleCORS(NextResponse.json({ 
+            error: 'Order must be out for delivery before marking as delivered' 
+          }, { status: 400 }))
+        }
+
+        updateData = {
+          order_status: 'completed',
+          delivery_status: 'delivered',
+          delivered_at: new Date().toISOString(),
+          status: 'delivered' // Old status for compatibility
         }
 
         // Update retailer balance for credit orders
         if (order.payment_status === 'credit' || order.payment_status === 'partial') {
+          const { data: retailer } = await supabase
+            .from('retailers')
+            .select('current_balance')
+            .eq('id', order.retailer_id)
+            .single()
+
+          const newBalance = parseFloat(retailer.current_balance) + parseFloat(order.total_amount)
+          
           await supabase
             .from('retailers')
-            .update({ 
-              current_balance: supabase.raw(`current_balance + ${order.total_amount}`) 
-            })
+            .update({ current_balance: newBalance })
             .eq('id', order.retailer_id)
         }
-        */
+        
+        notificationTitle = 'Order Delivered'
+        notificationMessage = `Order #${orderId.substring(0, 8)} has been successfully delivered.`
       }
 
-      // Update order status
+      // ACTION 6: MARK AS FAILED DELIVERY (Warehouse/Manager)
+      else if (body.action === 'fail_delivery') {
+        if (!['admin', 'manager', 'warehouse'].includes(userContext.role)) {
+          return handleCORS(NextResponse.json({ 
+            error: 'Forbidden: Only warehouse staff can mark delivery as failed' 
+          }, { status: 403 }))
+        }
+
+        updateData = {
+          delivery_status: 'failed',
+          order_status: 'cancelled',
+          status: 'cancelled'
+        }
+        
+        shouldReleaseStock = true
+        notificationTitle = 'Delivery Failed'
+        notificationMessage = `Delivery failed for Order #${orderId.substring(0, 8)}. Stock has been returned. Reason: ${body.reason || 'Not specified'}.`
+      }
+
+      // ACTION 7: LEGACY - Simple status update (for backward compatibility)
+      else if (body.status) {
+        // This maintains backward compatibility with old order update calls
+        const requestedStatus = body.status
+        const canApprove = canConfirmOrders(userContext.role)
+        const canDispatch = ['admin', 'manager', 'warehouse'].includes(userContext.role)
+        
+        if (requestedStatus === 'confirmed' || requestedStatus === 'approved' || requestedStatus === 'rejected') {
+          if (!canApprove) {
+            return handleCORS(NextResponse.json({ 
+              error: 'Forbidden: Only admins and managers can approve/reject orders' 
+            }, { status: 403 }))
+          }
+        } else if (requestedStatus === 'dispatched' || requestedStatus === 'delivered') {
+          if (!canDispatch) {
+            return handleCORS(NextResponse.json({ 
+              error: 'Forbidden: Insufficient permissions for dispatch operations' 
+            }, { status: 403 }))
+          }
+        }
+
+        updateData = { status: body.status }
+      }
+
+      // ========================================
+      // EXECUTE UPDATE
+      // ========================================
+
+      if (Object.keys(updateData).length === 0) {
+        return handleCORS(NextResponse.json({ error: 'No valid action specified' }, { status: 400 }))
+      }
+
+      // Perform stock reservation if needed
+      if (shouldReserveStock) {
+        try {
+          // Use the database function to reserve stock
+          const {createClient: createAdminClient} = await import('@supabase/supabase-js')
+          const supabaseAdmin = createAdminClient(
+            supabaseUrl,
+            process.env.SUPABASE_SERVICE_ROLE_KEY
+          )
+          
+          await supabaseAdmin.rpc('reserve_order_stock', { p_order_id: orderId })
+        } catch (stockError) {
+          console.error('Stock reservation error:', stockError)
+          return handleCORS(NextResponse.json({ 
+            error: 'Failed to reserve stock: ' + stockError.message 
+          }, { status: 500 }))
+        }
+      }
+
+      // Perform stock release if needed
+      if (shouldReleaseStock) {
+        try {
+          const {createClient: createAdminClient} = await import('@supabase/supabase-js')
+          const supabaseAdmin = createAdminClient(
+            supabaseUrl,
+            process.env.SUPABASE_SERVICE_ROLE_KEY
+          )
+          
+          await supabaseAdmin.rpc('release_order_stock', { 
+            p_order_id: orderId,
+            p_reason: 'RETURNED'
+          })
+        } catch (stockError) {
+          console.error('Stock release error:', stockError)
+        }
+      }
+
+      // Update order
       const { data: updatedOrder, error: updateError } = await supabase
         .from('orders')
-        .update({ status: body.status })
+        .update(updateData)
         .eq('id', orderId)
         .eq('business_id', userContext.businessId)
         .select()
@@ -951,73 +1148,53 @@ async function handleRoute(request, { params }) {
 
       if (updateError) throw updateError
 
-      // Send notification for order status changes
-      try {
-        const {createClient: createAdminClient} = await import('@supabase/supabase-js')
-        const supabaseAdmin = createAdminClient(
-          supabaseUrl,
-          process.env.SUPABASE_SERVICE_ROLE_KEY
-        )
-        
-        // Get retailer name
-        const {data: retailer} = await supabaseAdmin
-          .from('retailers')
-          .select('shop_name')
-          .eq('id', order.retailer_id)
-          .single()
-        
-        // Get user name
-        const {data: userName} = await supabaseAdmin
-          .from('users')
-          .select('name')
-          .eq('id', userContext.userId)
-          .single()
-        
-        let notificationTitle = ''
-        let notificationMessage = ''
-        let notificationType = 'order'
-        
-        if (body.status === 'confirmed') {
-          notificationTitle = 'Order Approved'
-          notificationMessage = `Order #${orderId.substring(0, 8)} for ${retailer?.shop_name || 'Unknown'} was approved by ${userName?.name || 'Unknown'}.`
-        } else if (body.status === 'cancelled') {
-          notificationTitle = 'Order Cancelled'
-          notificationMessage = `Order #${orderId.substring(0, 8)} for ${retailer?.shop_name || 'Unknown'} was cancelled by ${userName?.name || 'Unknown'}.`
-        } else if (body.status === 'dispatched') {
-          notificationTitle = 'Order Dispatched'
-          notificationMessage = `Order #${orderId.substring(0, 8)} for ${retailer?.shop_name || 'Unknown'} has been dispatched.`
-        }
-        
-        if (notificationTitle) {
+      // Send notification if defined
+      if (notificationTitle) {
+        try {
+          const {createClient: createAdminClient} = await import('@supabase/supabase-js')
+          const supabaseAdmin = createAdminClient(
+            supabaseUrl,
+            process.env.SUPABASE_SERVICE_ROLE_KEY
+          )
+          
+          // Get retailer name
+          const {data: retailer} = await supabaseAdmin
+            .from('retailers')
+            .select('shop_name')
+            .eq('id', order.retailer_id)
+            .single()
+          
+          // Get user name
+          const {data: userName} = await supabaseAdmin
+            .from('users')
+            .select('name')
+            .eq('id', userContext.userId)
+            .single()
+          
+          const finalMessage = notificationMessage.replace(
+            'Order #' + orderId.substring(0, 8),
+            `Order #${orderId.substring(0, 8)} for ${retailer?.shop_name || 'Unknown'}`
+          )
+          
           await sendNotification({
             title: notificationTitle,
-            message: notificationMessage,
-            type: notificationType,
+            message: finalMessage,
+            type: 'order',
             targetRole: 'all',
             businessId: userContext.businessId,
             triggeredBy: userContext.userId,
             relatedTable: 'orders',
             relatedRecordId: orderId
           })
+        } catch (notifError) {
+          console.error('Failed to send notification:', notifError)
         }
-      } catch (notifError) {
-        console.error('Failed to send notification:', notifError)
-        // Don't fail the request if notification fails
       }
 
-      // Log audit event - TEMPORARILY DISABLED for debugging
-      // await logAuditEvent(
-      //   supabase,
-      //   userContext,
-      //   body.status === 'confirmed' ? 'APPROVE_ORDER' : 'UPDATE_ORDER',
-      //   `Order ${orderId} status changed to ${body.status}`,
-      //   'order',
-      //   orderId
-      // )
-      
-      console.log('Order approved successfully, audit logging disabled temporarily')
-
-      return handleCORS(NextResponse.json(updatedOrder))
+      return handleCORS(NextResponse.json({
+        ...updatedOrder,
+        message: notificationTitle || 'Order updated successfully'
+      }))
     }
 
     // ============================================
