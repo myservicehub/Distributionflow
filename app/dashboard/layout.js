@@ -20,7 +20,8 @@ import {
   Warehouse,
   BarChart3,
   Truck,
-  Activity
+  Activity,
+  Bell
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -39,7 +40,8 @@ const ICON_MAP = {
   FileText,
   Settings,
   Truck,
-  Activity
+  Activity,
+  Bell
 }
 
 export default function DashboardLayout({ children }) {
