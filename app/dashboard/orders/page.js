@@ -176,7 +176,7 @@ export default function OrdersPage() {
       const response = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'confirmed' })
+        body: JSON.stringify({ action: 'approve' })
       })
 
       if (!response.ok) {
@@ -196,7 +196,7 @@ export default function OrdersPage() {
       const response = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'cancelled' })
+        body: JSON.stringify({ action: 'reject', reason: 'Rejected by admin' })
       })
 
       if (!response.ok) {
