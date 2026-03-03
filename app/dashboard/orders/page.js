@@ -305,7 +305,12 @@ export default function OrdersPage() {
                         <SelectContent>
                           {products.map((p) => (
                             <SelectItem key={p.id} value={p.id}>
-                              {p.name} (Stock: {p.stock_quantity})
+                              <div className="flex flex-col">
+                                <span className="font-medium">{p.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {p.sku ? `SKU: ${p.sku} • ` : ''}Stock: {p.stock_quantity}
+                                </span>
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
