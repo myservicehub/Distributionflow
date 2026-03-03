@@ -63,14 +63,14 @@ export default function DeliveryBoardPage() {
       console.log('📦 All orders loaded:', data?.length || 0)
       console.log('Sample order:', data?.[0])
 
-      // Filter confirmed orders only
-      const confirmedOrders = (data || []).filter(o => {
-        console.log(`Order ${o.id?.substring(0, 8)}: order_status=${o.order_status}, is_legacy=${o.is_legacy_order}`)
-        return o.order_status === 'confirmed' && !o.is_legacy_order
+      // Filter for orders in the delivery workflow (confirmed or completed)
+      const workflowOrders = (data || []).filter(o => {
+        console.log(`Order ${o.id?.substring(0, 8)}: order_status=${o.order_status}, delivery_status=${o.delivery_status}, is_legacy=${o.is_legacy_order}`)
+        return (o.order_status === 'confirmed' || o.order_status === 'completed') && !o.is_legacy_order
       })
 
-      console.log('✅ Filtered confirmed orders:', confirmedOrders.length)
-      setOrders(confirmedOrders)
+      console.log('✅ Filtered workflow orders:', workflowOrders.length)
+      setOrders(workflowOrders)
     } catch (error) {
       console.error('Error loading orders:', error)
       toast.error('Failed to load orders')
