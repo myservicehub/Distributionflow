@@ -191,23 +191,23 @@ async function handleRoute(request, { params }) {
       today.setHours(0, 0, 0, 0)
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
 
-      // Get total sales today
+      // Get total sales today (include both confirmed and completed orders)
       const { data: salesToday } = await supabase
         .from('orders')
         .select('total_amount')
         .eq('business_id', userContext.businessId)
         .gte('created_at', today.toISOString())
-        .eq('status', 'confirmed')
+        .in('status', ['confirmed', 'delivered'])
 
       const totalSalesToday = salesToday?.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) || 0
 
-      // Get total sales this month
+      // Get total sales this month (include both confirmed and completed orders)
       const { data: salesMonth } = await supabase
         .from('orders')
         .select('total_amount')
         .eq('business_id', userContext.businessId)
         .gte('created_at', startOfMonth.toISOString())
-        .eq('status', 'confirmed')
+        .in('status', ['confirmed', 'delivered'])
 
       const totalSalesMonth = salesMonth?.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) || 0
 
