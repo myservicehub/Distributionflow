@@ -1019,11 +1019,11 @@ async function handleRoute(request, { params }) {
           }
           
           // Fetch user data (who recorded the payment)
-          if (payment.created_by) {
+          if (payment.recorded_by) {
             const { data: user, error: userError } = await supabaseAdmin
               .from('users')
               .select('id, name, email, role')
-              .eq('id', payment.created_by)
+              .eq('id', payment.recorded_by)
               .single()
             
             if (userError) {
@@ -1058,7 +1058,7 @@ async function handleRoute(request, { params }) {
           amount_paid: body.amount_paid,
           payment_method: body.payment_method,
           notes: body.notes,
-          created_by: userContext.userId  // Changed from recorded_by to created_by
+          recorded_by: userContext.userId
         })
         .select()
         .single()
