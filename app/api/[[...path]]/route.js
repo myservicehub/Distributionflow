@@ -233,11 +233,12 @@ async function handleRoute(request, { params }) {
         .eq('business_id', userContext.businessId)
         .filter('stock_quantity', 'lte', 'low_stock_threshold')
 
-      // Get sales by rep
+      // Get sales by rep (TODAY only)
       const { data: salesByRep } = await supabase
         .from('orders')
         .select('sales_rep_id, total_amount, users(name)')
         .eq('business_id', userContext.businessId)
+        .gte('created_at', today.toISOString())
         .in('status', ['confirmed', 'delivered'])
 
       const repSales = {}
