@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
+import NotificationBell from '@/components/notifications/NotificationBell'
 
 // Icon mapping
 const ICON_MAP = {
@@ -171,6 +172,7 @@ export default function DashboardLayout({ children }) {
               )}
             </div>
             <div className="flex items-center space-x-4">
+              <NotificationBell />
               <span className="text-sm text-gray-600 hidden sm:block">{userProfile?.email}</span>
             </div>
           </div>

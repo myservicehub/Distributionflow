@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { logAudit, AUDIT_ACTIONS, RESOURCE_TYPES } from '@/lib/audit-logger'
 import { sendStaffInvitation } from '@/lib/email'
 import { can } from '@/lib/permissions'
+import { sendNotification } from '@/lib/notifications'
 
 // Initialize Supabase client (server-side with service role for admin operations)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -950,6 +951,60 @@ async function handleRoute(request, { params }) {
 
       if (updateError) throw updateError
 
+      // Send notification for order status changes
+      try {
+        const {createClient: createAdminClient} = await import('@supabase/supabase-js')
+        const supabaseAdmin = createAdminClient(
+          supabaseUrl,
+          process.env.SUPABASE_SERVICE_ROLE_KEY
+        )
+        
+        // Get retailer name
+        const {data: retailer} = await supabaseAdmin
+          .from('retailers')
+          .select('shop_name')
+          .eq('id', order.retailer_id)
+          .single()
+        
+        // Get user name
+        const {data: userName} = await supabaseAdmin
+          .from('users')
+          .select('name')
+          .eq('id', userContext.userId)
+          .single()
+        
+        let notificationTitle = ''
+        let notificationMessage = ''
+        let notificationType = 'order'
+        
+        if (body.status === 'confirmed') {
+          notificationTitle = 'Order Approved'
+          notificationMessage = `Order #${orderId.substring(0, 8)} for ${retailer?.shop_name || 'Unknown'} was approved by ${userName?.name || 'Unknown'}.`
+        } else if (body.status === 'cancelled') {
+          notificationTitle = 'Order Cancelled'
+          notificationMessage = `Order #${orderId.substring(0, 8)} for ${retailer?.shop_name || 'Unknown'} was cancelled by ${userName?.name || 'Unknown'}.`
+        } else if (body.status === 'dispatched') {
+          notificationTitle = 'Order Dispatched'
+          notificationMessage = `Order #${orderId.substring(0, 8)} for ${retailer?.shop_name || 'Unknown'} has been dispatched.`
+        }
+        
+        if (notificationTitle) {
+          await sendNotification({
+            title: notificationTitle,
+            message: notificationMessage,
+            type: notificationType,
+            targetRole: 'all',
+            businessId: userContext.businessId,
+            triggeredBy: userContext.userId,
+            relatedTable: 'orders',
+            relatedRecordId: orderId
+          })
+        }
+      } catch (notifError) {
+        console.error('Failed to send notification:', notifError)
+        // Don't fail the request if notification fails
+      }
+
       // Log audit event - TEMPORARILY DISABLED for debugging
       // await logAuditEvent(
       //   supabase,
@@ -1086,6 +1141,47 @@ async function handleRoute(request, { params }) {
         })
         .eq('id', body.retailer_id)
 
+      // Send notification for large payments
+      try {
+        const {createClient: createAdminClient} = await import('@supabase/supabase-js')
+        const supabaseAdmin = createAdminClient(
+          supabaseUrl,
+          process.env.SUPABASE_SERVICE_ROLE_KEY
+        )
+        
+        // Get retailer name
+        const {data: retailerData} = await supabaseAdmin
+          .from('retailers')
+          .select('shop_name')
+          .eq('id', body.retailer_id)
+          .single()
+        
+        // Get user name
+        const {data: userData} = await supabaseAdmin
+          .from('users')
+          .select('name')
+          .eq('id', userContext.userId)
+          .single()
+        
+        // Check if it's a large payment (>50000)
+        const isLargePayment = parseFloat(body.amount_paid) >= 50000
+        
+        if (isLargePayment) {
+          await sendNotification({
+            title: 'Large Payment Recorded',
+            message: `Large payment of ₦${parseFloat(body.amount_paid).toLocaleString()} recorded for ${retailerData?.shop_name || 'Unknown'} by ${userData?.name || 'Unknown'}.`,
+            type: 'payment',
+            targetRole: 'all',
+            businessId: userContext.businessId,
+            triggeredBy: userContext.userId,
+            relatedTable: 'payments',
+            relatedRecordId: payment.id
+          })
+        }
+      } catch (notifError) {
+        console.error('Failed to send payment notification:', notifError)
+      }
+
       return handleCORS(NextResponse.json(payment))
     }
 
@@ -1211,6 +1307,35 @@ async function handleRoute(request, { params }) {
           invitation_method: 'supabase_invitation'
         }
       })
+
+      // Send notification for new staff
+      try {
+        const {createClient: createAdminClient} = await import('@supabase/supabase-js')
+        const supabaseAdmin = createAdminClient(
+          supabaseUrl,
+          process.env.SUPABASE_SERVICE_ROLE_KEY
+        )
+        
+        // Get admin name
+        const {data: adminData} = await supabaseAdmin
+          .from('users')
+          .select('name')
+          .eq('id', userContext.userId)
+          .single()
+        
+        await sendNotification({
+          title: 'New Staff Added',
+          message: `New staff added: ${body.name} (${body.role}) by ${adminData?.name || 'Admin'}.`,
+          type: 'staff',
+          targetRole: 'all',
+          businessId: userContext.businessId,
+          triggeredBy: userContext.userId,
+          relatedTable: 'users',
+          relatedRecordId: userProfile.id
+        })
+      } catch (notifError) {
+        console.error('Failed to send staff notification:', notifError)
+      }
 
       return handleCORS(NextResponse.json({
         user: userProfile,

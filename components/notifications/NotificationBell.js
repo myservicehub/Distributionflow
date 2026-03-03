@@ -72,7 +72,7 @@ export default function NotificationBell() {
           
           // Check if notification is for this user's role
           if (
-            newNotification.target_role === 'both' ||
+            newNotification.target_role === 'all' ||
             newNotification.target_role === userProfile.role
           ) {
             setNotifications(prev => [newNotification, ...prev.slice(0, 4)])

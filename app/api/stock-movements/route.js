@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { sendNotification } from '@/lib/notifications'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -220,6 +221,55 @@ export async function POST(request) {
       'stock_movement',
       movement.id
     )
+
+    // Send notification for large stock adjustments
+    try {
+      const {createClient: createAdminClient} = await import('@supabase/supabase-js')
+      const supabaseAdmin = createAdminClient(
+        supabaseUrl,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      )
+      
+      // Get user name
+      const {data: userData} = await supabaseAdmin
+        .from('users')
+        .select('name')
+        .eq('id', userContext.userId)
+        .single()
+      
+      // Notify for large stock deductions (>50 units) or any manual adjustments
+      const isLargeDeduction = movement_type === 'out' && qty >= 50
+      const isStockIn = movement_type === 'in' && qty >= 100
+      
+      if (isLargeDeduction || isStockIn) {
+        await sendNotification({
+          title: isLargeDeduction ? 'Large Stock Deduction' : 'Large Stock Addition',
+          message: `Stock ${movement_type === 'in' ? 'increased' : 'decreased'} by ${qty} units for ${product.name} by ${userData?.name || 'Unknown'}. New stock: ${newStock}`,
+          type: 'inventory',
+          targetRole: 'all',
+          businessId: userContext.businessId,
+          triggeredBy: userContext.userId,
+          relatedTable: 'stock_movements',
+          relatedRecordId: movement.id
+        })
+      }
+      
+      // Check for low stock
+      if (newStock < 10) {
+        await sendNotification({
+          title: 'Low Stock Alert',
+          message: `${product.name} is running low. Current stock: ${newStock} units.`,
+          type: 'inventory',
+          targetRole: 'all',
+          businessId: userContext.businessId,
+          triggeredBy: userContext.userId,
+          relatedTable: 'products',
+          relatedRecordId: product_id
+        })
+      }
+    } catch (notifError) {
+      console.error('Failed to send stock notification:', notifError)
+    }
 
     return NextResponse.json(movement)
   } catch (error) {
