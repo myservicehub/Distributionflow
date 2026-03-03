@@ -238,7 +238,7 @@ async function handleRoute(request, { params }) {
         .from('orders')
         .select('sales_rep_id, total_amount, users(name)')
         .eq('business_id', userContext.businessId)
-        .eq('status', 'confirmed')
+        .in('status', ['confirmed', 'delivered'])
 
       const repSales = {}
       salesByRep?.forEach(order => {
