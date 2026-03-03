@@ -22,7 +22,8 @@ export default function NotificationSettingsPage() {
       high_credit_threshold: 100000,
       large_stock_deduction: 50,
       large_stock_addition: 100,
-      enabled_types: ['payment', 'order', 'inventory', 'staff', 'credit']
+      enabled_types: ['payment', 'order', 'inventory', 'staff', 'credit'],
+      email_notifications_enabled: true
     }
   })
 
@@ -304,6 +305,23 @@ export default function NotificationSettingsPage() {
                   />
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Email Notifications */}
+          <div className="space-y-4 pt-4 border-t">
+            <h3 className="text-base font-medium">Email Notifications</h3>
+            <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex-1">
+                <p className="font-medium text-sm text-blue-900">Send Critical Alerts via Email</p>
+                <p className="text-xs text-blue-700 mt-1">
+                  Receive email notifications for critical alerts like order cancellations, large payments, and low stock warnings
+                </p>
+              </div>
+              <Switch
+                checked={settings.notifications.email_notifications_enabled ?? true}
+                onCheckedChange={(checked) => updateNotificationSetting('email_notifications_enabled', checked)}
+              />
             </div>
           </div>
 
