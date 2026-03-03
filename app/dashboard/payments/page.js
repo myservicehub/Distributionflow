@@ -49,9 +49,13 @@ export default function PaymentsPage() {
       const response = await fetch('/api/retailers')
       if (!response.ok) throw new Error('Failed to load retailers')
       const data = await response.json()
-      setRetailers(data.filter(r => parseFloat(r.current_balance) > 0))
+      // Show all retailers, not just those with balance > 0
+      // User might want to record a payment even if balance shows as 0
+      setRetailers(data)
+      console.log('Loaded retailers:', data.length)
     } catch (error) {
-      console.error(error)
+      console.error('Error loading retailers:', error)
+      toast.error('Failed to load retailers')
     }
   }
 
@@ -130,23 +134,33 @@ export default function PaymentsPage() {
                 <Label htmlFor="retailer_id">Retailer *</Label>
                 <Select
                   value={formData.retailer_id}
-                  onValueChange={(value) => setFormData({ ...formData, retailer_id: value })}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, retailer_id: value })
+                    const retailer = retailers.find(r => r.id === value)
+                    setSelectedRetailer(retailer)
+                  }}
                   required
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select retailer" />
                   </SelectTrigger>
                   <SelectContent>
-                    {retailers.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>
-                        {r.shop_name} (Balance: ₦{parseFloat(r.current_balance).toLocaleString()})
-                      </SelectItem>
-                    ))}
+                    {retailers.length === 0 ? (
+                      <div className="p-2 text-sm text-muted-foreground text-center">
+                        No retailers found
+                      </div>
+                    ) : (
+                      retailers.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.shop_name} - Balance: ₦{parseFloat(r.current_balance || 0).toLocaleString()}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
                 {selectedRetailer && (
                   <p className="text-sm text-gray-600 mt-2">
-                    Current Balance: <span className="font-semibold">₦{parseFloat(selectedRetailer.current_balance).toLocaleString()}</span>
+                    Current Balance: <span className="font-semibold">₦{parseFloat(selectedRetailer.current_balance || 0).toLocaleString()}</span>
                   </p>
                 )}
               </div>
