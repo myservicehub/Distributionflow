@@ -55,15 +55,21 @@ export default function DeliveryBoardPage() {
   const loadOrders = async () => {
     try {
       setLoading(true)
-      const { data, error } = await fetch('/api/orders').then(r => r.json())
+      const response = await fetch('/api/orders')
+      const data = await response.json()
       
-      if (error) throw new Error(error)
+      if (!response.ok) throw new Error(data.error || 'Failed to load orders')
+
+      console.log('📦 All orders loaded:', data?.length || 0)
+      console.log('Sample order:', data?.[0])
 
       // Filter confirmed orders only
-      const confirmedOrders = (data || []).filter(o => 
-        o.order_status === 'confirmed' && !o.is_legacy_order
-      )
+      const confirmedOrders = (data || []).filter(o => {
+        console.log(`Order ${o.id?.substring(0, 8)}: order_status=${o.order_status}, is_legacy=${o.is_legacy_order}`)
+        return o.order_status === 'confirmed' && !o.is_legacy_order
+      })
 
+      console.log('✅ Filtered confirmed orders:', confirmedOrders.length)
       setOrders(confirmedOrders)
     } catch (error) {
       console.error('Error loading orders:', error)

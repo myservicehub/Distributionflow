@@ -645,10 +645,25 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
-      // Build query with order items and products
+      // Build query with order items and products - explicitly select new workflow fields
       let query = supabase
         .from('orders')
-        .select('*, retailers(shop_name, owner_name), order_items(*, product:products(name, sku))')
+        .select(`
+          *,
+          order_status,
+          delivery_status,
+          is_legacy_order,
+          confirmed_by,
+          confirmed_at,
+          packed_at,
+          dispatched_at,
+          delivered_at,
+          delivery_reference,
+          driver_name,
+          vehicle_number,
+          retailers(shop_name, owner_name),
+          order_items(*, product:products(name, sku))
+        `)
         .eq('business_id', userContext.businessId)
         .order('created_at', { ascending: false })
 
@@ -689,9 +704,19 @@ async function handleRoute(request, { params }) {
               console.error('Error fetching sales rep for order', order.id, ':', repError)
             }
             
-            return { ...order, sales_rep: salesRep }
+            return { 
+              ...order, 
+              sales_rep: salesRep,
+              sales_rep_name: salesRep?.name || 'Unassigned',
+              retailer_name: order.retailers?.shop_name || 'Unknown'
+            }
           }
-          return { ...order, sales_rep: null }
+          return { 
+            ...order, 
+            sales_rep: null,
+            sales_rep_name: 'Unassigned',
+            retailer_name: order.retailers?.shop_name || 'Unknown'
+          }
         })
       )
       
