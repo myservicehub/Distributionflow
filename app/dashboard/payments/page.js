@@ -16,6 +16,7 @@ import { Plus } from 'lucide-react'
 export default function PaymentsPage() {
   const [payments, setPayments] = useState([])
   const [retailers, setRetailers] = useState([])
+  const [selectedRetailer, setSelectedRetailer] = useState(null)
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [formData, setFormData] = useState({
@@ -93,9 +94,8 @@ export default function PaymentsPage() {
       payment_method: 'cash',
       notes: ''
     })
+    setSelectedRetailer(null)
   }
-
-  const selectedRetailer = retailers.find(r => r.id === formData.retailer_id)
 
   if (loading) {
     return (
