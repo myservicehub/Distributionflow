@@ -964,7 +964,7 @@ async function handleRoute(request, { params }) {
         
         shouldReserveStock = true
         notificationTitle = 'Order Approved'
-        notificationMessage = `Order #${orderId.substring(0, 8)} has been approved and is now being prepared for delivery.`
+        notificationMessage = `Order #${orderId.substring(0, 8)} for {RETAILER_NAME} has been approved and is now being prepared for delivery.`
       }
 
       // ACTION 2: REJECT ORDER (Manager/Admin)
@@ -982,7 +982,7 @@ async function handleRoute(request, { params }) {
         }
         
         notificationTitle = 'Order Rejected'
-        notificationMessage = `Order #${orderId.substring(0, 8)} has been rejected. Reason: ${body.reason || 'Not specified'}.`
+        notificationMessage = `Order #${orderId.substring(0, 8)} for {RETAILER_NAME} has been rejected. Reason: ${body.reason || 'Not specified'}.`
       }
 
       // ACTION 3: MARK AS PACKED (Warehouse)
@@ -1005,7 +1005,7 @@ async function handleRoute(request, { params }) {
         }
         
         notificationTitle = 'Order Packed'
-        notificationMessage = `Order #${orderId.substring(0, 8)} has been packed and is ready for dispatch.`
+        notificationMessage = `Order #${orderId.substring(0, 8)} for {RETAILER_NAME} has been packed and is ready for dispatch.`
       }
 
       // ACTION 4: MARK AS OUT FOR DELIVERY (Warehouse)
@@ -1031,7 +1031,7 @@ async function handleRoute(request, { params }) {
         }
         
         notificationTitle = 'Order Dispatched'
-        notificationMessage = `Order #${orderId.substring(0, 8)} is out for delivery. Driver: ${body.driver_name || 'N/A'}, Vehicle: ${body.vehicle_number || 'N/A'}.`
+        notificationMessage = `Order #${orderId.substring(0, 8)} for {RETAILER_NAME} is out for delivery. Driver: ${body.driver_name || 'N/A'}, Vehicle: ${body.vehicle_number || 'N/A'}.`
       }
 
       // ACTION 5: MARK AS DELIVERED (Warehouse/Manager)
@@ -1072,7 +1072,7 @@ async function handleRoute(request, { params }) {
         }
         
         notificationTitle = 'Order Delivered'
-        notificationMessage = `Order #${orderId.substring(0, 8)} has been successfully delivered.`
+        notificationMessage = `Order #${orderId.substring(0, 8)} for {RETAILER_NAME} has been successfully delivered.`
       }
 
       // ACTION 6: MARK AS FAILED DELIVERY (Warehouse/Manager)
@@ -1091,7 +1091,7 @@ async function handleRoute(request, { params }) {
         
         shouldReleaseStock = true
         notificationTitle = 'Delivery Failed'
-        notificationMessage = `Delivery failed for Order #${orderId.substring(0, 8)}. Stock has been returned. Reason: ${body.reason || 'Not specified'}.`
+        notificationMessage = `Delivery failed for Order #${orderId.substring(0, 8)} for {RETAILER_NAME}. Stock has been returned. Reason: ${body.reason || 'Not specified'}.`
       }
 
       // ACTION 7: LEGACY - Simple status update (for backward compatibility)
@@ -1198,8 +1198,8 @@ async function handleRoute(request, { params }) {
             .single()
           
           const finalMessage = notificationMessage.replace(
-            'Order #' + orderId.substring(0, 8),
-            `Order #${orderId.substring(0, 8)} for ${retailer?.shop_name || 'Unknown'}`
+            '{RETAILER_NAME}',
+            retailer?.shop_name || 'Unknown'
           )
           
           // Send in-app notification
