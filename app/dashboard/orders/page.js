@@ -459,7 +459,14 @@ export default function OrdersPage() {
                                   {order.order_items.map((item, idx) => (
                                     <TableRow key={idx}>
                                       <TableCell className="font-medium">
-                                        {item.product?.name || 'Unknown Product'}
+                                        <div className="flex flex-col">
+                                          <span>{item.product?.name || 'Unknown Product'}</span>
+                                          {item.product?.sku && (
+                                            <span className="text-xs text-muted-foreground">
+                                              SKU: {item.product.sku}
+                                            </span>
+                                          )}
+                                        </div>
                                       </TableCell>
                                       <TableCell>{item.product?.sku || '-'}</TableCell>
                                       <TableCell className="text-right">{item.quantity}</TableCell>
