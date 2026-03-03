@@ -1149,6 +1149,15 @@ async function handleRoute(request, { params }) {
           process.env.SUPABASE_SERVICE_ROLE_KEY
         )
         
+        // Get business settings for payment threshold
+        const {data: businessSettings} = await supabaseAdmin
+          .from('business_settings')
+          .select('settings')
+          .eq('business_id', userContext.businessId)
+          .maybeSingle()
+        
+        const paymentThreshold = businessSettings?.settings?.notifications?.payment_threshold || 50000
+        
         // Get retailer name
         const {data: retailerData} = await supabaseAdmin
           .from('retailers')
@@ -1163,8 +1172,8 @@ async function handleRoute(request, { params }) {
           .eq('id', userContext.userId)
           .single()
         
-        // Check if it's a large payment (>50000)
-        const isLargePayment = parseFloat(body.amount_paid) >= 50000
+        // Check if it's a large payment based on configured threshold
+        const isLargePayment = parseFloat(body.amount_paid) >= paymentThreshold
         
         if (isLargePayment) {
           await sendNotification({

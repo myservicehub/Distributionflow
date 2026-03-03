@@ -230,6 +230,19 @@ export async function POST(request) {
         process.env.SUPABASE_SERVICE_ROLE_KEY
       )
       
+      // Get business settings for thresholds
+      const {data: businessSettings} = await supabaseAdmin
+        .from('business_settings')
+        .select('settings')
+        .eq('business_id', userContext.businessId)
+        .maybeSingle()
+      
+      const thresholds = businessSettings?.settings?.notifications || {
+        large_stock_deduction: 50,
+        large_stock_addition: 100,
+        low_stock_threshold: 10
+      }
+      
       // Get user name
       const {data: userData} = await supabaseAdmin
         .from('users')
@@ -237,9 +250,9 @@ export async function POST(request) {
         .eq('id', userContext.userId)
         .single()
       
-      // Notify for large stock deductions (>50 units) or any manual adjustments
-      const isLargeDeduction = movement_type === 'out' && qty >= 50
-      const isStockIn = movement_type === 'in' && qty >= 100
+      // Notify for large stock deductions or additions based on configured thresholds
+      const isLargeDeduction = movement_type === 'out' && qty >= thresholds.large_stock_deduction
+      const isStockIn = movement_type === 'in' && qty >= thresholds.large_stock_addition
       
       if (isLargeDeduction || isStockIn) {
         await sendNotification({
@@ -254,11 +267,11 @@ export async function POST(request) {
         })
       }
       
-      // Check for low stock
-      if (newStock < 10) {
+      // Check for low stock based on configured threshold
+      if (newStock < thresholds.low_stock_threshold) {
         await sendNotification({
           title: 'Low Stock Alert',
-          message: `${product.name} is running low. Current stock: ${newStock} units.`,
+          message: `${product.name} is running low. Current stock: ${newStock} units (Threshold: ${thresholds.low_stock_threshold}).`,
           type: 'inventory',
           targetRole: 'all',
           businessId: userContext.businessId,

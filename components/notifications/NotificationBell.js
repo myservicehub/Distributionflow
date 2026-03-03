@@ -192,7 +192,12 @@ export default function NotificationBell() {
   return (
     <>
       {/* Hidden audio element for notification sound */}
-      <audio ref={audioRef} src="/notification-sound.mp3" preload="auto" />
+      <audio 
+        ref={audioRef} 
+        preload="auto"
+      >
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuFzvLZiTcIGWi77eefTRAMUKfj8LZjHAY4ktbx0IwzCBhi2PPaqnIqAw=="/>
+      </audio>
       
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
