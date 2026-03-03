@@ -1058,7 +1058,7 @@ async function handleRoute(request, { params }) {
           amount_paid: body.amount_paid,
           payment_method: body.payment_method,
           notes: body.notes,
-          recorded_by: userContext.userId
+          created_by: userContext.userId  // Changed from recorded_by to created_by
         })
         .select()
         .single()
