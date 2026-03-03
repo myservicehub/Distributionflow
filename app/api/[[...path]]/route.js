@@ -5,6 +5,7 @@ import { logAudit, AUDIT_ACTIONS, RESOURCE_TYPES } from '@/lib/audit-logger'
 import { sendStaffInvitation } from '@/lib/email'
 import { can } from '@/lib/permissions'
 import { sendNotification } from '@/lib/notifications'
+import { sendDeliverySMS, formatNigerianPhone } from '@/lib/sms-notifications'
 
 // Initialize Supabase client (server-side with service role for admin operations)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -1157,10 +1158,10 @@ async function handleRoute(request, { params }) {
             process.env.SUPABASE_SERVICE_ROLE_KEY
           )
           
-          // Get retailer name
+          // Get retailer details (name and phone)
           const {data: retailer} = await supabaseAdmin
             .from('retailers')
-            .select('shop_name')
+            .select('shop_name, phone_number')
             .eq('id', order.retailer_id)
             .single()
           
@@ -1176,6 +1177,7 @@ async function handleRoute(request, { params }) {
             `Order #${orderId.substring(0, 8)} for ${retailer?.shop_name || 'Unknown'}`
           )
           
+          // Send in-app notification
           await sendNotification({
             title: notificationTitle,
             message: finalMessage,
@@ -1186,6 +1188,21 @@ async function handleRoute(request, { params }) {
             relatedTable: 'orders',
             relatedRecordId: orderId
           })
+
+          // Send SMS notification for key delivery events
+          if (retailer?.phone_number && ['out_for_delivery', 'delivered', 'failed'].includes(body.action)) {
+            const formattedPhone = formatNigerianPhone(retailer.phone_number)
+            if (formattedPhone) {
+              await sendDeliverySMS({
+                to: formattedPhone,
+                orderReference: orderId,
+                status: body.action === 'dispatch' ? 'out_for_delivery' : body.action,
+                retailerName: retailer.shop_name,
+                driverName: body.driver_name,
+                vehicleNumber: body.vehicle_number
+              })
+            }
+          }
         } catch (notifError) {
           console.error('Failed to send notification:', notifError)
         }
