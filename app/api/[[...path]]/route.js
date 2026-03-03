@@ -1743,7 +1743,7 @@ async function handleRoute(request, { params }) {
         .from('orders')
         .select('id, sales_rep_id, total_amount, status, created_at, order_items(quantity, unit_price, total_price, product_id, products(name, sku))')
         .eq('business_id', userContext.businessId)
-        .eq('status', 'confirmed')
+        .in('status', ['confirmed', 'delivered'])
         .order('created_at', { ascending: false })
 
       if (error) throw error
