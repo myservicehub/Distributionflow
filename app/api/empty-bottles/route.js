@@ -573,7 +573,7 @@ export async function POST(request) {
       // Increase or create retailer balance
       const { data: existingBalance } = await adminSupabase
         .from('retailer_empty_balances')
-        .select('quantity_owed')
+        .select('quantity_outstanding')
         .eq('business_id', userProfile.business_id)
         .eq('retailer_id', retailer_id)
         .eq('empty_item_id', empty_item_id)
@@ -584,7 +584,7 @@ export async function POST(request) {
         const { error: balanceError } = await adminSupabase
           .from('retailer_empty_balances')
           .update({ 
-            quantity_owed: existingBalance.quantity_owed + quantity,
+            quantity_outstanding: existingBalance.quantity_outstanding + quantity,
             updated_at: new Date().toISOString()
           })
           .eq('business_id', userProfile.business_id)
@@ -603,7 +603,7 @@ export async function POST(request) {
             business_id: userProfile.business_id,
             retailer_id,
             empty_item_id,
-            quantity_owed: quantity
+            quantity_outstanding: quantity
           })
 
         if (balanceError) {

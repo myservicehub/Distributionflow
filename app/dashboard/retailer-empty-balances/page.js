@@ -69,7 +69,7 @@ export default function RetailerEmptyBalancesPage() {
       }
       const data = await response.json()
       // Only show balances with quantity > 0
-      const activeBalances = data.filter(b => b.quantity_owed > 0)
+      const activeBalances = data.filter(b => b.quantity_outstanding > 0)
       setBalances(activeBalances)
       setFilteredBalances(activeBalances)
     } catch (error) {
@@ -93,8 +93,8 @@ export default function RetailerEmptyBalancesPage() {
       return
     }
 
-    if (parseInt(returnQuantity) > selectedBalance.quantity_owed) {
-      toast.error(`Cannot return more than ${selectedBalance.quantity_owed} units`)
+    if (parseInt(returnQuantity) > selectedBalance.quantity_outstanding) {
+      toast.error(`Cannot return more than ${selectedBalance.quantity_outstanding} units`)
       return
     }
 
@@ -136,9 +136,9 @@ export default function RetailerEmptyBalancesPage() {
 
   // Calculate summary metrics
   const totalRetailers = new Set(filteredBalances.map(b => b.retailer_id)).size
-  const totalQuantity = filteredBalances.reduce((sum, b) => sum + b.quantity_owed, 0)
+  const totalQuantity = filteredBalances.reduce((sum, b) => sum + b.quantity_outstanding, 0)
   const totalDepositValue = filteredBalances.reduce((sum, b) => 
-    sum + (b.quantity_owed * parseFloat(b.empty_items?.deposit_value || 0)), 0
+    sum + (b.quantity_outstanding * parseFloat(b.empty_items?.deposit_value || 0)), 0
   )
 
   if (loading) {
@@ -275,7 +275,7 @@ export default function RetailerEmptyBalancesPage() {
               </TableHeader>
               <TableBody>
                 {filteredBalances.map((balance) => {
-                  const totalValue = balance.quantity_owed * parseFloat(balance.empty_items?.deposit_value || 0)
+                  const totalValue = balance.quantity_outstanding * parseFloat(balance.empty_items?.deposit_value || 0)
                   return (
                     <TableRow key={`${balance.retailer_id}-${balance.empty_item_id}`}>
                       <TableCell className="font-medium">
@@ -288,8 +288,8 @@ export default function RetailerEmptyBalancesPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Badge variant={balance.quantity_owed > 50 ? 'destructive' : 'secondary'}>
-                          {balance.quantity_owed}
+                        <Badge variant={balance.quantity_outstanding > 50 ? 'destructive' : 'secondary'}>
+                          {balance.quantity_outstanding}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -348,7 +348,7 @@ export default function RetailerEmptyBalancesPage() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Currently Owed:</span>
-                  <span className="font-medium">{selectedBalance.quantity_owed} units</span>
+                  <span className="font-medium">{selectedBalance.quantity_outstanding} units</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Deposit Value:</span>
@@ -392,7 +392,7 @@ export default function RetailerEmptyBalancesPage() {
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    New balance after return: {selectedBalance.quantity_owed - parseInt(returnQuantity)} units
+                    New balance after return: {selectedBalance.quantity_outstanding - parseInt(returnQuantity)} units
                   </p>
                 </div>
               )}
