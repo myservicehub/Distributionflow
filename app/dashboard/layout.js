@@ -22,7 +22,8 @@ import {
   Truck,
   Activity,
   Bell,
-  Send
+  Send,
+  Link2
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -43,7 +44,8 @@ const ICON_MAP = {
   Truck,
   Activity,
   Bell,
-  Send
+  Send,
+  Link2
 }
 
 export default function DashboardLayout({ children }) {
