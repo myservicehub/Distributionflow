@@ -1341,25 +1341,37 @@ async function handleRoute(request, { params }) {
       if (paymentError) throw paymentError
 
       // Update retailer balance
-      const { data: retailer } = await supabase
+      const { data: retailer, error: retailerFetchError } = await supabase
         .from('retailers')
         .select('current_balance, credit_limit')
         .eq('id', body.retailer_id)
         .single()
 
+      if (retailerFetchError) {
+        console.error('Error fetching retailer:', retailerFetchError)
+        throw new Error('Failed to fetch retailer data')
+      }
+
       const newBalance = parseFloat(retailer.current_balance) - parseFloat(body.amount_paid)
       const finalBalance = Math.max(0, newBalance) // Don't allow negative balance
+
+      console.log(`Payment processing: Retailer ${body.retailer_id}, Old balance: ${retailer.current_balance}, Payment: ${body.amount_paid}, New balance: ${finalBalance}`)
 
       // Update status based on new balance
       const newStatus = finalBalance <= parseFloat(retailer.credit_limit) ? 'active' : 'blocked'
 
-      await supabase
+      const { error: updateError } = await supabase
         .from('retailers')
         .update({ 
           current_balance: finalBalance,
           status: newStatus
         })
         .eq('id', body.retailer_id)
+
+      if (updateError) {
+        console.error('Error updating retailer balance:', updateError)
+        throw new Error('Failed to update retailer balance: ' + updateError.message)
+      }
 
       // Send notification for large payments
       try {
