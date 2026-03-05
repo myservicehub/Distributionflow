@@ -83,7 +83,15 @@ export async function GET(request) {
     }
 
     // ============================================
-    // GET: Available Plans
+    // GET: Available Plans (for billing dashboard)
+    // ============================================
+    if (route === 'get-plans') {
+      const plans = await getAvailablePlans()
+      return handleCORS(NextResponse.json({ success: true, data: plans }))
+    }
+
+    // ============================================
+    // GET: Available Plans (legacy)
     // ============================================
     if (route === 'plans') {
       const plans = await getAvailablePlans()
@@ -91,7 +99,25 @@ export async function GET(request) {
     }
 
     // ============================================
-    // GET: Current Subscription Details
+    // GET: Billing Details (comprehensive)
+    // ============================================
+    if (route === 'get-billing-details') {
+      const details = await getSubscriptionDetails(userProfile.business_id)
+      const billing = await calculateSubscriptionAmount(userProfile.business_id)
+      
+      return handleCORS(NextResponse.json({
+        success: true,
+        data: {
+          ...details,
+          active_users: billing?.active_users || 0,
+          total_amount: billing?.total_amount || 0,
+          extra_users: billing?.extra_users || 0
+        }
+      }))
+    }
+
+    // ============================================
+    // GET: Current Subscription Details (legacy)
     // ============================================
     if (route === 'subscription') {
       const details = await getSubscriptionDetails(userProfile.business_id)
@@ -116,7 +142,16 @@ export async function GET(request) {
     }
 
     // ============================================
-    // GET: Invoices
+    // GET: Invoices (for billing dashboard)
+    // ============================================
+    if (route === 'get-invoices') {
+      const limit = parseInt(searchParams.get('limit') || '10')
+      const invoices = await getInvoices(userProfile.business_id, limit)
+      return handleCORS(NextResponse.json({ success: true, data: invoices }))
+    }
+
+    // ============================================
+    // GET: Invoices (legacy)
     // ============================================
     if (route === 'invoices') {
       const limit = parseInt(searchParams.get('limit') || '10')
