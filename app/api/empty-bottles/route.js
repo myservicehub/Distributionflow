@@ -362,11 +362,6 @@ export async function POST(request) {
     // Use service client for queries (bypasses RLS)
     const { createClient: createAdminClient } = await import('@supabase/supabase-js')
     const adminSupabase = createAdminClient(supabaseUrl, supabaseServiceKey)
-  
-  const body = await request.json()
-  const route = body.route
-
-  try {
 
     // ============================================
     // POST: Create Empty Item
