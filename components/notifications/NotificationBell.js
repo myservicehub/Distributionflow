@@ -25,8 +25,8 @@ export default function NotificationBell() {
   const audioRef = useRef(null)
   const supabase = createClient()
 
-  // Only show for admin and manager
-  if (!userProfile || !['admin', 'manager'].includes(userProfile.role)) {
+  // Show for admin, manager, and warehouse users
+  if (!userProfile || !['admin', 'manager', 'warehouse'].includes(userProfile.role)) {
     return null
   }
 
@@ -37,12 +37,19 @@ export default function NotificationBell() {
 
   const loadNotifications = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('notifications')
         .select('*')
         .eq('business_id', userProfile.business_id)
+      
+      // For warehouse users, only fetch notifications targeted to them
+      if (userProfile.role === 'warehouse') {
+        query = query.contains('target_roles', ['warehouse'])
+      }
+      
+      const { data, error } = await query
         .order('created_at', { ascending: false })
-        .limit(5)
+        .limit(50)
 
       if (error) throw error
 
@@ -71,11 +78,12 @@ export default function NotificationBell() {
           const newNotification = payload.new
           
           // Check if notification is for this user's role
-          if (
-            newNotification.target_role === 'all' ||
-            newNotification.target_role === userProfile.role
-          ) {
-            setNotifications(prev => [newNotification, ...prev.slice(0, 4)])
+          const isForThisRole = newNotification.target_roles && 
+            (newNotification.target_roles.includes(userProfile.role) ||
+             (userProfile.role === 'admin' || userProfile.role === 'manager'))
+          
+          if (isForThisRole) {
+            setNotifications(prev => [newNotification, ...prev.slice(0, 49)])
             setUnreadCount(prev => prev + 1)
             
             // Play sound

@@ -927,6 +927,8 @@ async function handleRoute(request, { params }) {
       let shouldReleaseStock = false
       let notificationTitle = ''
       let notificationMessage = ''
+      let notificationCategory = 'general'
+      let notificationTargetRoles = ['admin', 'manager'] // Default: admin and manager
 
       // ========================================
       // WORKFLOW ACTIONS
@@ -964,8 +966,10 @@ async function handleRoute(request, { params }) {
         }
         
         shouldReserveStock = true
-        notificationTitle = 'Order Approved'
-        notificationMessage = `Order #${orderId.substring(0, 8)} for {RETAILER_NAME} has been approved and is now being prepared for delivery.`
+        notificationTitle = 'Order Ready for Dispatch'
+        notificationMessage = `Order #${orderId.substring(0, 8)} for {RETAILER_NAME} is ready for delivery.`
+        notificationCategory = 'dispatch'
+        notificationTargetRoles = ['warehouse'] // Only warehouse users
       }
 
       // ACTION 2: REJECT ORDER (Manager/Admin)
@@ -1208,12 +1212,13 @@ async function handleRoute(request, { params }) {
             retailer?.shop_name || 'Unknown'
           )
           
-          // Send in-app notification
+          // Send in-app notification with role-specific targeting
           await sendNotification({
             title: notificationTitle,
             message: finalMessage,
-            type: 'order',
-            targetRole: 'all',
+            type: 'info',
+            category: notificationCategory,
+            targetRoles: notificationTargetRoles,
             businessId: userContext.businessId,
             triggeredBy: userContext.userId,
             relatedTable: 'orders',
