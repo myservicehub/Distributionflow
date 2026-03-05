@@ -30,7 +30,7 @@ export default function EmptyItemsPage() {
   const [emptyItems, setEmptyItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [showDialog, setShowDialog] = useState(false)
-  const [formData, setFormData] = useState({ name: '', deposit_value: '' })
+  const [formData, setFormData] = useState({ name: '', deposit_value: '', initial_quantity: '0' })
 
   useEffect(() => {
     loadEmptyItems()
@@ -52,7 +52,7 @@ export default function EmptyItemsPage() {
 
   const handleCreate = async () => {
     if (!formData.name || !formData.deposit_value) {
-      toast.error('Please fill all fields')
+      toast.error('Please fill all required fields')
       return
     }
 
@@ -63,15 +63,24 @@ export default function EmptyItemsPage() {
         body: JSON.stringify({
           route: 'create-empty-item',
           name: formData.name,
-          deposit_value: parseFloat(formData.deposit_value)
+          deposit_value: parseFloat(formData.deposit_value),
+          initial_quantity: parseInt(formData.initial_quantity) || 0
         })
       })
 
       if (!response.ok) throw new Error('Failed to create empty item')
 
-      toast.success('Empty item created successfully')
+      const data = await response.json()
+      
+      // Show success message with quantity info
+      if (parseInt(formData.initial_quantity) > 0) {
+        toast.success(`Empty item created with ${formData.initial_quantity} units in warehouse`)
+      } else {
+        toast.success('Empty item created successfully')
+      }
+      
       setShowDialog(false)
-      setFormData({ name: '', deposit_value: '' })
+      setFormData({ name: '', deposit_value: '', initial_quantity: '0' })
       loadEmptyItems()
     } catch (error) {
       toast.error(error.message)
@@ -162,7 +171,7 @@ export default function EmptyItemsPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Item Name</Label>
+              <Label htmlFor="name">Item Name *</Label>
               <Input
                 id="name"
                 placeholder="e.g., Empty Crate, Empty Bottle"
@@ -171,7 +180,7 @@ export default function EmptyItemsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="deposit">Deposit Value (₦)</Label>
+              <Label htmlFor="deposit">Deposit Value (₦) *</Label>
               <Input
                 id="deposit"
                 type="number"
@@ -179,6 +188,19 @@ export default function EmptyItemsPage() {
                 value={formData.deposit_value}
                 onChange={(e) => setFormData({ ...formData, deposit_value: e.target.value })}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="initial_quantity">Initial Quantity (Optional)</Label>
+              <Input
+                id="initial_quantity"
+                type="number"
+                placeholder="0"
+                value={formData.initial_quantity}
+                onChange={(e) => setFormData({ ...formData, initial_quantity: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Add initial stock to warehouse. Leave as 0 to add stock later via Manufacturer Supply.
+              </p>
             </div>
           </div>
           <DialogFooter>

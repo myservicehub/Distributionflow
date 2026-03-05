@@ -377,26 +377,46 @@ export async function POST(request) {
         return handleCORS(NextResponse.json({ error: 'Forbidden' }, { status: 403 }))
       }
 
+      const { name, deposit_value, initial_quantity } = body
+      const initialQty = parseInt(initial_quantity) || 0
+
       const { data, error } = await adminSupabase
         .from('empty_items')
         .insert({
           business_id: userProfile.business_id,
-          name: body.name,
-          deposit_value: body.deposit_value
+          name: name,
+          deposit_value: deposit_value
         })
         .select()
         .single()
 
       if (error) throw error
 
-      // Initialize warehouse inventory for this item
-      await adminSupabase
+      // Initialize warehouse inventory for this item with initial quantity
+      const { error: inventoryError } = await adminSupabase
         .from('warehouse_empty_inventory')
         .insert({
           business_id: userProfile.business_id,
           empty_item_id: data.id,
-          quantity_available: 0
+          quantity_available: initialQty
         })
+
+      if (inventoryError) throw inventoryError
+
+      // If initial quantity > 0, log it as a manufacturer supply movement
+      if (initialQty > 0) {
+        await adminSupabase
+          .from('empty_movements')
+          .insert({
+            business_id: userProfile.business_id,
+            empty_item_id: data.id,
+            type: 'manufacturer_in',
+            quantity: initialQty,
+            reference_type: 'initial_stock',
+            notes: 'Initial stock when creating empty item',
+            created_by: userProfile.id
+          })
+      }
 
       return handleCORS(NextResponse.json(data))
     }
