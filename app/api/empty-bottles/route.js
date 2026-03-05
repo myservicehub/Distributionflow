@@ -518,6 +518,125 @@ export async function POST(request) {
     // ============================================
     // POST: Process Empty Return from Retailer
     // ============================================
+
+    // ============================================
+    // POST: Issue Empties to Retailer
+    // ============================================
+    if (route === 'issue-to-retailer') {
+      if (!['admin', 'manager', 'warehouse'].includes(userProfile.role)) {
+        return handleCORS(NextResponse.json({ error: 'Forbidden' }, { status: 403 }))
+      }
+
+      const { retailer_id, empty_item_id, quantity, notes } = body
+
+      if (!retailer_id || !empty_item_id || !quantity) {
+        return handleCORS(NextResponse.json({ 
+          error: 'Missing required fields: retailer_id, empty_item_id, quantity' 
+        }, { status: 400 }))
+      }
+
+      // Check warehouse inventory
+      const { data: warehouse, error: warehouseError } = await adminSupabase
+        .from('warehouse_empty_inventory')
+        .select('quantity_available')
+        .eq('business_id', userProfile.business_id)
+        .eq('empty_item_id', empty_item_id)
+        .single()
+
+      if (warehouseError || !warehouse) {
+        return handleCORS(NextResponse.json({ 
+          error: 'Empty item not found in warehouse inventory' 
+        }, { status: 404 }))
+      }
+
+      if (warehouse.quantity_available < quantity) {
+        return handleCORS(NextResponse.json({ 
+          error: `Insufficient warehouse inventory. Available: ${warehouse.quantity_available}, Requested: ${quantity}` 
+        }, { status: 400 }))
+      }
+
+      // Decrease warehouse inventory
+      const { error: updateWarehouseError } = await adminSupabase
+        .from('warehouse_empty_inventory')
+        .update({ 
+          quantity_available: warehouse.quantity_available - quantity,
+          updated_at: new Date().toISOString()
+        })
+        .eq('business_id', userProfile.business_id)
+        .eq('empty_item_id', empty_item_id)
+
+      if (updateWarehouseError) {
+        console.error('Error updating warehouse inventory:', updateWarehouseError)
+        throw updateWarehouseError
+      }
+
+      // Increase or create retailer balance
+      const { data: existingBalance } = await adminSupabase
+        .from('retailer_empty_balances')
+        .select('quantity_owed')
+        .eq('business_id', userProfile.business_id)
+        .eq('retailer_id', retailer_id)
+        .eq('empty_item_id', empty_item_id)
+        .maybeSingle()
+
+      if (existingBalance) {
+        // Update existing balance
+        const { error: balanceError } = await adminSupabase
+          .from('retailer_empty_balances')
+          .update({ 
+            quantity_owed: existingBalance.quantity_owed + quantity,
+            updated_at: new Date().toISOString()
+          })
+          .eq('business_id', userProfile.business_id)
+          .eq('retailer_id', retailer_id)
+          .eq('empty_item_id', empty_item_id)
+
+        if (balanceError) {
+          console.error('Error updating retailer balance:', balanceError)
+          throw balanceError
+        }
+      } else {
+        // Create new balance record
+        const { error: balanceError } = await adminSupabase
+          .from('retailer_empty_balances')
+          .insert({
+            business_id: userProfile.business_id,
+            retailer_id,
+            empty_item_id,
+            quantity_owed: quantity
+          })
+
+        if (balanceError) {
+          console.error('Error creating retailer balance:', balanceError)
+          throw balanceError
+        }
+      }
+
+      // Log movement
+      const { data: movement } = await adminSupabase
+        .from('empty_movements')
+        .insert({
+          business_id: userProfile.business_id,
+          empty_item_id,
+          retailer_id,
+          type: 'issued_to_retailer',
+          quantity,
+          reference_type: 'issue',
+          notes: notes || `Issued to retailer`,
+          created_by: userProfile.id
+        })
+        .select()
+        .single()
+
+      console.log(`✅ Issued ${quantity} empties to retailer ${retailer_id}`)
+
+      return handleCORS(NextResponse.json({ 
+        success: true, 
+        movement,
+        message: `Successfully issued ${quantity} empties to retailer` 
+      }))
+    }
+
     if (route === 'process-empty-return') {
       const { retailer_id, empty_item_id, quantity, order_id, notes } = body
 

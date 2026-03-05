@@ -21,7 +21,8 @@ import {
   BarChart3,
   Truck,
   Activity,
-  Bell
+  Bell,
+  Send
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -41,7 +42,8 @@ const ICON_MAP = {
   Settings,
   Truck,
   Activity,
-  Bell
+  Bell,
+  Send
 }
 
 export default function DashboardLayout({ children }) {
