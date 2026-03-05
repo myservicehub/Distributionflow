@@ -1,9 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Truck, Plus } from 'lucide-react'
+import { Truck, Plus, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -28,13 +36,25 @@ import { useAuth } from '@/lib/auth-context'
 export default function ManufacturerSupplyPage() {
   const { userProfile } = useAuth()
   const [emptyItems, setEmptyItems] = useState([])
+  const [warehouseInventory, setWarehouseInventory] = useState([])
+  const [recentMovements, setRecentMovements] = useState([])
   const [showDialog, setShowDialog] = useState(false)
   const [formData, setFormData] = useState({ empty_item_id: '', quantity: '', notes: '' })
   const [loading, setLoading] = useState(false)
+  const [dataLoading, setDataLoading] = useState(true)
 
   useEffect(() => {
-    loadEmptyItems()
+    loadData()
   }, [])
+
+  const loadData = async () => {
+    await Promise.all([
+      loadEmptyItems(),
+      loadWarehouseInventory(),
+      loadRecentMovements()
+    ])
+    setDataLoading(false)
+  }
 
   const loadEmptyItems = async () => {
     try {
@@ -47,6 +67,33 @@ export default function ManufacturerSupplyPage() {
     } catch (error) {
       toast.error('Failed to load empty items')
       console.error(error)
+    }
+  }
+
+  const loadWarehouseInventory = async () => {
+    try {
+      const response = await fetch('/api/empty-bottles?route=warehouse-empty-inventory', {
+        cache: 'no-store'
+      })
+      if (!response.ok) throw new Error('Failed to load warehouse inventory')
+      const data = await response.json()
+      setWarehouseInventory(data)
+    } catch (error) {
+      console.error('Failed to load warehouse inventory:', error)
+    }
+  }
+
+  const loadRecentMovements = async () => {
+    try {
+      const response = await fetch('/api/empty-bottles?route=empty-movements&limit=10', {
+        cache: 'no-store'
+      })
+      if (!response.ok) throw new Error('Failed to load movements')
+      const data = await response.json()
+      // Filter for manufacturer_in movements only
+      setRecentMovements(data.filter(m => m.type === 'manufacturer_in').slice(0, 10))
+    } catch (error) {
+      console.error('Failed to load movements:', error)
     }
   }
 
@@ -77,11 +124,21 @@ export default function ManufacturerSupplyPage() {
       toast.success('Manufacturer supply recorded successfully')
       setShowDialog(false)
       setFormData({ empty_item_id: '', quantity: '', notes: '' })
+      // Refresh data after successful submission
+      loadData()
     } catch (error) {
       toast.error(error.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  const formatCurrency = (amount) => {
+    return `₦${parseFloat(amount || 0).toLocaleString()}`
+  }
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleString()
   }
 
   if (!['admin', 'manager', 'warehouse'].includes(userProfile?.role)) {
@@ -157,6 +214,103 @@ export default function ManufacturerSupplyPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Warehouse Inventory Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Current Warehouse Stock
+          </CardTitle>
+          <CardDescription>Available empty items in your warehouse</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {dataLoading ? (
+            <div className="text-center py-8 text-muted-foreground">Loading inventory...</div>
+          ) : warehouseInventory.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No inventory yet. Record your first manufacturer supply.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Empty Item</TableHead>
+                  <TableHead>Deposit Value</TableHead>
+                  <TableHead className="text-right">Quantity Available</TableHead>
+                  <TableHead className="text-right">Total Value</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {warehouseInventory.map((inv) => (
+                  <TableRow key={inv.id}>
+                    <TableCell className="font-medium">{inv.empty_items?.name || 'Unknown'}</TableCell>
+                    <TableCell>{formatCurrency(inv.empty_items?.deposit_value)}</TableCell>
+                    <TableCell className="text-right font-semibold">{inv.quantity_available}</TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency((inv.empty_items?.deposit_value || 0) * inv.quantity_available)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="font-bold bg-muted/50">
+                  <TableCell colSpan={3}>Total Warehouse Value</TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(
+                      warehouseInventory.reduce(
+                        (sum, inv) => sum + ((inv.empty_items?.deposit_value || 0) * inv.quantity_available),
+                        0
+                      )
+                    )}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent Supply History Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Truck className="h-5 w-5" />
+            Recent Manufacturer Supplies
+          </CardTitle>
+          <CardDescription>Last 10 supplies received from manufacturer</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {dataLoading ? (
+            <div className="text-center py-8 text-muted-foreground">Loading history...</div>
+          ) : recentMovements.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Truck className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No supply records yet. Click "Record Supply" to add your first entry.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date & Time</TableHead>
+                  <TableHead>Empty Item</TableHead>
+                  <TableHead className="text-right">Quantity</TableHead>
+                  <TableHead>Notes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentMovements.map((movement) => (
+                  <TableRow key={movement.id}>
+                    <TableCell>{formatDate(movement.created_at)}</TableCell>
+                    <TableCell className="font-medium">{movement.empty_items?.name || 'Unknown'}</TableCell>
+                    <TableCell className="text-right font-semibold text-green-600">+{movement.quantity}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{movement.notes || '-'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent>

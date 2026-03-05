@@ -140,7 +140,7 @@ export async function GET(request) {
       const emptyItemId = searchParams.get('empty_item_id')
       const retailerId = searchParams.get('retailer_id')
 
-      let query = supabase
+      let query = adminSupabase
         .from('empty_movements')
         .select(`
           *,
@@ -166,7 +166,7 @@ export async function GET(request) {
     // ============================================
     if (route === 'empty-dashboard-metrics') {
       // Warehouse empty stock
-      const { data: warehouseStock } = await supabase
+      const { data: warehouseStock } = await adminSupabase
         .from('warehouse_empty_inventory')
         .select('quantity_available, empty_items(deposit_value)')
         .eq('business_id', userProfile.business_id)
@@ -176,7 +176,7 @@ export async function GET(request) {
         sum + (item.quantity_available * (item.empty_items?.deposit_value || 0)), 0) || 0
 
       // Retailer outstanding balances
-      const { data: retailerBalances } = await supabase
+      const { data: retailerBalances } = await adminSupabase
         .from('retailer_empty_balances')
         .select('quantity_outstanding, empty_items(deposit_value), retailers(shop_name)')
         .eq('business_id', userProfile.business_id)
@@ -203,14 +203,14 @@ export async function GET(request) {
       const today = new Date()
       today.setHours(0, 0, 0, 0)
 
-      const { data: todayReturns } = await supabase
+      const { data: todayReturns } = await adminSupabase
         .from('empty_movements')
         .select('quantity')
         .eq('business_id', userProfile.business_id)
         .eq('type', 'returned_from_retailer')
         .gte('created_at', today.toISOString())
 
-      const { data: todayIssued } = await supabase
+      const { data: todayIssued } = await adminSupabase
         .from('empty_movements')
         .select('quantity')
         .eq('business_id', userProfile.business_id)
@@ -242,17 +242,17 @@ export async function GET(request) {
     // GET: Empty Reconciliation Report
     // ============================================
     if (route === 'empty-reconciliation') {
-      const { data: movements } = await supabase
+      const { data: movements } = await adminSupabase
         .from('empty_movements')
         .select('type, quantity, empty_item_id, empty_items(name)')
         .eq('business_id', userProfile.business_id)
 
-      const { data: warehouseStock } = await supabase
+      const { data: warehouseStock } = await adminSupabase
         .from('warehouse_empty_inventory')
         .select('quantity_available, empty_item_id, empty_items(name)')
         .eq('business_id', userProfile.business_id)
 
-      const { data: retailerBalances } = await supabase
+      const { data: retailerBalances } = await adminSupabase
         .from('retailer_empty_balances')
         .select('quantity_outstanding, empty_item_id, empty_items(name)')
         .eq('business_id', userProfile.business_id)
