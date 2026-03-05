@@ -374,7 +374,7 @@ export async function POST(request) {
       const { data, error } = await adminSupabase
         .from('empty_items')
         .insert({
-          business_id: userContext.businessId,
+          business_id: userProfile.business_id,
           name: body.name,
           deposit_value: body.deposit_value
         })
@@ -387,7 +387,7 @@ export async function POST(request) {
       await supabase
         .from('warehouse_empty_inventory')
         .insert({
-          business_id: userContext.businessId,
+          business_id: userProfile.business_id,
           empty_item_id: data.id,
           quantity_available: 0
         })
@@ -418,7 +418,7 @@ export async function POST(request) {
       const { error: updateError } = await supabase
         .from('warehouse_empty_inventory')
         .upsert({
-          business_id: userContext.businessId,
+          business_id: userProfile.business_id,
           empty_item_id,
           quantity_available: newQuantity
         }, { onConflict: 'business_id,empty_item_id' })
@@ -429,7 +429,7 @@ export async function POST(request) {
       const { data: movement, error: movementError } = await supabase
         .from('empty_movements')
         .insert({
-          business_id: userContext.businessId,
+          business_id: userProfile.business_id,
           empty_item_id,
           type: 'manufacturer_in',
           quantity,
@@ -455,8 +455,8 @@ export async function POST(request) {
         type: 'info',
         category: 'inventory',
         targetRoles: ['admin', 'manager'],
-        businessId: userContext.businessId,
-        triggeredBy: userContext.userId,
+        businessId: userProfile.business_id,
+        triggeredBy: userProfile.id,
         relatedTable: 'empty_movements',
         relatedRecordId: movement.id
       })
@@ -515,7 +515,7 @@ export async function POST(request) {
       const { data: movement } = await supabase
         .from('empty_movements')
         .insert({
-          business_id: userContext.businessId,
+          business_id: userProfile.business_id,
           empty_item_id,
           retailer_id,
           type: 'returned_from_retailer',
@@ -568,7 +568,7 @@ export async function POST(request) {
       const { data: movement } = await supabase
         .from('empty_movements')
         .insert({
-          business_id: userContext.businessId,
+          business_id: userProfile.business_id,
           empty_item_id,
           type: 'returned_to_manufacturer',
           quantity,
@@ -592,8 +592,8 @@ export async function POST(request) {
         type: 'info',
         category: 'inventory',
         targetRoles: ['admin', 'manager'],
-        businessId: userContext.businessId,
-        triggeredBy: userContext.userId,
+        businessId: userProfile.business_id,
+        triggeredBy: userProfile.id,
         relatedTable: 'empty_movements',
         relatedRecordId: movement.id
       })
@@ -641,7 +641,7 @@ export async function POST(request) {
         await supabase
           .from('retailer_empty_balances')
           .upsert({
-            business_id: userContext.businessId,
+            business_id: userProfile.business_id,
             retailer_id,
             empty_item_id,
             quantity_outstanding: newQty
@@ -652,7 +652,7 @@ export async function POST(request) {
       const { data: movement } = await supabase
         .from('empty_movements')
         .insert({
-          business_id: userContext.businessId,
+          business_id: userProfile.business_id,
           empty_item_id,
           retailer_id: retailer_id || null,
           type: adjustment_type, // 'adjustment', 'damaged', 'lost'
@@ -668,7 +668,7 @@ export async function POST(request) {
       if (Math.abs(quantity) > 10) {
         await sendNotification({
           title: 'Large Empty Adjustment',
-          message: `Manual adjustment of ${quantity} units (${adjustment_type}) by ${userContext.role}. Reason: ${notes}`,
+          message: `Manual adjustment of ${quantity} units (${adjustment_type}) by ${userProfile.role}. Reason: ${notes}`,
           type: 'warning',
           category: 'inventory',
           targetRoles: ['admin'],
