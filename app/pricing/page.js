@@ -148,31 +148,31 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       {/* Hero Section */}
-      <section className="container mx-auto px-4 pt-20 pb-16 md:pt-32 md:pb-24">
+      <section className="container mx-auto px-4 pt-16 pb-12 md:pt-32 md:pb-24">
         <div className="max-w-4xl mx-auto text-center">
-          <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-100">
+          <Badge className="mb-4 sm:mb-6 bg-blue-100 text-blue-700 hover:bg-blue-100 text-sm sm:text-base px-3 py-1 sm:px-4 sm:py-2">
             🎉 14-Day Free Trial • No Credit Card Required
           </Badge>
           
-          <h1 className="text-4xl md:text-6xl font-bold text-slate-900 mb-6 leading-tight">
-            Take Full Control of Your<br />
-            <span className="text-blue-600">Distribution Business</span>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-4 sm:mb-6 leading-tight px-2">
+            Take Full Control of Your<br className="hidden sm:block" />
+            <span className="text-blue-600"> Distribution Business</span>
           </h1>
           
-          <p className="text-xl md:text-2xl text-slate-600 mb-8 max-w-3xl mx-auto">
+          <p className="text-lg sm:text-xl md:text-2xl text-slate-600 mb-6 sm:mb-8 max-w-3xl mx-auto px-2">
             Stop losing money to debt, empty bottles, and untracked deliveries.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
-            <Button size="lg" className="text-lg px-8 py-6 bg-blue-600 hover:bg-blue-700">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-4 sm:mb-6 px-4">
+            <Button size="lg" className="text-base sm:text-lg px-6 sm:px-8 py-5 sm:py-6 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
               Start Free Trial
             </Button>
-            <Button size="lg" variant="outline" className="text-lg px-8 py-6">
+            <Button size="lg" variant="outline" className="text-base sm:text-lg px-6 sm:px-8 py-5 sm:py-6 w-full sm:w-auto">
               Book a Demo
             </Button>
           </div>
           
-          <p className="text-sm text-slate-500">
+          <p className="text-xs sm:text-sm text-slate-500 px-4">
             ✓ No setup fee &nbsp;•&nbsp; ✓ Cancel anytime &nbsp;•&nbsp; ✓ Free support
           </p>
         </div>
@@ -230,19 +230,19 @@ export default function PricingPage() {
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+            <div className="text-center mb-8 sm:mb-12">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3 sm:mb-4 px-2">
                 Simple, Transparent Pricing
               </h2>
-              <p className="text-lg text-slate-600 mb-8">
+              <p className="text-base sm:text-lg text-slate-600 mb-6 sm:mb-8 px-4">
                 Choose the plan that fits your business. All plans include 14-day free trial.
               </p>
 
               {/* Billing Toggle */}
-              <div className="inline-flex items-center gap-4 bg-slate-100 p-2 rounded-lg">
+              <div className="inline-flex items-center gap-2 sm:gap-4 bg-slate-100 p-1.5 sm:p-2 rounded-lg">
                 <button
                   onClick={() => setBillingCycle('monthly')}
-                  className={`px-6 py-2 rounded-md font-medium transition-all ${
+                  className={`px-4 sm:px-6 py-1.5 sm:py-2 rounded-md text-sm sm:text-base font-medium transition-all ${
                     billingCycle === 'monthly'
                       ? 'bg-white text-slate-900 shadow'
                       : 'text-slate-600 hover:text-slate-900'
@@ -252,14 +252,14 @@ export default function PricingPage() {
                 </button>
                 <button
                   onClick={() => setBillingCycle('yearly')}
-                  className={`px-6 py-2 rounded-md font-medium transition-all ${
+                  className={`px-4 sm:px-6 py-1.5 sm:py-2 rounded-md text-sm sm:text-base font-medium transition-all ${
                     billingCycle === 'yearly'
                       ? 'bg-white text-slate-900 shadow'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Yearly
-                  <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                  <span className="ml-1 sm:ml-2 text-xs bg-green-100 text-green-700 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded">
                     Save 10%
                   </span>
                 </button>
@@ -267,44 +267,44 @@ export default function PricingPage() {
             </div>
 
             {/* Pricing Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
               {plans.map((plan, index) => (
                 <Card
                   key={index}
                   className={`relative border-2 transition-all hover:shadow-xl ${
                     plan.popular
-                      ? 'border-blue-500 shadow-lg scale-105 md:scale-110'
+                      ? 'border-blue-500 shadow-lg lg:scale-105'
                       : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
                   {plan.popular && (
-                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                      <Badge className="bg-blue-600 text-white px-4 py-1 text-sm font-semibold">
+                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
+                      <Badge className="bg-blue-600 text-white px-3 py-1 text-xs sm:text-sm font-semibold">
                         Most Popular
                       </Badge>
                     </div>
                   )}
 
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
-                    <CardDescription className="text-base">{plan.description}</CardDescription>
+                    <CardTitle className="text-xl sm:text-2xl font-bold">{plan.name}</CardTitle>
+                    <CardDescription className="text-sm sm:text-base">{plan.description}</CardDescription>
                     
-                    <div className="mt-6">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-4xl font-bold text-slate-900">
+                    <div className="mt-4 sm:mt-6">
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="text-3xl sm:text-4xl font-bold text-slate-900">
                           ₦{plan.price.toLocaleString()}
                         </span>
-                        <span className="text-slate-600">/ {plan.period}</span>
+                        <span className="text-slate-600 text-sm sm:text-base">/ {plan.period}</span>
                       </div>
                       {billingCycle === 'yearly' && (
-                        <p className="text-sm text-green-600 mt-1">
+                        <p className="text-xs sm:text-sm text-green-600 mt-1">
                           Save ₦{((plan.price / 0.9 - plan.price) * 12).toLocaleString()} per year
                         </p>
                       )}
                     </div>
 
-                    <div className="mt-4 p-3 bg-slate-50 rounded-lg">
-                      <p className="text-sm text-slate-700">
+                    <div className="mt-3 sm:mt-4 p-3 bg-slate-50 rounded-lg">
+                      <p className="text-xs sm:text-sm text-slate-700">
                         <span className="font-semibold">{plan.users} users included</span>
                       </p>
                       <p className="text-xs text-slate-600 mt-1">
@@ -313,7 +313,7 @@ export default function PricingPage() {
                     </div>
 
                     <Button
-                      className={`w-full mt-6 ${
+                      className={`w-full mt-4 sm:mt-6 ${
                         plan.popular
                           ? 'bg-blue-600 hover:bg-blue-700'
                           : 'bg-slate-900 hover:bg-slate-800'
@@ -324,11 +324,11 @@ export default function PricingPage() {
                     </Button>
                   </CardHeader>
 
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-2 sm:space-y-3">
                     {plan.features.map((feature, i) => (
-                      <div key={i} className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <span className={`text-sm ${feature.includes('Everything') ? 'font-semibold' : ''}`}>
+                      <div key={i} className="flex items-start gap-2 sm:gap-3">
+                        <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                        <span className={`text-xs sm:text-sm ${feature.includes('Everything') ? 'font-semibold' : ''}`}>
                           {feature}
                         </span>
                       </div>
@@ -336,11 +336,11 @@ export default function PricingPage() {
 
                     {plan.limitations.length > 0 && (
                       <>
-                        <div className="border-t pt-3 mt-4">
+                        <div className="border-t pt-2 sm:pt-3 mt-3 sm:mt-4">
                           {plan.limitations.map((limitation, i) => (
-                            <div key={i} className="flex items-start gap-3 opacity-50">
-                              <X className="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" />
-                              <span className="text-sm text-slate-600">{limitation}</span>
+                            <div key={i} className="flex items-start gap-2 sm:gap-3 opacity-50">
+                              <X className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 flex-shrink-0 mt-0.5" />
+                              <span className="text-xs sm:text-sm text-slate-600">{limitation}</span>
                             </div>
                           ))}
                         </div>
