@@ -1179,6 +1179,86 @@ async function handleRoute(request, { params }) {
 
       if (updateError) throw updateError
 
+      // ============================================
+      // AUTO EMPTY ISSUANCE ON DELIVERY
+      // ============================================
+      if (body.action === 'deliver' && updatedOrder) {
+        try {
+          // Get order items with product details
+          const { data: orderItems } = await supabase
+            .from('order_items')
+            .select(`
+              *,
+              products(is_returnable, empty_item_id, empty_conversion_rate)
+            `)
+            .eq('order_id', orderId)
+
+          // Process each item for empty issuance
+          for (const item of orderItems || []) {
+            if (item.products?.is_returnable && item.products?.empty_item_id) {
+              const quantityToIssue = item.quantity * (item.products.empty_conversion_rate || 1)
+              
+              // Check warehouse empty stock
+              const { data: warehouseStock } = await supabase
+                .from('warehouse_empty_inventory')
+                .select('quantity_available')
+                .eq('business_id', userContext.businessId)
+                .eq('empty_item_id', item.products.empty_item_id)
+                .single()
+
+              if (!warehouseStock || warehouseStock.quantity_available < quantityToIssue) {
+                console.warn(`Insufficient empty stock for item ${item.products.empty_item_id}. Skipping auto-issuance.`)
+                continue
+              }
+
+              // Reduce warehouse inventory
+              await supabase
+                .from('warehouse_empty_inventory')
+                .update({ quantity_available: warehouseStock.quantity_available - quantityToIssue })
+                .eq('business_id', userContext.businessId)
+                .eq('empty_item_id', item.products.empty_item_id)
+
+              // Increase retailer balance
+              const { data: existingBalance } = await supabase
+                .from('retailer_empty_balances')
+                .select('quantity_outstanding')
+                .eq('business_id', userContext.businessId)
+                .eq('retailer_id', order.retailer_id)
+                .eq('empty_item_id', item.products.empty_item_id)
+                .single()
+
+              const newBalance = (existingBalance?.quantity_outstanding || 0) + quantityToIssue
+
+              await supabase
+                .from('retailer_empty_balances')
+                .upsert({
+                  business_id: userContext.businessId,
+                  retailer_id: order.retailer_id,
+                  empty_item_id: item.products.empty_item_id,
+                  quantity_outstanding: newBalance
+                }, { onConflict: 'business_id,retailer_id,empty_item_id' })
+
+              // Log empty movement
+              await supabase
+                .from('empty_movements')
+                .insert({
+                  business_id: userContext.businessId,
+                  empty_item_id: item.products.empty_item_id,
+                  retailer_id: order.retailer_id,
+                  type: 'issued_to_retailer',
+                  quantity: quantityToIssue,
+                  reference_type: 'order',
+                  reference_id: orderId,
+                  created_by: userContext.userId
+                })
+            }
+          }
+        } catch (emptyError) {
+          console.error('Empty issuance error:', emptyError)
+          // Don't fail the delivery if empty issuance fails
+        }
+      }
+
       // Send notification if defined
       if (notificationTitle) {
         try {
