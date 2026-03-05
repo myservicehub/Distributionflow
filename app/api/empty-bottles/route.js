@@ -18,19 +18,7 @@ function handleCORS(response) {
   return response
 }
 
-// Helper: Get user context
-async function getUserBusinessId(supabase) {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('id, business_id, role')
-    .eq('id', user.id)
-    .single()
-
-  return profile ? { userId: user.id, businessId: profile.business_id, role: profile.role } : null
-}
+// Note: This helper is not used. Auth is handled inline in GET and POST handlers.
 
 // Helper to create authenticated Supabase client from request
 async function getSupabaseClient() {
@@ -77,8 +65,17 @@ export async function GET(request) {
     }
 
     // Use service client for queries (bypasses RLS)
-    const { createClient: createAdminClient } = await import('@supabase/supabase-js')
-    const adminSupabase = createAdminClient(supabaseUrl, supabaseServiceKey)
+    const { createClient } = await import('@supabase/supabase-js')
+    const adminSupabase = createClient(
+      supabaseUrl,
+      supabaseServiceKey,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
 
     // ============================================
     // GET: Empty Items List
@@ -360,8 +357,17 @@ export async function POST(request) {
     }
 
     // Use service client for queries (bypasses RLS)
-    const { createClient: createAdminClient } = await import('@supabase/supabase-js')
-    const adminSupabase = createAdminClient(supabaseUrl, supabaseServiceKey)
+    const { createClient } = await import('@supabase/supabase-js')
+    const adminSupabase = createClient(
+      supabaseUrl,
+      supabaseServiceKey,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
 
     // ============================================
     // POST: Create Empty Item
@@ -406,7 +412,7 @@ export async function POST(request) {
       const { empty_item_id, quantity, notes } = body
 
       // Update warehouse inventory
-      const { data: currentInventory } = await supabase
+      const { data: currentInventory } = await adminSupabase
         .from('warehouse_empty_inventory')
         .select('quantity_available')
         .eq('business_id', userProfile.business_id)
@@ -415,7 +421,7 @@ export async function POST(request) {
 
       const newQuantity = (currentInventory?.quantity_available || 0) + quantity
 
-      const { error: updateError } = await supabase
+      const { error: updateError } = await adminSupabase
         .from('warehouse_empty_inventory')
         .upsert({
           business_id: userProfile.business_id,
@@ -426,7 +432,7 @@ export async function POST(request) {
       if (updateError) throw updateError
 
       // Log movement
-      const { data: movement, error: movementError } = await supabase
+      const { data: movement, error: movementError } = await adminSupabase
         .from('empty_movements')
         .insert({
           business_id: userProfile.business_id,
@@ -435,7 +441,7 @@ export async function POST(request) {
           quantity,
           reference_type: 'manufacturer',
           notes,
-          created_by: user.id
+          created_by: userProfile.id
         })
         .select()
         .single()
@@ -443,7 +449,7 @@ export async function POST(request) {
       if (movementError) throw movementError
 
       // Send notification
-      const { data: emptyItem } = await supabase
+      const { data: emptyItem } = await adminSupabase
         .from('empty_items')
         .select('name')
         .eq('id', empty_item_id)
@@ -471,7 +477,7 @@ export async function POST(request) {
       const { retailer_id, empty_item_id, quantity, order_id, notes } = body
 
       // Validate retailer balance
-      const { data: balance } = await supabase
+      const { data: balance } = await adminSupabase
         .from('retailer_empty_balances')
         .select('quantity_outstanding')
         .eq('business_id', userProfile.business_id)
@@ -486,7 +492,7 @@ export async function POST(request) {
       }
 
       // Reduce retailer balance
-      const { error: balanceError } = await supabase
+      const { error: balanceError } = await adminSupabase
         .from('retailer_empty_balances')
         .update({ quantity_outstanding: balance.quantity_outstanding - quantity })
         .eq('business_id', userProfile.business_id)
@@ -496,14 +502,14 @@ export async function POST(request) {
       if (balanceError) throw balanceError
 
       // Increase warehouse inventory
-      const { data: warehouse } = await supabase
+      const { data: warehouse } = await adminSupabase
         .from('warehouse_empty_inventory')
         .select('quantity_available')
         .eq('business_id', userProfile.business_id)
         .eq('empty_item_id', empty_item_id)
         .single()
 
-      const { error: warehouseError } = await supabase
+      const { error: warehouseError } = await adminSupabase
         .from('warehouse_empty_inventory')
         .update({ quantity_available: (warehouse?.quantity_available || 0) + quantity })
         .eq('business_id', userProfile.business_id)
@@ -512,7 +518,7 @@ export async function POST(request) {
       if (warehouseError) throw warehouseError
 
       // Log movement
-      const { data: movement } = await supabase
+      const { data: movement } = await adminSupabase
         .from('empty_movements')
         .insert({
           business_id: userProfile.business_id,
@@ -523,7 +529,7 @@ export async function POST(request) {
           reference_type: order_id ? 'order' : 'return',
           reference_id: order_id || null,
           notes,
-          created_by: user.id
+          created_by: userProfile.id
         })
         .select()
         .single()
@@ -542,7 +548,7 @@ export async function POST(request) {
       const { empty_item_id, quantity, notes } = body
 
       // Validate warehouse inventory
-      const { data: warehouse } = await supabase
+      const { data: warehouse } = await adminSupabase
         .from('warehouse_empty_inventory')
         .select('quantity_available')
         .eq('business_id', userProfile.business_id)
@@ -556,7 +562,7 @@ export async function POST(request) {
       }
 
       // Reduce warehouse inventory
-      const { error: warehouseError } = await supabase
+      const { error: warehouseError } = await adminSupabase
         .from('warehouse_empty_inventory')
         .update({ quantity_available: warehouse.quantity_available - quantity })
         .eq('business_id', userProfile.business_id)
@@ -565,7 +571,7 @@ export async function POST(request) {
       if (warehouseError) throw warehouseError
 
       // Log movement
-      const { data: movement } = await supabase
+      const { data: movement } = await adminSupabase
         .from('empty_movements')
         .insert({
           business_id: userProfile.business_id,
@@ -574,13 +580,13 @@ export async function POST(request) {
           quantity,
           reference_type: 'manufacturer',
           notes,
-          created_by: user.id
+          created_by: userProfile.id
         })
         .select()
         .single()
 
       // Send notification
-      const { data: emptyItem } = await supabase
+      const { data: emptyItem } = await adminSupabase
         .from('empty_items')
         .select('name')
         .eq('id', empty_item_id)
@@ -613,7 +619,7 @@ export async function POST(request) {
       // location: 'warehouse' or 'retailer'
 
       if (location === 'warehouse') {
-        const { data: warehouse } = await supabase
+        const { data: warehouse } = await adminSupabase
           .from('warehouse_empty_inventory')
           .select('quantity_available')
           .eq('business_id', userProfile.business_id)
@@ -622,13 +628,13 @@ export async function POST(request) {
 
         const newQty = (warehouse?.quantity_available || 0) + quantity
 
-        await supabase
+        await adminSupabase
           .from('warehouse_empty_inventory')
           .update({ quantity_available: newQty })
           .eq('business_id', userProfile.business_id)
           .eq('empty_item_id', empty_item_id)
       } else if (location === 'retailer' && retailer_id) {
-        const { data: balance } = await supabase
+        const { data: balance } = await adminSupabase
           .from('retailer_empty_balances')
           .select('quantity_outstanding')
           .eq('business_id', userProfile.business_id)
@@ -638,7 +644,7 @@ export async function POST(request) {
 
         const newQty = (balance?.quantity_outstanding || 0) + quantity
 
-        await supabase
+        await adminSupabase
           .from('retailer_empty_balances')
           .upsert({
             business_id: userProfile.business_id,
@@ -649,7 +655,7 @@ export async function POST(request) {
       }
 
       // Log movement
-      const { data: movement } = await supabase
+      const { data: movement } = await adminSupabase
         .from('empty_movements')
         .insert({
           business_id: userProfile.business_id,
@@ -659,7 +665,7 @@ export async function POST(request) {
           quantity,
           reference_type: 'adjustment',
           notes,
-          created_by: user.id
+          created_by: userProfile.id
         })
         .select()
         .single()
@@ -673,7 +679,7 @@ export async function POST(request) {
           category: 'inventory',
           targetRoles: ['admin'],
           businessId: userProfile.business_id,
-          triggeredBy: user.id,
+          triggeredBy: userProfile.id,
           relatedTable: 'empty_movements',
           relatedRecordId: movement.id
         })
