@@ -1,0 +1,755 @@
+# ROLE-SPECIFIC NOTIFICATION SYSTEM - ALL CODE
+# Copy each section to the appropriate file
+
+# ============================================
+# 1. SQL MIGRATION
+# ============================================
+# Run this in Supabase SQL Editor FIRST
+
+-- Migration: Add target_roles array column to notifications table
+ALTER TABLE notifications 
+ADD COLUMN IF NOT EXISTS target_roles TEXT[];
+
+-- Migrate existing target_role data to target_roles array
+UPDATE notifications 
+SET target_roles = ARRAY[target_role]::TEXT[]
+WHERE target_roles IS NULL AND target_role IS NOT NULL;
+
+-- Set default for rows where both are null
+UPDATE notifications 
+SET target_roles = ARRAY['admin', 'manager']::TEXT[]
+WHERE target_roles IS NULL;
+
+-- Create index for better query performance on target_roles
+CREATE INDEX IF NOT EXISTS idx_notifications_target_roles 
+ON notifications USING GIN (target_roles);
+
+-- Add category column for notification categorization
+ALTER TABLE notifications 
+ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general';
+
+-- Create index on category
+CREATE INDEX IF NOT EXISTS idx_notifications_category 
+ON notifications(category);
+
+-- Update RLS Policies for Warehouse Users
+DROP POLICY IF EXISTS "Warehouse users can view dispatch notifications" ON notifications;
+DROP POLICY IF EXISTS "Admins and managers can view all notifications" ON notifications;
+
+-- Policy: Warehouse users can only view notifications targeted to them
+CREATE POLICY "Warehouse users can view dispatch notifications"
+ON notifications
+FOR SELECT
+USING (
+  business_id IN (
+    SELECT business_id FROM users WHERE id = auth.uid()
+  )
+  AND (
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE users.id = auth.uid() 
+      AND users.role = 'warehouse'
+      AND 'warehouse' = ANY(notifications.target_roles)
+    )
+    OR
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE users.id = auth.uid() 
+      AND users.role IN ('admin', 'manager')
+    )
+  )
+);
+
+-- Policy: Prevent warehouse from inserting/updating/deleting notifications
+CREATE POLICY "Warehouse cannot modify notifications"
+ON notifications
+FOR ALL
+USING (
+  EXISTS (
+    SELECT 1 FROM users 
+    WHERE users.id = auth.uid() 
+    AND users.role != 'warehouse'
+  )
+);
+
+
+# ============================================
+# 2. /app/lib/notifications.js
+# ============================================
+# REPLACE THE ENTIRE FILE WITH THIS:
+
+// Notification Utility Functions
+// Centralized notification management
+
+import { createClient } from '@/lib/supabase/server'
+import { sendEmailToAdminsAndManagers, isCriticalNotification } from '@/lib/email-notifications'
+
+/**
+ * Notification types and their configurations
+ */
+export const NOTIFICATION_TYPES = {
+  INFO: 'info',
+  WARNING: 'warning',
+  CRITICAL: 'critical'
+}
+
+export const NOTIFICATION_ACTIONS = {
+  // Financial
+  PAYMENT_EDITED: 'payment_edited',
+  PAYMENT_DELETED: 'payment_deleted',
+  LARGE_PAYMENT: 'large_payment',
+  CREDIT_LIMIT_CHANGED: 'credit_limit_changed',
+  RETAILER_UNBLOCKED: 'retailer_unblocked',
+  
+  // Orders
+  ORDER_CANCELLED: 'order_cancelled',
+  ORDER_MODIFIED: 'order_modified',
+  CREDIT_LIMIT_OVERRIDE: 'credit_limit_override',
+  PARTIAL_PAYMENT: 'partial_payment',
+  
+  // Inventory
+  STOCK_ADJUSTED: 'stock_adjusted',
+  LOW_STOCK: 'low_stock',
+  LARGE_STOCK_DEDUCTION: 'large_stock_deduction',
+  NEGATIVE_STOCK_BLOCKED: 'negative_stock_blocked',
+  
+  // Staff
+  STAFF_ADDED: 'staff_added',
+  STAFF_ROLE_CHANGED: 'staff_role_changed',
+  STAFF_DEACTIVATED: 'staff_deactivated'
+}
+
+/**
+ * Send notification with role-specific targeting
+ * @param {Object} params Notification parameters
+ * @returns {Promise<Object>} Created notification
+ */
+export async function sendNotification({
+  title,
+  message,
+  type = 'info',
+  category = 'general',
+  targetRole = 'all', // Legacy: single role
+  targetRoles = null, // New: array of roles
+  businessId,
+  triggeredBy,
+  relatedTable = null,
+  relatedRecordId = null
+}) {
+  try {
+    const supabase = await createClient()
+    
+    // Determine target roles array
+    let rolesArray
+    if (targetRoles && Array.isArray(targetRoles)) {
+      // Use provided array
+      rolesArray = targetRoles
+    } else if (targetRole === 'all') {
+      // 'all' means admin, manager, and warehouse
+      rolesArray = ['admin', 'manager', 'warehouse']
+    } else {
+      // Convert single role to array
+      rolesArray = [targetRole]
+    }
+    
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert({
+        business_id: businessId,
+        title,
+        message,
+        type,
+        category,
+        target_role: rolesArray[0], // Keep for backward compatibility
+        target_roles: rolesArray,
+        triggered_by: triggeredBy,
+        related_table: relatedTable,
+        related_record_id: relatedRecordId
+      })
+      .select()
+      .single()
+    
+    if (error) {
+      console.error('Error creating notification:', error)
+      throw error
+    }
+
+    // Send email for critical notifications (only to admin/manager)
+    if (isCriticalNotification(data) && (rolesArray.includes('admin') || rolesArray.includes('manager'))) {
+      try {
+        // Import supabase admin client
+        const { createClient: createAdminClient } = await import('@supabase/supabase-js')
+        const supabaseAdmin = createAdminClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
+          process.env.SUPABASE_SERVICE_ROLE_KEY
+        )
+
+        // Check if email notifications are enabled for this business
+        const { data: businessSettings } = await supabaseAdmin
+          .from('business_settings')
+          .select('settings')
+          .eq('business_id', businessId)
+          .maybeSingle()
+
+        const emailEnabled = businessSettings?.settings?.notifications?.email_notifications_enabled ?? true
+
+        if (emailEnabled) {
+          // Send email to all admins and managers
+          await sendEmailToAdminsAndManagers({
+            notification: data,
+            businessId,
+            supabaseAdmin
+          })
+        } else {
+          console.log('Email notifications disabled for this business')
+        }
+      } catch (emailError) {
+        console.error('Failed to send email notification:', emailError)
+        // Don't fail the notification if email fails
+      }
+    }
+    
+    return data
+  } catch (error) {
+    console.error('Failed to send notification:', error)
+    // Don't throw - notifications should fail silently to not break main operations
+    return null
+  }
+}
+
+/**
+ * Get business settings for notification thresholds
+ */
+export async function getBusinessSettings(businessId) {
+  try {
+    const supabase = await createClient()
+    
+    const { data, error } = await supabase
+      .from('business_settings')
+      .select('*')
+      .eq('business_id', businessId)
+      .single()
+    
+    if (error && error.code !== 'PGRST116') {
+      throw error
+    }
+    
+    return data || {
+      large_payment_threshold: 250000,
+      large_stock_deduction_threshold: 100,
+      large_stock_deduction_type: 'absolute',
+      notification_retention_days: 90,
+      enable_sound_notifications: true,
+      enable_email_notifications: false
+    }
+  } catch (error) {
+    console.error('Error fetching business settings:', error)
+    return {
+      large_payment_threshold: 250000,
+      large_stock_deduction_threshold: 100,
+      large_stock_deduction_type: 'absolute',
+      notification_retention_days: 90,
+      enable_sound_notifications: true,
+      enable_email_notifications: false
+    }
+  }
+}
+
+/**
+ * Check if payment amount exceeds threshold
+ */
+export async function isLargePayment(amount, businessId) {
+  const settings = await getBusinessSettings(businessId)
+  return parseFloat(amount) >= parseFloat(settings.large_payment_threshold)
+}
+
+/**
+ * Check if stock deduction exceeds threshold
+ */
+export async function isLargeStockDeduction(quantity, totalStock, businessId) {
+  const settings = await getBusinessSettings(businessId)
+  
+  if (settings.large_stock_deduction_type === 'percentage') {
+    const percentage = (quantity / totalStock) * 100
+    return percentage >= settings.large_stock_deduction_threshold
+  } else {
+    return quantity >= settings.large_stock_deduction_threshold
+  }
+}
+
+/**
+ * Format currency for notifications
+ */
+export function formatCurrency(amount) {
+  return `₦${parseFloat(amount).toLocaleString()}`
+}
+
+/**
+ * Get notification message templates
+ */
+export const NOTIFICATION_TEMPLATES = {
+  // Financial
+  PAYMENT_EDITED: (amount, retailer, user) => ({
+    title: 'Payment Edited',
+    message: `Payment of ${formatCurrency(amount)} for ${retailer} was edited by ${user}.`,
+    type: NOTIFICATION_TYPES.WARNING
+  }),
+  
+  PAYMENT_DELETED: (amount, retailer, user) => ({
+    title: 'Payment Deleted',
+    message: `Payment of ${formatCurrency(amount)} for ${retailer} was deleted by ${user}.`,
+    type: NOTIFICATION_TYPES.CRITICAL
+  }),
+  
+  LARGE_PAYMENT: (amount, retailer, user) => ({
+    title: 'Large Payment Recorded',
+    message: `Large payment of ${formatCurrency(amount)} recorded for ${retailer} by ${user}.`,
+    type: NOTIFICATION_TYPES.INFO
+  }),
+  
+  CREDIT_LIMIT_CHANGED: (retailer, oldLimit, newLimit, user) => ({
+    title: 'Credit Limit Changed',
+    message: `Credit limit for ${retailer} changed from ${formatCurrency(oldLimit)} to ${formatCurrency(newLimit)} by ${user}.`,
+    type: NOTIFICATION_TYPES.WARNING
+  }),
+  
+  RETAILER_UNBLOCKED: (retailer, user) => ({
+    title: 'Retailer Unblocked',
+    message: `Retailer ${retailer} was manually unblocked by ${user}.`,
+    type: NOTIFICATION_TYPES.WARNING
+  }),
+  
+  // Orders
+  ORDER_CANCELLED: (orderId, retailer, user) => ({
+    title: 'Order Cancelled',
+    message: `Order #${orderId} for ${retailer} was cancelled by ${user}.`,
+    type: NOTIFICATION_TYPES.WARNING
+  }),
+  
+  ORDER_MODIFIED: (orderId, user) => ({
+    title: 'Order Modified',
+    message: `Order #${orderId} was modified after confirmation by ${user}.`,
+    type: NOTIFICATION_TYPES.WARNING
+  }),
+  
+  CREDIT_LIMIT_OVERRIDE: (orderId, retailer, amount) => ({
+    title: 'Credit Limit Override',
+    message: `Order #${orderId} for ${retailer} exceeds credit limit but was approved. Amount: ${formatCurrency(amount)}.`,
+    type: NOTIFICATION_TYPES.CRITICAL
+  }),
+  
+  // Inventory
+  STOCK_ADJUSTED: (product, quantity, user) => ({
+    title: 'Stock Adjusted',
+    message: `Stock adjusted by ${quantity > 0 ? '+' : ''}${quantity} units for ${product} by ${user}.`,
+    type: NOTIFICATION_TYPES.INFO
+  }),
+  
+  LOW_STOCK: (product, quantity, threshold) => ({
+    title: 'Low Stock Alert',
+    message: `${product} is running low. Current stock: ${quantity} units (Threshold: ${threshold}).`,
+    type: NOTIFICATION_TYPES.WARNING
+  }),
+  
+  LARGE_STOCK_DEDUCTION: (product, quantity, user) => ({
+    title: 'Large Stock Deduction',
+    message: `Large stock deduction of ${quantity} units for ${product} by ${user}.`,
+    type: NOTIFICATION_TYPES.WARNING
+  }),
+  
+  // Staff
+  STAFF_ADDED: (staffName, role, user) => ({
+    title: 'New Staff Added',
+    message: `New staff added: ${staffName} – ${role} by ${user}.`,
+    type: NOTIFICATION_TYPES.INFO
+  }),
+  
+  STAFF_ROLE_CHANGED: (staffName, oldRole, newRole, user) => ({
+    title: 'Staff Role Changed',
+    message: `${staffName}'s role changed from ${oldRole} to ${newRole} by ${user}.`,
+    type: NOTIFICATION_TYPES.WARNING
+  }),
+  
+  STAFF_DEACTIVATED: (staffName, user) => ({
+    title: 'Staff Deactivated',
+    message: `Staff account deactivated: ${staffName} by ${user}.`,
+    type: NOTIFICATION_TYPES.WARNING
+  })
+}
+
+
+# ============================================
+# 3. /app/app/api/[[...path]]/route.js
+# ============================================
+# FIND AND REPLACE THESE SECTIONS:
+
+# Section A: Around line 924 - Initialize notification variables
+# FIND:
+      // Initialize update object
+      let updateData = {}
+      let shouldReserveStock = false
+      let shouldReleaseStock = false
+      let notificationTitle = ''
+      let notificationMessage = ''
+
+# REPLACE WITH:
+      // Initialize update object
+      let updateData = {}
+      let shouldReserveStock = false
+      let shouldReleaseStock = false
+      let notificationTitle = ''
+      let notificationMessage = ''
+      let notificationCategory = 'general'
+      let notificationTargetRoles = ['admin', 'manager'] // Default: admin and manager
+
+
+# Section B: Around line 935 - Update order approval action
+# FIND:
+        updateData = {
+          order_status: 'confirmed',
+          delivery_status: 'preparing',
+          confirmed_by: userContext.userId,
+          confirmed_at: new Date().toISOString(),
+          status: 'confirmed' // Keep old status for compatibility
+        }
+        
+        shouldReserveStock = true
+        notificationTitle = 'Order Ready for Dispatch'
+        notificationMessage = `Order #${orderId.substring(0, 8)} for {RETAILER_NAME} is ready for delivery.`
+
+# REPLACE WITH:
+        updateData = {
+          order_status: 'confirmed',
+          delivery_status: 'preparing',
+          confirmed_by: userContext.userId,
+          confirmed_at: new Date().toISOString(),
+          status: 'confirmed' // Keep old status for compatibility
+        }
+        
+        shouldReserveStock = true
+        notificationTitle = 'Order Ready for Dispatch'
+        notificationMessage = `Order #${orderId.substring(0, 8)} for {RETAILER_NAME} is ready for delivery.`
+        notificationCategory = 'dispatch'
+        notificationTargetRoles = ['warehouse'] // Only warehouse users
+
+
+# Section C: Around line 1216 - Update notification sending
+# FIND:
+          // Send in-app notification
+          await sendNotification({
+            title: notificationTitle,
+            message: finalMessage,
+            type: 'info',
+            category: notificationCategory,
+            targetRoles: notificationTargetRoles,
+            businessId: userContext.businessId,
+            triggeredBy: userContext.userId,
+            relatedTable: 'orders',
+            relatedRecordId: orderId
+          })
+
+# REPLACE WITH:
+          // Send in-app notification with role-specific targeting
+          await sendNotification({
+            title: notificationTitle,
+            message: finalMessage,
+            type: 'info',
+            category: notificationCategory,
+            targetRoles: notificationTargetRoles,
+            businessId: userContext.businessId,
+            triggeredBy: userContext.userId,
+            relatedTable: 'orders',
+            relatedRecordId: orderId
+          })
+
+
+# ============================================
+# 4. /app/components/notifications/NotificationBell.js
+# ============================================
+# REPLACE THE ENTIRE FILE WITH THIS:
+
+'use client'
+
+import { useEffect, useState, useRef } from 'react'
+import { Bell } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Badge } from '@/components/ui/badge'
+import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/auth-context'
+import Link from 'next/link'
+import { toast } from 'sonner'
+
+export default function NotificationBell() {
+  const { userProfile } = useAuth()
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const audioRef = useRef(null)
+  const supabase = createClient()
+
+  // Show for admin, manager, and warehouse users
+  if (!userProfile || !['admin', 'manager', 'warehouse'].includes(userProfile.role)) {
+    return null
+  }
+
+  useEffect(() => {
+    loadNotifications()
+    subscribeToNotifications()
+  }, [userProfile])
+
+  const loadNotifications = async () => {
+    try {
+      let query = supabase
+        .from('notifications')
+        .select('*')
+        .eq('business_id', userProfile.business_id)
+      
+      // For warehouse users, only fetch notifications targeted to them
+      if (userProfile.role === 'warehouse') {
+        query = query.contains('target_roles', ['warehouse'])
+      }
+      
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (error) throw error
+
+      setNotifications(data || [])
+      const unread = data?.filter(n => !n.is_read).length || 0
+      setUnreadCount(unread)
+    } catch (error) {
+      console.error('Error loading notifications:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const subscribeToNotifications = () => {
+    const channel = supabase
+      .channel('notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `business_id=eq.${userProfile.business_id}`
+        },
+        (payload) => {
+          const newNotification = payload.new
+          
+          // Check if notification is for this user's role
+          const isForThisRole = newNotification.target_roles && 
+            (newNotification.target_roles.includes(userProfile.role) ||
+             (userProfile.role === 'admin' || userProfile.role === 'manager'))
+          
+          if (isForThisRole) {
+            setNotifications(prev => [newNotification, ...prev.slice(0, 49)])
+            setUnreadCount(prev => prev + 1)
+            
+            // Play sound if enabled
+            if (audioRef.current) {
+              audioRef.current.play().catch(e => console.log('Audio play failed:', e))
+            }
+
+            // Show toast
+            toast(newNotification.title, {
+              description: newNotification.message,
+              duration: 5000
+            })
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      channel.unsubscribe()
+    }
+  }
+
+  const markAsRead = async (notificationId) => {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({
+          is_read: true,
+          read_at: new Date().toISOString(),
+          read_by: userProfile.id
+        })
+        .eq('id', notificationId)
+
+      if (error) throw error
+
+      // Update local state
+      setNotifications(prev =>
+        prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
+      )
+      setUnreadCount(prev => Math.max(0, prev - 1))
+    } catch (error) {
+      console.error('Error marking notification as read:', error)
+    }
+  }
+
+  const markAllAsRead = async () => {
+    try {
+      let query = supabase
+        .from('notifications')
+        .update({
+          is_read: true,
+          read_at: new Date().toISOString(),
+          read_by: userProfile.id
+        })
+        .eq('business_id', userProfile.business_id)
+        .eq('is_read', false)
+      
+      // For warehouse, only mark their notifications as read
+      if (userProfile.role === 'warehouse') {
+        query = query.contains('target_roles', ['warehouse'])
+      }
+
+      const { error } = await query
+
+      if (error) throw error
+
+      // Update local state
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+      setUnreadCount(0)
+      toast.success('All notifications marked as read')
+    } catch (error) {
+      console.error('Error marking all as read:', error)
+      toast.error('Failed to mark all as read')
+    }
+  }
+
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'warning':
+        return '⚠️'
+      case 'critical':
+        return '🚨'
+      default:
+        return '📢'
+    }
+  }
+
+  const formatRelativeTime = (timestamp) => {
+    const now = new Date()
+    const notificationTime = new Date(timestamp)
+    const diffInSeconds = Math.floor((now - notificationTime) / 1000)
+
+    if (diffInSeconds < 60) return 'Just now'
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
+    return `${Math.floor(diffInSeconds / 86400)}d ago`
+  }
+
+  return (
+    <>
+      <audio ref={audioRef} src="/notification-sound.mp3" preload="auto" />
+      
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="relative">
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <Badge
+                variant="destructive"
+                className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+              >
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </Badge>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+
+        <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
+          <DropdownMenuLabel className="flex items-center justify-between">
+            <span>Notifications</span>
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={markAllAsRead}
+                className="h-auto p-1 text-xs"
+              >
+                Mark all read
+              </Button>
+            )}
+          </DropdownMenuLabel>
+          
+          <DropdownMenuSeparator />
+
+          {loading ? (
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              Loading notifications...
+            </div>
+          ) : notifications.length === 0 ? (
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              No notifications yet
+            </div>
+          ) : (
+            notifications.map((notification) => (
+              <DropdownMenuItem
+                key={notification.id}
+                onClick={() => markAsRead(notification.id)}
+                className={`flex flex-col items-start p-3 cursor-pointer ${
+                  !notification.is_read ? 'bg-muted/50' : ''
+                }`}
+              >
+                <div className="flex items-start gap-2 w-full">
+                  <span className="text-lg">{getNotificationIcon(notification.type)}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold text-sm truncate">
+                        {notification.title}
+                      </p>
+                      {!notification.is_read && (
+                        <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      {notification.message}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formatRelativeTime(notification.created_at)}
+                    </p>
+                  </div>
+                </div>
+              </DropdownMenuItem>
+            ))
+          )}
+
+          <DropdownMenuSeparator />
+          
+          <DropdownMenuItem asChild className="cursor-pointer">
+            <Link href="/dashboard/notifications" className="w-full text-center">
+              View all notifications
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  )
+}
+
+
+# ============================================
+# IMPLEMENTATION STEPS
+# ============================================
+
+1. Run SQL migration in Supabase SQL Editor (Section 1)
+2. Replace /app/lib/notifications.js (Section 2)
+3. Update /app/app/api/[[...path]]/route.js (Section 3 - 3 changes)
+4. Replace /app/components/notifications/NotificationBell.js (Section 4)
+5. Test: Log in as warehouse user and approve an order as manager
+
+DONE! 🚀
