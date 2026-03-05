@@ -573,6 +573,47 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json(data))
     }
 
+    // ============================================
+    // PATCH: Update Product (for empty_item_id linking)
+    // ============================================
+    if (route.startsWith('/products/') && method === 'PATCH') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      if (!['admin', 'manager'].includes(userProfile.role)) {
+        return handleCORS(NextResponse.json({ error: 'Forbidden' }, { status: 403 }))
+      }
+
+      const productId = route.split('/')[2] // Extract ID from /products/:id
+      const body = await request.json()
+      const { empty_item_id } = body
+
+      // Update product with empty_item_id
+      const { data: product, error: updateError } = await supabase
+        .from('products')
+        .update({ 
+          empty_item_id: empty_item_id || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', productId)
+        .eq('business_id', userContext.businessId)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Error updating product:', updateError)
+        return handleCORS(NextResponse.json({ error: updateError.message }, { status: 400 }))
+      }
+
+      if (!product) {
+        return handleCORS(NextResponse.json({ error: 'Product not found' }, { status: 404 }))
+      }
+
+      return handleCORS(NextResponse.json(product))
+    }
+
     if (route.startsWith('/products/') && method === 'DELETE') {
       const userContext = await getUserBusinessId(supabase)
       if (!userContext || userContext.role !== 'admin') {
