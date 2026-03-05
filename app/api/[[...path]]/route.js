@@ -582,7 +582,7 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
-      if (!['admin', 'manager'].includes(userProfile.role)) {
+      if (!['admin', 'manager'].includes(userContext.role)) {
         return handleCORS(NextResponse.json({ error: 'Forbidden' }, { status: 403 }))
       }
 
