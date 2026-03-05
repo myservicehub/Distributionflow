@@ -32,37 +32,53 @@ async function getUserBusinessId(supabase) {
   return profile ? { userId: user.id, businessId: profile.business_id, role: profile.role } : null
 }
 
-export async function GET(request) {
+// Helper to create authenticated Supabase client from request
+async function getSupabaseClient() {
   const cookieStore = await cookies()
   
-  // Get user session for business_id
-  const sessionSupabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+  return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
-      get(name) {
-        return cookieStore.get(name)?.value
-      }
-    }
+      getAll() {
+        return cookieStore.getAll()
+      },
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          )
+        } catch {
+          // Ignore
+        }
+      },
+    },
   })
-  
-  const { data: { user } } = await sessionSupabase.auth.getUser()
-  if (!user) {
-    return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
-  }
+}
 
-  // Get user profile
-  const { data: userProfile } = await sessionSupabase
-    .from('users')
-    .select('business_id, role')
-    .eq('id', user.id)
-    .single()
+export async function GET(request) {
+  const supabase = await getSupabaseClient()
+  const { searchParams } = new URL(request.url)
+  const route = searchParams.get('route')
 
-  if (!userProfile) {
-    return handleCORS(NextResponse.json({ error: 'User profile not found' }, { status: 401 }))
-  }
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+    }
 
-  // Now use service client for data queries (bypasses RLS)
-  const { createClient: createAdminClient } = await import('@supabase/supabase-js')
-  const supabase = createAdminClient(supabaseUrl, supabaseServiceKey)
+    // Get user profile using auth_user_id
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('id, business_id, role, status')
+      .eq('auth_user_id', user.id)
+      .maybeSingle()
+
+    if (!userProfile || !userProfile.business_id) {
+      return handleCORS(NextResponse.json({ error: 'User profile not found' }, { status: 401 }))
+    }
+
+    // Use service client for queries (bypasses RLS)
+    const { createClient: createAdminClient } = await import('@supabase/supabase-js')
+    const adminSupabase = createAdminClient(supabaseUrl, supabaseServiceKey)
   
   const { searchParams } = new URL(request.url)
   const route = searchParams.get('route')
@@ -73,7 +89,7 @@ export async function GET(request) {
     // GET: Empty Items List
     // ============================================
     if (route === 'empty-items') {
-      const { data, error } = await supabase
+      const { data, error } = await adminSupabase
         .from('empty_items')
         .select('*')
         .eq('business_id', userProfile.business_id)
@@ -87,7 +103,7 @@ export async function GET(request) {
     // GET: Warehouse Empty Inventory
     // ============================================
     if (route === 'warehouse-empty-inventory') {
-      const { data, error } = await supabase
+      const { data, error } = await adminSupabase
         .from('warehouse_empty_inventory')
         .select(`
           *,
@@ -327,36 +343,30 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const cookieStore = await cookies()
-  
-  // Get user session for business_id
-  const sessionSupabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      get(name) {
-        return cookieStore.get(name)?.value
-      }
+  const supabase = await getSupabaseClient()
+  const body = await request.json()
+  const route = body.route
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
-  })
-  
-  const { data: { user } } = await sessionSupabase.auth.getUser()
-  if (!user) {
-    return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
-  }
 
-  // Get user profile
-  const { data: userProfile } = await sessionSupabase
-    .from('users')
-    .select('business_id, role')
-    .eq('id', user.id)
-    .single()
+    // Get user profile using auth_user_id
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('id, business_id, role, status')
+      .eq('auth_user_id', user.id)
+      .maybeSingle()
 
-  if (!userProfile) {
-    return handleCORS(NextResponse.json({ error: 'User profile not found' }, { status: 401 }))
-  }
+    if (!userProfile || !userProfile.business_id) {
+      return handleCORS(NextResponse.json({ error: 'User profile not found' }, { status: 401 }))
+    }
 
-  // Now use service client for data queries (bypasses RLS)
-  const { createClient: createAdminClient } = await import('@supabase/supabase-js')
-  const supabase = createAdminClient(supabaseUrl, supabaseServiceKey)
+    // Use service client for queries (bypasses RLS)
+    const { createClient: createAdminClient } = await import('@supabase/supabase-js')
+    const adminSupabase = createAdminClient(supabaseUrl, supabaseServiceKey)
   
   const body = await request.json()
   const route = body.route
@@ -371,7 +381,7 @@ export async function POST(request) {
         return handleCORS(NextResponse.json({ error: 'Forbidden' }, { status: 403 }))
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await adminSupabase
         .from('empty_items')
         .insert({
           business_id: userContext.businessId,
