@@ -2,8 +2,13 @@
 // Handles manufacturer supply, empty issuance, returns, and reconciliation
 
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { sendNotification } from '@/lib/notifications'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 // Helper function for CORS
 function handleCORS(response) {
@@ -28,7 +33,15 @@ async function getUserBusinessId(supabase) {
 }
 
 export async function GET(request) {
-  const supabase = await createClient()
+  const cookieStore = await cookies()
+  const supabase = createServerClient(supabaseUrl, supabaseServiceKey, {
+    cookies: {
+      get(name) {
+        return cookieStore.get(name)?.value
+      }
+    }
+  })
+  
   const { searchParams } = new URL(request.url)
   const route = searchParams.get('route')
 
@@ -296,7 +309,15 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const supabase = await createClient()
+  const cookieStore = await cookies()
+  const supabase = createServerClient(supabaseUrl, supabaseServiceKey, {
+    cookies: {
+      get(name) {
+        return cookieStore.get(name)?.value
+      }
+    }
+  })
+  
   const body = await request.json()
   const route = body.route
 
