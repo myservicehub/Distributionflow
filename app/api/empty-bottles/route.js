@@ -384,7 +384,7 @@ export async function POST(request) {
       if (error) throw error
 
       // Initialize warehouse inventory for this item
-      await supabase
+      await adminSupabase
         .from('warehouse_empty_inventory')
         .insert({
           business_id: userProfile.business_id,
