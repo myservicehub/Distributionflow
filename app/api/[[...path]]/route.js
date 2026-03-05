@@ -6,6 +6,7 @@ import { sendStaffInvitation } from '@/lib/email'
 import { can } from '@/lib/permissions'
 import { sendNotification } from '@/lib/notifications'
 import { sendDeliverySMS, formatNigerianPhone } from '@/lib/sms-notifications'
+import { isSubscriptionActive, hasFeature, FEATURES } from '@/lib/subscription'
 
 // Initialize Supabase client (server-side with service role for admin operations)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -86,6 +87,67 @@ async function getUserBusinessId(supabase) {
     console.error('Error in getUserBusinessId:', error)
     return null
   }
+}
+
+// ============================================
+// SUBSCRIPTION ENFORCEMENT HELPERS
+// ============================================
+
+/**
+ * Check if business subscription is active (trial or paid)
+ */
+async function checkSubscriptionStatus(businessId) {
+  try {
+    const isActive = await isSubscriptionActive(businessId)
+    return isActive
+  } catch (error) {
+    console.error('Error checking subscription status:', error)
+    return false
+  }
+}
+
+/**
+ * Check if business has access to a specific feature
+ */
+async function checkFeatureAccess(businessId, featureName) {
+  try {
+    const hasAccess = await hasFeature(businessId, featureName)
+    return hasAccess
+  } catch (error) {
+    console.error('Error checking feature access:', error)
+    return false
+  }
+}
+
+/**
+ * Middleware to enforce subscription status
+ */
+async function enforceSubscription(businessId) {
+  const isActive = await checkSubscriptionStatus(businessId)
+  if (!isActive) {
+    return {
+      error: 'Subscription expired',
+      message: 'Your subscription has expired. Please upgrade to continue using the platform.',
+      code: 'SUBSCRIPTION_EXPIRED'
+    }
+  }
+  return null
+}
+
+/**
+ * Middleware to enforce feature access
+ */
+async function enforceFeature(businessId, featureName, featureDisplayName) {
+  const hasAccess = await checkFeatureAccess(businessId, featureName)
+  if (!hasAccess) {
+    return {
+      error: 'Feature not available',
+      message: `${featureDisplayName} is not available on your current plan. Please upgrade to access this feature.`,
+      code: 'FEATURE_NOT_AVAILABLE',
+      feature: featureName
+    }
+  }
+  return null
 }
 
 // ============================================
@@ -1413,8 +1475,21 @@ async function handleRoute(request, { params }) {
 
       const body = await request.json()
       
+      // Use service role client for operations that might be affected by RLS
+      const { createClient } = await import('@supabase/supabase-js')
+      const adminSupabase = createClient(
+        supabaseUrl,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      )
+      
       // Create payment record
-      const { data: payment, error: paymentError } = await supabase
+      const { data: payment, error: paymentError } = await adminSupabase
         .from('payments')
         .insert({
           business_id: userContext.businessId,
@@ -1428,13 +1503,17 @@ async function handleRoute(request, { params }) {
         .select()
         .single()
 
-      if (paymentError) throw paymentError
+      if (paymentError) {
+        console.error('Error creating payment:', paymentError)
+        throw paymentError
+      }
 
-      // Update retailer balance
-      const { data: retailer, error: retailerFetchError } = await supabase
+      // Update retailer balance using admin client
+      const { data: retailer, error: retailerFetchError } = await adminSupabase
         .from('retailers')
         .select('current_balance, credit_limit')
         .eq('id', body.retailer_id)
+        .eq('business_id', userContext.businessId)
         .single()
 
       if (retailerFetchError) {
@@ -1450,29 +1529,27 @@ async function handleRoute(request, { params }) {
       // Update status based on new balance
       const newStatus = finalBalance <= parseFloat(retailer.credit_limit) ? 'active' : 'blocked'
 
-      const { error: updateError } = await supabase
+      const { error: updateError } = await adminSupabase
         .from('retailers')
         .update({ 
           current_balance: finalBalance,
-          status: newStatus
+          status: newStatus,
+          updated_at: new Date().toISOString()
         })
         .eq('id', body.retailer_id)
+        .eq('business_id', userContext.businessId)
 
       if (updateError) {
         console.error('Error updating retailer balance:', updateError)
         throw new Error('Failed to update retailer balance: ' + updateError.message)
       }
 
+      console.log(`✅ Retailer balance updated successfully. New balance: ${finalBalance}, Status: ${newStatus}`)
+
       // Send notification for large payments
       try {
-        const {createClient: createAdminClient} = await import('@supabase/supabase-js')
-        const supabaseAdmin = createAdminClient(
-          supabaseUrl,
-          process.env.SUPABASE_SERVICE_ROLE_KEY
-        )
-        
         // Get business settings for payment threshold
-        const {data: businessSettings} = await supabaseAdmin
+        const {data: businessSettings} = await adminSupabase
           .from('business_settings')
           .select('settings')
           .eq('business_id', userContext.businessId)
@@ -1481,14 +1558,14 @@ async function handleRoute(request, { params }) {
         const paymentThreshold = businessSettings?.settings?.notifications?.payment_threshold || 50000
         
         // Get retailer name
-        const {data: retailerData} = await supabaseAdmin
+        const {data: retailerData} = await adminSupabase
           .from('retailers')
           .select('shop_name')
           .eq('id', body.retailer_id)
           .single()
         
         // Get user name
-        const {data: userData} = await supabaseAdmin
+        const {data: userData} = await adminSupabase
           .from('users')
           .select('name')
           .eq('id', userContext.userId)

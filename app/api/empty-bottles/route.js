@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { sendNotification } from '@/lib/notifications'
+import { hasFeature, FEATURES } from '@/lib/subscription'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -62,6 +63,17 @@ export async function GET(request) {
 
     if (!userProfile || !userProfile.business_id) {
       return handleCORS(NextResponse.json({ error: 'User profile not found' }, { status: 401 }))
+    }
+
+    // CHECK FEATURE ACCESS: Empty Lifecycle Management
+    const hasEmptyLifecycle = await hasFeature(userProfile.business_id, FEATURES.EMPTY_LIFECYCLE)
+    if (!hasEmptyLifecycle) {
+      return handleCORS(NextResponse.json({
+        error: 'Feature not available',
+        message: 'Empty Bottle Lifecycle Management is not available on your current plan. Please upgrade to the Business or Enterprise plan.',
+        code: 'FEATURE_NOT_AVAILABLE',
+        requiredFeature: 'empty_lifecycle'
+      }, { status: 403 }))
     }
 
     // Use service client for queries (bypasses RLS)
@@ -354,6 +366,17 @@ export async function POST(request) {
 
     if (!userProfile || !userProfile.business_id) {
       return handleCORS(NextResponse.json({ error: 'User profile not found' }, { status: 401 }))
+    }
+
+    // CHECK FEATURE ACCESS: Empty Lifecycle Management
+    const hasEmptyLifecycle = await hasFeature(userProfile.business_id, FEATURES.EMPTY_LIFECYCLE)
+    if (!hasEmptyLifecycle) {
+      return handleCORS(NextResponse.json({
+        error: 'Feature not available',
+        message: 'Empty Bottle Lifecycle Management is not available on your current plan. Please upgrade to the Business or Enterprise plan.',
+        code: 'FEATURE_NOT_AVAILABLE',
+        requiredFeature: 'empty_lifecycle'
+      }, { status: 403 }))
     }
 
     // Use service client for queries (bypasses RLS)
