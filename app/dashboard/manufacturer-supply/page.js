@@ -38,7 +38,9 @@ export default function ManufacturerSupplyPage() {
 
   const loadEmptyItems = async () => {
     try {
-      const response = await fetch('/api/empty-bottles?route=empty-items')
+      const response = await fetch('/api/empty-bottles?route=empty-items', {
+        cache: 'no-store' // Ensure fresh data on each load
+      })
       if (!response.ok) throw new Error('Failed to load empty items')
       const data = await response.json()
       setEmptyItems(data.filter(item => item.is_active))
@@ -102,7 +104,10 @@ export default function ManufacturerSupplyPage() {
           <h1 className="text-3xl font-bold">Manufacturer Supply</h1>
           <p className="text-muted-foreground">Record empty items received from manufacturer</p>
         </div>
-        <Button onClick={() => setShowDialog(true)}>
+        <Button onClick={() => {
+          loadEmptyItems() // Refresh empty items list when opening dialog
+          setShowDialog(true)
+        }}>
           <Truck className="h-4 w-4 mr-2" />
           Record Supply
         </Button>
