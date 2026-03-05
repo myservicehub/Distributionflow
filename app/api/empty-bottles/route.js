@@ -34,7 +34,9 @@ async function getUserBusinessId(supabase) {
 
 export async function GET(request) {
   const cookieStore = await cookies()
-  const supabase = createServerClient(supabaseUrl, supabaseServiceKey, {
+  
+  // Get user session for business_id
+  const sessionSupabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       get(name) {
         return cookieStore.get(name)?.value
@@ -42,14 +44,30 @@ export async function GET(request) {
     }
   })
   
+  const { data: { user } } = await sessionSupabase.auth.getUser()
+  if (!user) {
+    return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+  }
+
+  // Get user profile
+  const { data: userProfile } = await sessionSupabase
+    .from('users')
+    .select('business_id, role')
+    .eq('id', user.id)
+    .single()
+
+  if (!userProfile) {
+    return handleCORS(NextResponse.json({ error: 'User profile not found' }, { status: 401 }))
+  }
+
+  // Now use service client for data queries (bypasses RLS)
+  const { createClient: createAdminClient } = await import('@supabase/supabase-js')
+  const supabase = createAdminClient(supabaseUrl, supabaseServiceKey)
+  
   const { searchParams } = new URL(request.url)
   const route = searchParams.get('route')
 
   try {
-    const userContext = await getUserBusinessId(supabase)
-    if (!userContext) {
-      return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
-    }
 
     // ============================================
     // GET: Empty Items List
@@ -58,7 +76,7 @@ export async function GET(request) {
       const { data, error } = await supabase
         .from('empty_items')
         .select('*')
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
         .order('name', { ascending: true })
 
       if (error) throw error
@@ -75,7 +93,7 @@ export async function GET(request) {
           *,
           empty_items(name, deposit_value)
         `)
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
 
       if (error) throw error
       return handleCORS(NextResponse.json(data))
@@ -94,7 +112,7 @@ export async function GET(request) {
           empty_items(name, deposit_value),
           retailers(shop_name)
         `)
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
 
       if (retailerId) {
         query = query.eq('retailer_id', retailerId)
@@ -122,7 +140,7 @@ export async function GET(request) {
           retailers(shop_name),
           users(name)
         `)
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
         .order('created_at', { ascending: false })
         .limit(limit)
 
@@ -143,7 +161,7 @@ export async function GET(request) {
       const { data: warehouseStock } = await supabase
         .from('warehouse_empty_inventory')
         .select('quantity_available, empty_items(deposit_value)')
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
 
       const totalWarehouseQty = warehouseStock?.reduce((sum, item) => sum + item.quantity_available, 0) || 0
       const totalWarehouseValue = warehouseStock?.reduce((sum, item) => 
@@ -153,7 +171,7 @@ export async function GET(request) {
       const { data: retailerBalances } = await supabase
         .from('retailer_empty_balances')
         .select('quantity_outstanding, empty_items(deposit_value), retailers(shop_name)')
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
 
       const totalRetailerQty = retailerBalances?.reduce((sum, item) => sum + item.quantity_outstanding, 0) || 0
       const totalRetailerValue = retailerBalances?.reduce((sum, item) => 
@@ -180,14 +198,14 @@ export async function GET(request) {
       const { data: todayReturns } = await supabase
         .from('empty_movements')
         .select('quantity')
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
         .eq('type', 'returned_from_retailer')
         .gte('created_at', today.toISOString())
 
       const { data: todayIssued } = await supabase
         .from('empty_movements')
         .select('quantity')
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
         .eq('type', 'issued_to_retailer')
         .gte('created_at', today.toISOString())
 
@@ -219,17 +237,17 @@ export async function GET(request) {
       const { data: movements } = await supabase
         .from('empty_movements')
         .select('type, quantity, empty_item_id, empty_items(name)')
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
 
       const { data: warehouseStock } = await supabase
         .from('warehouse_empty_inventory')
         .select('quantity_available, empty_item_id, empty_items(name)')
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
 
       const { data: retailerBalances } = await supabase
         .from('retailer_empty_balances')
         .select('quantity_outstanding, empty_item_id, empty_items(name)')
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
 
       // Calculate per empty item
       const reconciliation = {}
@@ -310,7 +328,9 @@ export async function GET(request) {
 
 export async function POST(request) {
   const cookieStore = await cookies()
-  const supabase = createServerClient(supabaseUrl, supabaseServiceKey, {
+  
+  // Get user session for business_id
+  const sessionSupabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       get(name) {
         return cookieStore.get(name)?.value
@@ -318,20 +338,36 @@ export async function POST(request) {
     }
   })
   
+  const { data: { user } } = await sessionSupabase.auth.getUser()
+  if (!user) {
+    return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+  }
+
+  // Get user profile
+  const { data: userProfile } = await sessionSupabase
+    .from('users')
+    .select('business_id, role')
+    .eq('id', user.id)
+    .single()
+
+  if (!userProfile) {
+    return handleCORS(NextResponse.json({ error: 'User profile not found' }, { status: 401 }))
+  }
+
+  // Now use service client for data queries (bypasses RLS)
+  const { createClient: createAdminClient } = await import('@supabase/supabase-js')
+  const supabase = createAdminClient(supabaseUrl, supabaseServiceKey)
+  
   const body = await request.json()
   const route = body.route
 
   try {
-    const userContext = await getUserBusinessId(supabase)
-    if (!userContext) {
-      return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
-    }
 
     // ============================================
     // POST: Create Empty Item
     // ============================================
     if (route === 'create-empty-item') {
-      if (!['admin', 'manager'].includes(userContext.role)) {
+      if (!['admin', 'manager'].includes(userProfile.role)) {
         return handleCORS(NextResponse.json({ error: 'Forbidden' }, { status: 403 }))
       }
 
@@ -363,7 +399,7 @@ export async function POST(request) {
     // POST: Manufacturer Supply (Receive Empties)
     // ============================================
     if (route === 'manufacturer-supply') {
-      if (!['admin', 'manager', 'warehouse'].includes(userContext.role)) {
+      if (!['admin', 'manager', 'warehouse'].includes(userProfile.role)) {
         return handleCORS(NextResponse.json({ error: 'Forbidden' }, { status: 403 }))
       }
 
@@ -373,7 +409,7 @@ export async function POST(request) {
       const { data: currentInventory } = await supabase
         .from('warehouse_empty_inventory')
         .select('quantity_available')
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
         .eq('empty_item_id', empty_item_id)
         .single()
 
@@ -399,7 +435,7 @@ export async function POST(request) {
           quantity,
           reference_type: 'manufacturer',
           notes,
-          created_by: userContext.userId
+          created_by: user.id
         })
         .select()
         .single()
@@ -438,7 +474,7 @@ export async function POST(request) {
       const { data: balance } = await supabase
         .from('retailer_empty_balances')
         .select('quantity_outstanding')
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
         .eq('retailer_id', retailer_id)
         .eq('empty_item_id', empty_item_id)
         .single()
@@ -453,7 +489,7 @@ export async function POST(request) {
       const { error: balanceError } = await supabase
         .from('retailer_empty_balances')
         .update({ quantity_outstanding: balance.quantity_outstanding - quantity })
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
         .eq('retailer_id', retailer_id)
         .eq('empty_item_id', empty_item_id)
 
@@ -463,14 +499,14 @@ export async function POST(request) {
       const { data: warehouse } = await supabase
         .from('warehouse_empty_inventory')
         .select('quantity_available')
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
         .eq('empty_item_id', empty_item_id)
         .single()
 
       const { error: warehouseError } = await supabase
         .from('warehouse_empty_inventory')
         .update({ quantity_available: (warehouse?.quantity_available || 0) + quantity })
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
         .eq('empty_item_id', empty_item_id)
 
       if (warehouseError) throw warehouseError
@@ -487,7 +523,7 @@ export async function POST(request) {
           reference_type: order_id ? 'order' : 'return',
           reference_id: order_id || null,
           notes,
-          created_by: userContext.userId
+          created_by: user.id
         })
         .select()
         .single()
@@ -499,7 +535,7 @@ export async function POST(request) {
     // POST: Return Empties to Manufacturer
     // ============================================
     if (route === 'return-to-manufacturer') {
-      if (!['admin', 'manager', 'warehouse'].includes(userContext.role)) {
+      if (!['admin', 'manager', 'warehouse'].includes(userProfile.role)) {
         return handleCORS(NextResponse.json({ error: 'Forbidden' }, { status: 403 }))
       }
 
@@ -509,7 +545,7 @@ export async function POST(request) {
       const { data: warehouse } = await supabase
         .from('warehouse_empty_inventory')
         .select('quantity_available')
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
         .eq('empty_item_id', empty_item_id)
         .single()
 
@@ -523,7 +559,7 @@ export async function POST(request) {
       const { error: warehouseError } = await supabase
         .from('warehouse_empty_inventory')
         .update({ quantity_available: warehouse.quantity_available - quantity })
-        .eq('business_id', userContext.businessId)
+        .eq('business_id', userProfile.business_id)
         .eq('empty_item_id', empty_item_id)
 
       if (warehouseError) throw warehouseError
@@ -538,7 +574,7 @@ export async function POST(request) {
           quantity,
           reference_type: 'manufacturer',
           notes,
-          created_by: userContext.userId
+          created_by: user.id
         })
         .select()
         .single()
@@ -569,7 +605,7 @@ export async function POST(request) {
     // POST: Manual Adjustment
     // ============================================
     if (route === 'manual-adjustment') {
-      if (!['admin', 'manager'].includes(userContext.role)) {
+      if (!['admin', 'manager'].includes(userProfile.role)) {
         return handleCORS(NextResponse.json({ error: 'Forbidden: Only admin/manager can adjust' }, { status: 403 }))
       }
 
@@ -580,7 +616,7 @@ export async function POST(request) {
         const { data: warehouse } = await supabase
           .from('warehouse_empty_inventory')
           .select('quantity_available')
-          .eq('business_id', userContext.businessId)
+          .eq('business_id', userProfile.business_id)
           .eq('empty_item_id', empty_item_id)
           .single()
 
@@ -589,13 +625,13 @@ export async function POST(request) {
         await supabase
           .from('warehouse_empty_inventory')
           .update({ quantity_available: newQty })
-          .eq('business_id', userContext.businessId)
+          .eq('business_id', userProfile.business_id)
           .eq('empty_item_id', empty_item_id)
       } else if (location === 'retailer' && retailer_id) {
         const { data: balance } = await supabase
           .from('retailer_empty_balances')
           .select('quantity_outstanding')
-          .eq('business_id', userContext.businessId)
+          .eq('business_id', userProfile.business_id)
           .eq('retailer_id', retailer_id)
           .eq('empty_item_id', empty_item_id)
           .single()
@@ -623,7 +659,7 @@ export async function POST(request) {
           quantity,
           reference_type: 'adjustment',
           notes,
-          created_by: userContext.userId
+          created_by: user.id
         })
         .select()
         .single()
@@ -636,8 +672,8 @@ export async function POST(request) {
           type: 'warning',
           category: 'inventory',
           targetRoles: ['admin'],
-          businessId: userContext.businessId,
-          triggeredBy: userContext.userId,
+          businessId: userProfile.business_id,
+          triggeredBy: user.id,
           relatedTable: 'empty_movements',
           relatedRecordId: movement.id
         })
