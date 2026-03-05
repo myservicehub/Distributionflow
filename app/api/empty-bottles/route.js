@@ -79,11 +79,6 @@ export async function GET(request) {
     // Use service client for queries (bypasses RLS)
     const { createClient: createAdminClient } = await import('@supabase/supabase-js')
     const adminSupabase = createAdminClient(supabaseUrl, supabaseServiceKey)
-  
-  const { searchParams } = new URL(request.url)
-  const route = searchParams.get('route')
-
-  try {
 
     // ============================================
     // GET: Empty Items List
