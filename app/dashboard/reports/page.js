@@ -132,7 +132,7 @@ export default function ReportsPage() {
         <TabsContent value="sales" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Sales Performance by Representative</CardTitle>
+              <CardTitle>Sales Performance by Representative (Today)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">

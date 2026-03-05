@@ -1738,11 +1738,16 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
-      // Fetch orders with order items and products
+      // Get today's date at midnight for filtering
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      // Fetch orders with order items and products (TODAY only)
       const { data: orders, error } = await supabase
         .from('orders')
         .select('id, sales_rep_id, total_amount, status, created_at, order_items(quantity, unit_price, total_price, product_id, products(name, sku))')
         .eq('business_id', userContext.businessId)
+        .gte('created_at', today.toISOString())
         .in('status', ['confirmed', 'delivered'])
         .order('created_at', { ascending: false })
 
