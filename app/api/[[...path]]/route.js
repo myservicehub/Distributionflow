@@ -1185,6 +1185,7 @@ async function handleRoute(request, { params }) {
           )
           
           // Get retailer details (name and phone)
+          // Get retailer details (name and phone)
           const {data: retailer, error: retailerError} = await supabaseAdmin
             .from('retailers')
             .select('*')
@@ -1194,8 +1195,6 @@ async function handleRoute(request, { params }) {
           if (retailerError) {
             console.error('Error fetching retailer for notification:', retailerError)
           }
-          
-          console.log('Notification - Order:', order.id, 'Retailer ID:', order.retailer_id, 'Retailer Data:', JSON.stringify(retailer))
           
           // Get user name
           const {data: userName} = await supabaseAdmin
@@ -1208,8 +1207,6 @@ async function handleRoute(request, { params }) {
             '{RETAILER_NAME}',
             retailer?.shop_name || 'Unknown'
           )
-          
-          console.log('Final notification message:', finalMessage)
           
           // Send in-app notification
           await sendNotification({
