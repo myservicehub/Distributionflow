@@ -1,3 +1,4 @@
+import PublicNav from '@/components/PublicNav'
 'use client'
 
 import { useState } from 'react'

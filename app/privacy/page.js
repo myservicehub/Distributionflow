@@ -1,3 +1,4 @@
+import PublicNav from '@/components/PublicNav'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Package } from 'lucide-react'
@@ -6,22 +7,7 @@ export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <nav className="border-b bg-white/95 backdrop-blur sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center space-x-2">
-            <Package className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-slate-900">DistributionFlow</span>
-          </Link>
-          <div className="flex items-center space-x-4">
-            <Link href="/login">
-              <Button variant="ghost">Login</Button>
-            </Link>
-            <Link href="/signup">
-              <Button className="bg-blue-600 hover:bg-blue-700">Start Free Trial</Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <PublicNav />
 
       {/* Content */}
       <div className="container mx-auto px-4 py-16">

@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import PublicNav from '@/components/PublicNav'
 
 export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState('monthly') // 'monthly' or 'yearly'
@@ -147,6 +148,7 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      <PublicNav />
       {/* Hero Section */}
       <section className="container mx-auto px-4 pt-16 pb-12 md:pt-32 md:pb-24">
         <div className="max-w-4xl mx-auto text-center">

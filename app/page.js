@@ -18,6 +18,7 @@ import {
   Star,
   ArrowRight
 } from 'lucide-react'
+import PublicNav from '@/components/PublicNav'
 
 export default function Home() {
   const features = [
@@ -100,28 +101,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Navigation */}
-      <nav className="border-b bg-white/95 backdrop-blur sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center space-x-2">
-            <Package className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-slate-900">DistributionFlow</span>
-          </Link>
-          <div className="hidden md:flex items-center space-x-8">
-            <Link href="#features" className="text-slate-600 hover:text-slate-900">Features</Link>
-            <Link href="/pricing" className="text-slate-600 hover:text-slate-900">Pricing</Link>
-            <Link href="#testimonials" className="text-slate-600 hover:text-slate-900">Testimonials</Link>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Link href="/login">
-              <Button variant="ghost">Login</Button>
-            </Link>
-            <Link href="/signup">
-              <Button className="bg-blue-600 hover:bg-blue-700">Start Free Trial</Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <PublicNav />
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 pt-20 pb-24 md:pt-32 md:pb-32">
