@@ -679,6 +679,95 @@ export async function POST(request) {
         .eq('business_id', userProfile.business_id)
         .eq('empty_item_id', empty_item_id)
 
+    // ============================================
+    // POST: Process Bottle Exchange
+    // Customer buys products and brings empties
+    // ============================================
+    if (route === 'process-bottle-exchange') {
+      const { retailer_id, products_purchased, empties_brought, deposit_amount, notes } = body
+
+      if (!retailer_id || !products_purchased || products_purchased.length === 0) {
+        return handleCORS(NextResponse.json({ 
+          error: 'Missing required fields: retailer_id, products_purchased' 
+        }, { status: 400 }))
+      }
+
+      // Add empties brought by customer to warehouse inventory
+      for (const empty of empties_brought || []) {
+        const { empty_item_id, quantity } = empty
+
+        // Check if warehouse inventory exists for this empty
+        const { data: existing } = await adminSupabase
+          .from('warehouse_empty_inventory')
+          .select('quantity_available')
+          .eq('business_id', userProfile.business_id)
+          .eq('empty_item_id', empty_item_id)
+          .maybeSingle()
+
+        if (existing) {
+          // Update existing inventory
+          await adminSupabase
+            .from('warehouse_empty_inventory')
+            .update({ 
+              quantity_available: existing.quantity_available + quantity,
+              updated_at: new Date().toISOString()
+            })
+            .eq('business_id', userProfile.business_id)
+            .eq('empty_item_id', empty_item_id)
+        } else {
+          // Create new inventory record
+          await adminSupabase
+            .from('warehouse_empty_inventory')
+            .insert({
+              business_id: userProfile.business_id,
+              empty_item_id,
+              quantity_available: quantity
+            })
+        }
+
+        // Log the movement (customer returning empties)
+        await adminSupabase
+          .from('empty_movements')
+          .insert({
+            business_id: userProfile.business_id,
+            empty_item_id,
+            retailer_id,
+            type: 'returned_from_retailer',
+            quantity,
+            reference_type: 'bottle_exchange',
+            notes: notes || 'Customer brought empties during purchase',
+            created_by: userProfile.id
+          })
+      }
+
+      // Record deposit if any
+      if (deposit_amount && deposit_amount > 0) {
+        await adminSupabase
+          .from('payments')
+          .insert({
+            business_id: userProfile.business_id,
+            retailer_id,
+            amount_paid: deposit_amount,
+            payment_method: 'deposit',
+            payment_type: 'bottle_deposit',
+            notes: notes || 'Bottle deposit collected',
+            created_by: userProfile.id
+          })
+      }
+
+      console.log(`✅ Bottle exchange processed for retailer ${retailer_id}`)
+      console.log(`   - Empties brought: ${empties_brought?.length || 0} types`)
+      console.log(`   - Deposit collected: ₦${deposit_amount || 0}`)
+
+      return handleCORS(NextResponse.json({ 
+        success: true,
+        empties_added: empties_brought?.reduce((sum, e) => sum + e.quantity, 0) || 0,
+        deposit_collected: deposit_amount || 0,
+        message: 'Bottle exchange recorded successfully' 
+      }))
+    }
+
+
       if (warehouseError) throw warehouseError
 
       // Log movement
