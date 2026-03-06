@@ -1308,8 +1308,21 @@ async function handleRoute(request, { params }) {
         // AUTOMATIC EMPTY BOTTLE ISSUANCE
         // When order is delivered, automatically issue empties to retailer for products with linked empties
         try {
+          // Use admin client to bypass RLS
+          const { createClient: createAdminClient } = await import('@supabase/supabase-js')
+          const adminSupabase = createAdminClient(
+            supabaseUrl,
+            process.env.SUPABASE_SERVICE_ROLE_KEY,
+            {
+              auth: {
+                autoRefreshToken: false,
+                persistSession: false
+              }
+            }
+          )
+
           // Get order items
-          const { data: orderItems } = await supabase
+          const { data: orderItems } = await adminSupabase
             .from('order_items')
             .select('product_id, quantity')
             .eq('order_id', orderId)
@@ -1317,11 +1330,13 @@ async function handleRoute(request, { params }) {
           if (orderItems && orderItems.length > 0) {
             // Get products with their linked empty items
             const productIds = orderItems.map(item => item.product_id)
-            const { data: products } = await supabase
+            const { data: products } = await adminSupabase
               .from('products')
               .select('id, name, empty_item_id')
               .in('id', productIds)
               .not('empty_item_id', 'is', null)
+
+            console.log(`🔍 Found ${products?.length || 0} products with linked empties for order ${orderId}`)
 
             // Create a map of product_id to empty_item_id
             const productEmptyMap = {}
@@ -1338,10 +1353,12 @@ async function handleRoute(request, { params }) {
               }
             })
 
+            console.log(`📦 Empties to issue for order ${orderId}:`, emptiesToIssue)
+
             // Issue empties to retailer
             for (const [emptyItemId, quantity] of Object.entries(emptiesToIssue)) {
               // Check if retailer already has a balance for this empty item
-              const { data: existingBalance } = await supabase
+              const { data: existingBalance } = await adminSupabase
                 .from('retailer_empty_balances')
                 .select('quantity_outstanding')
                 .eq('business_id', userContext.business_id)
@@ -1351,7 +1368,7 @@ async function handleRoute(request, { params }) {
 
               if (existingBalance) {
                 // Update existing balance
-                await supabase
+                const { error: updateError } = await adminSupabase
                   .from('retailer_empty_balances')
                   .update({ 
                     quantity_outstanding: existingBalance.quantity_outstanding + quantity,
@@ -1360,9 +1377,15 @@ async function handleRoute(request, { params }) {
                   .eq('business_id', userContext.business_id)
                   .eq('retailer_id', order.retailer_id)
                   .eq('empty_item_id', emptyItemId)
+
+                if (updateError) {
+                  console.error('Error updating retailer balance:', updateError)
+                } else {
+                  console.log(`✅ Updated balance for empty ${emptyItemId}: ${existingBalance.quantity_outstanding} + ${quantity}`)
+                }
               } else {
                 // Create new balance record
-                await supabase
+                const { error: insertError } = await adminSupabase
                   .from('retailer_empty_balances')
                   .insert({
                     business_id: userContext.business_id,
@@ -1370,10 +1393,16 @@ async function handleRoute(request, { params }) {
                     empty_item_id: emptyItemId,
                     quantity_outstanding: quantity
                   })
+
+                if (insertError) {
+                  console.error('Error creating retailer balance:', insertError)
+                } else {
+                  console.log(`✅ Created new balance for empty ${emptyItemId}: ${quantity}`)
+                }
               }
 
               // Log the empty movement
-              await supabase
+              const { error: movementError } = await adminSupabase
                 .from('empty_movements')
                 .insert({
                   business_id: userContext.business_id,
@@ -1386,12 +1415,18 @@ async function handleRoute(request, { params }) {
                   notes: `Automatic empty issuance for order #${orderId.substring(0, 8)}`,
                   created_by: userContext.id
                 })
+
+              if (movementError) {
+                console.error('Error logging empty movement:', movementError)
+              }
             }
 
             console.log(`✅ Automatically issued empties for order ${orderId}:`, emptiesToIssue)
+          } else {
+            console.log(`ℹ️ No order items found for order ${orderId}`)
           }
         } catch (emptyError) {
-          console.error('Error issuing empties:', emptyError)
+          console.error('❌ Error issuing empties:', emptyError)
           // Don't fail the order delivery if empty issuance fails
         }
         
