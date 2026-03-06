@@ -215,6 +215,36 @@ export default function OrdersPage() {
     setBottleExchange({ enabled: false, empties: [] })
   }
 
+  // Calculate empties that will be issued upon delivery
+  const calculateEmptiesToIssue = () => {
+    const emptiesToIssue = {}
+    
+    orderItems.forEach(item => {
+      if (item.product_id && item.quantity > 0) {
+        const product = products.find(p => p.id === item.product_id)
+        if (product && product.empty_item_id) {
+          const emptyItem = emptyItems.find(e => e.id === product.empty_item_id)
+          if (emptyItem) {
+            if (!emptiesToIssue[product.empty_item_id]) {
+              emptiesToIssue[product.empty_item_id] = {
+                name: emptyItem.name,
+                quantity: 0,
+                deposit_value: emptyItem.deposit_value
+              }
+            }
+            emptiesToIssue[product.empty_item_id].quantity += parseInt(item.quantity)
+          }
+        }
+      }
+    })
+    
+    return Object.values(emptiesToIssue)
+  }
+
+  const emptiesToIssue = calculateEmptiesToIssue()
+  const totalEmptiesToIssue = emptiesToIssue.reduce((sum, e) => sum + e.quantity, 0)
+  const totalEmptyDeposit = emptiesToIssue.reduce((sum, e) => sum + (e.quantity * e.deposit_value), 0)
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'confirmed': return 'default'
@@ -474,6 +504,53 @@ export default function OrdersPage() {
                   </div>
                 )}
               </div>
+
+              {/* Empties to be Issued Upon Delivery */}
+              {emptiesToIssue.length > 0 && (
+                <div className="border rounded-lg p-4 bg-blue-50 border-blue-200">
+                  <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Empties to be Issued Upon Delivery
+                  </h4>
+                  <p className="text-sm text-blue-700 mb-3">
+                    When this order is delivered, the following empties will be automatically issued to the retailer:
+                  </p>
+                  
+                  <div className="space-y-2">
+                    {emptiesToIssue.map((empty, idx) => (
+                      <div key={idx} className="flex justify-between items-center bg-white rounded p-3 border border-blue-100">
+                        <div>
+                          <p className="font-medium text-gray-900">{empty.name}</p>
+                          <p className="text-xs text-gray-600">Deposit: ₦{parseFloat(empty.deposit_value).toLocaleString()} per unit</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-blue-600">{empty.quantity}</p>
+                          <p className="text-xs text-gray-500">units</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-blue-200">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-blue-900">Total Empties:</span>
+                      <span className="text-xl font-bold text-blue-600">{totalEmptiesToIssue} units</span>
+                    </div>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-sm text-blue-700">Total Deposit Value:</span>
+                      <span className="font-semibold text-blue-900">₦{totalEmptyDeposit.toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded p-2">
+                    <p className="text-xs text-yellow-800">
+                      💡 <strong>Note:</strong> The retailer will owe these empties after delivery. They can return them later or bring empties when purchasing.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Bottle Exchange Section */}
               <BottleExchangeSection
