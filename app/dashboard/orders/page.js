@@ -77,6 +77,10 @@ export default function OrdersPage() {
       if (!response.ok) throw new Error('Failed to load products')
       const data = await response.json()
       setProducts(data)
+    } catch (error) {
+      console.error(error)
+    }
+  }
 
   const loadEmptyItems = async () => {
     try {
@@ -87,11 +91,6 @@ export default function OrdersPage() {
       }
     } catch (error) {
       console.error('Failed to load empty items:', error)
-    }
-  }
-
-    } catch (error) {
-      console.error(error)
     }
   }
 
