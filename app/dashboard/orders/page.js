@@ -137,15 +137,53 @@ export default function OrdersPage() {
     }
 
     try {
+      // Calculate deposit if bottle exchange is enabled
+      let depositAmount = 0
+      if (bottleExchange.enabled && bottleExchange.empties) {
+        const totalProductsWithDeposit = orderItems.reduce((sum, item) => {
+          const product = products.find(p => p.id === item.product_id)
+          if (product && product.empty_item_id) {
+            return sum + parseInt(item.quantity || 0)
+          }
+          return sum
+        }, 0)
+
+        const totalEmpties = bottleExchange.empties.reduce((sum, e) => 
+          sum + (e.quantity ? parseInt(e.quantity) : 0), 0
+        )
+
+        const shortfall = Math.max(0, totalProductsWithDeposit - totalEmpties)
+        
+        // Get deposit value from first product with empty
+        const productWithEmpty = orderItems.find(item => {
+          const product = products.find(p => p.id === item.product_id)
+          return product && product.empty_item_id
+        })
+        
+        if (productWithEmpty && shortfall > 0) {
+          const product = products.find(p => p.id === productWithEmpty.product_id)
+          const empty = emptyItems.find(e => e.id === product.empty_item_id)
+          if (empty) {
+            depositAmount = shortfall * parseFloat(empty.deposit_value || 0)
+          }
+        }
+      }
+
+      const productsTotal = calculateTotal()
+      const orderTotal = productsTotal + depositAmount
+
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           retailer_id: formData.retailer_id,
           payment_status: formData.payment_status,
-          total_amount: calculateTotal(),
+          total_amount: orderTotal, // Include deposit in total
           items: orderItems,
-          bottle_exchange: bottleExchange.enabled ? bottleExchange : null
+          bottle_exchange: bottleExchange.enabled ? {
+            ...bottleExchange,
+            deposit_amount: depositAmount
+          } : null
         })
       })
 
@@ -158,6 +196,9 @@ export default function OrdersPage() {
       if (bottleExchange.enabled) {
         const totalEmpties = bottleExchange.empties.reduce((sum, e) => sum + (parseInt(e.quantity) || 0), 0)
         toast.info(`Recorded ${totalEmpties} empties brought by customer`)
+        if (depositAmount > 0) {
+          toast.info(`Deposit charged: ₦${depositAmount.toLocaleString()}`)
+        }
       }
       setDialogOpen(false)
       resetForm()
@@ -372,11 +413,66 @@ export default function OrdersPage() {
                 ))}
               </div>
 
-              <div className="border-t pt-4">
-                <div className="flex justify-between items-center text-lg font-bold">
-                  <span>Total Amount:</span>
-                  <span>₦{calculateTotal().toLocaleString()}</span>
+              <div className="border-t pt-4 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Products Total:</span>
+                  <span className="font-medium">₦{calculateTotal().toLocaleString()}</span>
                 </div>
+                
+                {bottleExchange.enabled && (() => {
+                  const totalProductsWithDeposit = orderItems.reduce((sum, item) => {
+                    const product = products.find(p => p.id === item.product_id)
+                    if (product && product.empty_item_id) {
+                      return sum + parseInt(item.quantity || 0)
+                    }
+                    return sum
+                  }, 0)
+
+                  const totalEmpties = bottleExchange.empties.reduce((sum, e) => 
+                    sum + (e.quantity ? parseInt(e.quantity) : 0), 0
+                  )
+
+                  const shortfall = Math.max(0, totalProductsWithDeposit - totalEmpties)
+                  
+                  let depositAmount = 0
+                  if (shortfall > 0) {
+                    const productWithEmpty = orderItems.find(item => {
+                      const product = products.find(p => p.id === item.product_id)
+                      return product && product.empty_item_id
+                    })
+                    
+                    if (productWithEmpty) {
+                      const product = products.find(p => p.id === productWithEmpty.product_id)
+                      const empty = emptyItems.find(e => e.id === product?.empty_item_id)
+                      if (empty) {
+                        depositAmount = shortfall * parseFloat(empty.deposit_value || 0)
+                      }
+                    }
+                  }
+
+                  if (depositAmount > 0) {
+                    return (
+                      <>
+                        <div className="flex justify-between items-center text-orange-600">
+                          <span className="text-sm">+ Bottle Deposit ({shortfall} bottles):</span>
+                          <span className="font-medium">₦{depositAmount.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
+                          <span>Total Amount:</span>
+                          <span>₦{(calculateTotal() + depositAmount).toLocaleString()}</span>
+                        </div>
+                      </>
+                    )
+                  }
+                  return null
+                })()} 
+                
+                {!bottleExchange.enabled && (
+                  <div className="flex justify-between items-center text-lg font-bold">
+                    <span>Total Amount:</span>
+                    <span>₦{calculateTotal().toLocaleString()}</span>
+                  </div>
+                )}
               </div>
 
               {/* Bottle Exchange Section */}
