@@ -384,63 +384,87 @@ export default function OrdersPage() {
                   </Button>
                 </div>
                 
-                {orderItems.map((item, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-2 mb-3 items-end">
-                    <div className="col-span-5">
-                      <Label>Product</Label>
-                      <Select
-                        value={item.product_id}
-                        onValueChange={(value) => handleItemChange(index, 'product_id', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              <div className="flex flex-col">
-                                <span className="font-medium">{p.name}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {p.sku ? `SKU: ${p.sku} • ` : ''}Stock: {p.stock_quantity}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="col-span-2">
-                      <Label>Qty</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={item.quantity}
-                        onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Label>Price</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.unit_price}
-                        onChange={(e) => handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Label>Total</Label>
-                      <Input value={item.total_price.toFixed(2)} disabled />
-                    </div>
-                    <div className="col-span-1">
-                      {orderItems.length > 1 && (
-                        <Button type="button" size="sm" variant="destructive" onClick={() => handleRemoveItem(index)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                {orderItems.map((item, index) => {
+                  const product = products.find(p => p.id === item.product_id)
+                  const emptyItem = product?.empty_item_id ? emptyItems.find(e => e.id === product.empty_item_id) : null
+                  
+                  return (
+                    <div key={index} className="mb-4 p-3 border rounded-lg bg-gray-50">
+                      <div className="grid grid-cols-12 gap-2 items-end">
+                        <div className="col-span-5">
+                          <Label>Product</Label>
+                          <Select
+                            value={item.product_id}
+                            onValueChange={(value) => handleItemChange(index, 'product_id', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {products.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{p.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {p.sku ? `SKU: ${p.sku} • ` : ''}Stock: {p.stock_quantity}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-2">
+                          <Label>Qty</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Label>Price</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.unit_price}
+                            onChange={(e) => handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Label>Total</Label>
+                          <Input value={item.total_price.toFixed(2)} disabled />
+                        </div>
+                        <div className="col-span-1">
+                          {orderItems.length > 1 && (
+                            <Button type="button" size="sm" variant="destructive" onClick={() => handleRemoveItem(index)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Empty Details for this product */}
+                      {emptyItem && item.quantity > 0 && (
+                        <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+                          <div className="flex items-center gap-2">
+                            <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                            </svg>
+                            <span className="font-medium text-blue-900">
+                              Will issue: <span className="text-blue-600 font-bold">{item.quantity}x {emptyItem.name}</span>
+                            </span>
+                            <span className="text-xs text-blue-700 ml-auto">
+                              (₦{parseFloat(emptyItem.deposit_value).toLocaleString()} deposit each • Total: ₦{(item.quantity * parseFloat(emptyItem.deposit_value)).toLocaleString()})
+                            </span>
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               <div className="border-t pt-4 space-y-2">
@@ -504,53 +528,6 @@ export default function OrdersPage() {
                   </div>
                 )}
               </div>
-
-              {/* Empties to be Issued Upon Delivery */}
-              {emptiesToIssue.length > 0 && (
-                <div className="border rounded-lg p-4 bg-blue-50 border-blue-200">
-                  <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Empties to be Issued Upon Delivery
-                  </h4>
-                  <p className="text-sm text-blue-700 mb-3">
-                    When this order is delivered, the following empties will be automatically issued to the retailer:
-                  </p>
-                  
-                  <div className="space-y-2">
-                    {emptiesToIssue.map((empty, idx) => (
-                      <div key={idx} className="flex justify-between items-center bg-white rounded p-3 border border-blue-100">
-                        <div>
-                          <p className="font-medium text-gray-900">{empty.name}</p>
-                          <p className="text-xs text-gray-600">Deposit: ₦{parseFloat(empty.deposit_value).toLocaleString()} per unit</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-blue-600">{empty.quantity}</p>
-                          <p className="text-xs text-gray-500">units</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-3 pt-3 border-t border-blue-200">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-blue-900">Total Empties:</span>
-                      <span className="text-xl font-bold text-blue-600">{totalEmptiesToIssue} units</span>
-                    </div>
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-sm text-blue-700">Total Deposit Value:</span>
-                      <span className="font-semibold text-blue-900">₦{totalEmptyDeposit.toLocaleString()}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded p-2">
-                    <p className="text-xs text-yellow-800">
-                      💡 <strong>Note:</strong> The retailer will owe these empties after delivery. They can return them later or bring empties when purchasing.
-                    </p>
-                  </div>
-                </div>
-              )}
 
               {/* Bottle Exchange Section */}
               <BottleExchangeSection
