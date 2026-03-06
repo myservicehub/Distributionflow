@@ -138,7 +138,7 @@ export default function EmptyItemsPage() {
   const handleDelete = async () => {
     try {
       const response = await fetch('/api/empty-bottles', {
-        method: 'DELETE',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           route: 'delete-empty-item',
