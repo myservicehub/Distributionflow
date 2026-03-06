@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Package, Truck, CheckCircle, XCircle, Search, Calendar, User, CreditCard } from 'lucide-react'
+import BottleExchangeSection from '@/components/BottleExchangeSection'
 
 export default function DeliveryBoardPage() {
   const { userProfile } = useAuth()
@@ -22,11 +23,14 @@ export default function DeliveryBoardPage() {
   const [actionDialog, setActionDialog] = useState(null)
   const [driverName, setDriverName] = useState('')
   const [vehicleNumber, setVehicleNumber] = useState('')
+  const [emptyItems, setEmptyItems] = useState([])
+  const [bottleExchangeData, setBottleExchangeData] = useState({ enabled: false, empties: [] })
   const supabase = createClient()
 
   useEffect(() => {
     if (userProfile) {
       loadOrders()
+      loadEmptyItems()
       
       // Subscribe to realtime updates
       const subscription = supabase
@@ -51,6 +55,17 @@ export default function DeliveryBoardPage() {
       }
     }
   }, [userProfile, selectedTab])
+
+  const loadEmptyItems = async () => {
+    try {
+      const response = await fetch('/api/empty-bottles?route=empty-items')
+      if (!response.ok) throw new Error('Failed to load empty items')
+      const data = await response.json()
+      setEmptyItems(data.filter(item => item.is_active))
+    } catch (error) {
+      console.error('Failed to load empty items:', error)
+    }
+  }
 
   const loadOrders = async () => {
     try {
@@ -122,6 +137,13 @@ export default function DeliveryBoardPage() {
       return
     }
 
+    if (action === 'deliver') {
+      setSelectedOrder(order)
+      setBottleExchangeData({ enabled: false, empties: [] })
+      setActionDialog('deliver')
+      return
+    }
+
     try {
       const payload = { action }
       
@@ -176,6 +198,60 @@ export default function DeliveryBoardPage() {
       loadOrders()
     } catch (error) {
       console.error('Dispatch error:', error)
+      toast.error(error.message)
+    }
+  }
+
+  const handleDeliver = async () => {
+    try {
+      // First, mark order as delivered
+      const response = await fetch(`/api/orders/${selectedOrder.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'deliver' })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to mark as delivered')
+      }
+
+      // If bottle exchange is enabled, process it
+      if (bottleExchangeData.enabled && bottleExchangeData.empties.length > 0) {
+        const exchangeResponse = await fetch('/api/empty-bottles', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            route: 'process-bottle-exchange',
+            retailer_id: selectedOrder.retailer_id,
+            products_purchased: [], // Not needed for delivery board
+            empties_brought: bottleExchangeData.empties.map(e => ({
+              empty_item_id: e.empty_item_id,
+              quantity: parseInt(e.quantity)
+            })),
+            deposit_amount: 0, // Will be calculated by backend
+            notes: `Empties collected during delivery of order #${selectedOrder.id.substring(0, 8)}`
+          })
+        })
+
+        if (!exchangeResponse.ok) {
+          const exchangeError = await exchangeResponse.json()
+          console.error('Bottle exchange failed:', exchangeError)
+          toast.warning('Order delivered, but bottle exchange failed: ' + exchangeError.error)
+        } else {
+          toast.success('Order delivered and empties collected successfully!')
+        }
+      } else {
+        toast.success('Order marked as delivered')
+      }
+
+      setActionDialog(null)
+      setSelectedOrder(null)
+      setBottleExchangeData({ enabled: false, empties: [] })
+      loadOrders()
+    } catch (error) {
+      console.error('Delivery error:', error)
       toast.error(error.message)
     }
   }
@@ -375,6 +451,44 @@ export default function DeliveryBoardPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setActionDialog(null)}>Cancel</Button>
             <Button onClick={handleDispatch}>Dispatch Order</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deliver Dialog with Bottle Exchange */}
+      <Dialog open={actionDialog === 'deliver'} onOpenChange={() => setActionDialog(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Mark as Delivered</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                <strong>Order #{selectedOrder?.id?.substring(0, 8)}</strong> for{' '}
+                <strong>{selectedOrder?.retailer_name}</strong>
+              </p>
+              <p className="text-sm text-blue-700 mt-1">
+                Total: ₦{parseFloat(selectedOrder?.total_amount || 0).toLocaleString()}
+              </p>
+            </div>
+
+            {/* Bottle Exchange Section */}
+            <div className="border-t pt-4">
+              <h4 className="font-semibold mb-2">Did the customer bring empties?</h4>
+              <BottleExchangeSection
+                products={[]}
+                emptyItems={emptyItems}
+                value={bottleExchangeData}
+                onChange={setBottleExchangeData}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActionDialog(null)}>Cancel</Button>
+            <Button onClick={handleDeliver} className="bg-green-600 hover:bg-green-700">
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Confirm Delivery
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -4,6 +4,12 @@ import { Providers } from '@/components/providers'
 export const metadata = {
   title: 'DistributionFlow - FMCG Distribution Management',
   description: 'Debt & Distribution Control System for FMCG Distributors',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico' }
+    ],
+  },
 }
 
 export default function RootLayout({ children }) {
