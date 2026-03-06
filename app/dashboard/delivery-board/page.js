@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Package, Truck, CheckCircle, XCircle, Search, Calendar, User, CreditCard } from 'lucide-react'
+import { Package, Truck, CheckCircle, XCircle, Search, Calendar, User, CreditCard, Eye, FileText } from 'lucide-react'
 import BottleExchangeSection from '@/components/BottleExchangeSection'
 
 export default function DeliveryBoardPage() {
@@ -25,6 +25,9 @@ export default function DeliveryBoardPage() {
   const [vehicleNumber, setVehicleNumber] = useState('')
   const [emptyItems, setEmptyItems] = useState([])
   const [bottleExchangeData, setBottleExchangeData] = useState({ enabled: false, empties: [] })
+  const [viewingOrderDetails, setViewingOrderDetails] = useState(null)
+  const [orderItems, setOrderItems] = useState([])
+  const [loadingOrderItems, setLoadingOrderItems] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -64,6 +67,23 @@ export default function DeliveryBoardPage() {
       setEmptyItems(data.filter(item => item.is_active))
     } catch (error) {
       console.error('Failed to load empty items:', error)
+    }
+  }
+
+  const loadOrderItems = async (orderId) => {
+    setLoadingOrderItems(true)
+    try {
+      const response = await fetch(`/api/orders/${orderId}`)
+      if (!response.ok) throw new Error('Failed to load order details')
+      const data = await response.json()
+      setOrderItems(data.items || [])
+      setViewingOrderDetails(data)
+    } catch (error) {
+      console.error('Failed to load order items:', error)
+      toast.error('Failed to load order details')
+      setOrderItems([])
+    } finally {
+      setLoadingOrderItems(false)
     }
   }
 
@@ -316,40 +336,54 @@ export default function DeliveryBoardPage() {
           )}
         </div>
 
-        <div className="mt-4 flex gap-2">
-          {order.delivery_status === 'preparing' && (
-            <Button size="sm" onClick={() => handleAction(order, 'pack')} className="flex-1">
-              <Package className="h-3 w-3 mr-1" />
-              Mark as Packed
-            </Button>
-          )}
-          {order.delivery_status === 'packed' && (
-            <Button size="sm" onClick={() => handleAction(order, 'dispatch')} className="flex-1">
-              <Truck className="h-3 w-3 mr-1" />
-              Dispatch
-            </Button>
-          )}
-          {order.delivery_status === 'out_for_delivery' && (
-            <>
-              <Button 
-                size="sm" 
-                onClick={() => handleAction(order, 'deliver')} 
-                className="flex-1 bg-green-600 hover:bg-green-700"
-              >
-                <CheckCircle className="h-3 w-3 mr-1" />
-                Delivered
+        <div className="mt-4 flex flex-col gap-2">
+          {/* View Details Button - Always visible */}
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => loadOrderItems(order.id)}
+            className="w-full"
+          >
+            <FileText className="h-3 w-3 mr-1" />
+            View Order Details
+          </Button>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            {order.delivery_status === 'preparing' && (
+              <Button size="sm" onClick={() => handleAction(order, 'pack')} className="flex-1">
+                <Package className="h-3 w-3 mr-1" />
+                Mark as Packed
               </Button>
-              <Button 
-                size="sm" 
-                variant="destructive"
-                onClick={() => handleAction(order, 'fail_delivery')} 
-                className="flex-1"
-              >
-                <XCircle className="h-3 w-3 mr-1" />
-                Failed
+            )}
+            {order.delivery_status === 'packed' && (
+              <Button size="sm" onClick={() => handleAction(order, 'dispatch')} className="flex-1">
+                <Truck className="h-3 w-3 mr-1" />
+                Dispatch
               </Button>
-            </>
-          )}
+            )}
+            {order.delivery_status === 'out_for_delivery' && (
+              <>
+                <Button 
+                  size="sm" 
+                  onClick={() => handleAction(order, 'deliver')} 
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Delivered
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="destructive"
+                  onClick={() => handleAction(order, 'fail_delivery')} 
+                  className="flex-1"
+                >
+                  <XCircle className="h-3 w-3 mr-1" />
+                  Failed
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -488,6 +522,135 @@ export default function DeliveryBoardPage() {
             <Button onClick={handleDeliver} className="bg-green-600 hover:bg-green-700">
               <CheckCircle className="h-4 w-4 mr-2" />
               Confirm Delivery
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Order Details Dialog */}
+      <Dialog open={!!viewingOrderDetails} onOpenChange={() => setViewingOrderDetails(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Order Details - #{viewingOrderDetails?.id?.substring(0, 8)}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {loadingOrderItems ? (
+            <div className="py-8 text-center">
+              <p className="text-muted-foreground">Loading order details...</p>
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              {/* Order Summary */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Retailer</p>
+                    <p className="font-semibold">{viewingOrderDetails?.retailer_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Total Amount</p>
+                    <p className="font-semibold text-lg">
+                      ₦{parseFloat(viewingOrderDetails?.total_amount || 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Payment Status</p>
+                    <Badge variant="outline">{viewingOrderDetails?.payment_status}</Badge>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Delivery Status</p>
+                    <Badge className={getStatusBadgeColor(viewingOrderDetails?.delivery_status)}>
+                      {viewingOrderDetails?.delivery_status?.replace('_', ' ').toUpperCase()}
+                    </Badge>
+                  </div>
+                  {viewingOrderDetails?.driver_name && (
+                    <>
+                      <div>
+                        <p className="text-sm text-gray-600">Driver</p>
+                        <p className="font-semibold">{viewingOrderDetails?.driver_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Vehicle</p>
+                        <p className="font-semibold">{viewingOrderDetails?.vehicle_number}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Order Items Table */}
+              <div className="border rounded-lg overflow-hidden">
+                <div className="bg-gray-100 px-4 py-3 border-b">
+                  <h3 className="font-semibold">Items to Pack ({orderItems.length})</h3>
+                </div>
+                <div className="divide-y">
+                  {orderItems.length === 0 ? (
+                    <div className="p-8 text-center text-muted-foreground">
+                      No items found
+                    </div>
+                  ) : (
+                    orderItems.map((item, index) => (
+                      <div key={index} className="p-4 hover:bg-gray-50">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-semibold text-gray-900">{item.product_name}</p>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Unit Price: ₦{parseFloat(item.unit_price || 0).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-2xl font-bold text-blue-600">
+                              {item.quantity}
+                            </p>
+                            <p className="text-xs text-gray-500">units</p>
+                          </div>
+                        </div>
+                        <div className="mt-2 pt-2 border-t flex justify-between items-center">
+                          <span className="text-sm text-gray-600">Subtotal:</span>
+                          <span className="font-semibold text-lg">
+                            ₦{parseFloat(item.unit_price * item.quantity).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                
+                {/* Total */}
+                {orderItems.length > 0 && (
+                  <div className="bg-blue-50 border-t-2 border-blue-200 p-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-semibold">Order Total:</span>
+                      <span className="text-2xl font-bold text-blue-600">
+                        ₦{parseFloat(viewingOrderDetails?.total_amount || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Warehouse Instructions */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h4 className="font-semibold text-yellow-800 mb-2 flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  Warehouse Instructions
+                </h4>
+                <ul className="text-sm text-yellow-700 space-y-1 ml-6 list-disc">
+                  <li>Verify all items and quantities match this list</li>
+                  <li>Check product condition before packing</li>
+                  <li>Ensure proper packaging for transport</li>
+                  <li>Update status once packing is complete</li>
+                </ul>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewingOrderDetails(null)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
