@@ -165,8 +165,6 @@ export default function EmptyItemsPage() {
     setFormData({ name: '', deposit_value: '', initial_quantity: '0' })
   }
 
-  }
-
   const formatCurrency = (amount) => {
     return `₦${parseFloat(amount).toLocaleString()}`
   }
