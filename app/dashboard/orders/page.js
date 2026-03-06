@@ -644,26 +644,48 @@ export default function OrdersPage() {
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                  {order.order_items.map((item, idx) => (
-                                    <TableRow key={idx}>
-                                      <TableCell className="font-medium">
-                                        <div className="flex flex-col">
-                                          <span>{item.product?.name || 'Unknown Product'}</span>
-                                          {item.product?.sku && (
-                                            <span className="text-xs text-muted-foreground">
-                                              SKU: {item.product.sku}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </TableCell>
-                                      <TableCell>{item.product?.sku || '-'}</TableCell>
-                                      <TableCell className="text-right">{item.quantity}</TableCell>
-                                      <TableCell className="text-right">₦{parseFloat(item.unit_price).toLocaleString()}</TableCell>
-                                      <TableCell className="text-right font-semibold">
-                                        ₦{parseFloat(item.total_price).toLocaleString()}
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
+                                  {order.order_items.map((item, idx) => {
+                                    const emptyItem = item.product?.empty_item_id ? 
+                                      emptyItems.find(e => e.id === item.product.empty_item_id) : null
+                                    
+                                    return (
+                                      <TableRow key={idx}>
+                                        <TableCell className="font-medium">
+                                          <div className="flex flex-col gap-2">
+                                            <span>{item.product?.name || 'Unknown Product'}</span>
+                                            {item.product?.sku && (
+                                              <span className="text-xs text-muted-foreground">
+                                                SKU: {item.product.sku}
+                                              </span>
+                                            )}
+                                            {/* Empty Details */}
+                                            {emptyItem && (
+                                              <div className="mt-1 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                                                <div className="flex items-center gap-1">
+                                                  <svg className="h-3 w-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                                  </svg>
+                                                  <span className="font-medium text-blue-900">
+                                                    Empties: <span className="text-blue-600 font-bold">{item.quantity}x {emptyItem.name}</span>
+                                                  </span>
+                                                </div>
+                                                <div className="text-blue-700 mt-1">
+                                                  Deposit: ₦{parseFloat(emptyItem.deposit_value).toLocaleString()} each • 
+                                                  Total: ₦{(item.quantity * parseFloat(emptyItem.deposit_value)).toLocaleString()}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>{item.product?.sku || '-'}</TableCell>
+                                        <TableCell className="text-right">{item.quantity}</TableCell>
+                                        <TableCell className="text-right">₦{parseFloat(item.unit_price).toLocaleString()}</TableCell>
+                                        <TableCell className="text-right font-semibold">
+                                          ₦{parseFloat(item.total_price).toLocaleString()}
+                                        </TableCell>
+                                      </TableRow>
+                                    )
+                                  })}
                                 </TableBody>
                               </Table>
                             ) : (
