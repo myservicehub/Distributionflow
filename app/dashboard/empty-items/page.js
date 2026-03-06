@@ -30,6 +30,9 @@ export default function EmptyItemsPage() {
   const [emptyItems, setEmptyItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [showDialog, setShowDialog] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [editingItem, setEditingItem] = useState(null)
+  const [deletingItem, setDeletingItem] = useState(null)
   const [formData, setFormData] = useState({ name: '', deposit_value: '', initial_quantity: '0' })
 
   useEffect(() => {
@@ -85,6 +88,83 @@ export default function EmptyItemsPage() {
     } catch (error) {
       toast.error(error.message)
     }
+
+  const handleEdit = (item) => {
+    setEditingItem(item)
+    setFormData({
+      name: item.name,
+      deposit_value: item.deposit_value,
+      initial_quantity: '0'
+    })
+    setShowDialog(true)
+  }
+
+  const handleUpdate = async () => {
+    if (!formData.name || !formData.deposit_value) {
+      toast.error('Please fill all required fields')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/empty-bottles', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          route: 'update-empty-item',
+          id: editingItem.id,
+          name: formData.name,
+          deposit_value: parseFloat(formData.deposit_value)
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to update empty item')
+
+      toast.success('Empty item updated successfully')
+      setShowDialog(false)
+      setEditingItem(null)
+      setFormData({ name: '', deposit_value: '', initial_quantity: '0' })
+      loadEmptyItems()
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
+  const handleDeleteClick = (item) => {
+    setDeletingItem(item)
+    setShowDeleteDialog(true)
+  }
+
+  const handleDelete = async () => {
+    try {
+      const response = await fetch('/api/empty-bottles', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          route: 'delete-empty-item',
+          id: deletingItem.id
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete empty item')
+      }
+
+      toast.success('Empty item deleted successfully')
+      setShowDeleteDialog(false)
+      setDeletingItem(null)
+      loadEmptyItems()
+    } catch (error) {
+      toast.error(error.message)
+    }
+  }
+
+  const handleDialogClose = () => {
+    setShowDialog(false)
+    setEditingItem(null)
+    setFormData({ name: '', deposit_value: '', initial_quantity: '0' })
+  }
+
   }
 
   const formatCurrency = (amount) => {
@@ -138,6 +218,7 @@ export default function EmptyItemsPage() {
                   <TableHead>Deposit Value</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -153,6 +234,26 @@ export default function EmptyItemsPage() {
                       </span>
                     </TableCell>
                     <TableCell>{new Date(item.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(item)}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteClick(item)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -161,12 +262,12 @@ export default function EmptyItemsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      <Dialog open={showDialog} onOpenChange={handleDialogClose}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Empty Item</DialogTitle>
+            <DialogTitle>{editingItem ? 'Edit Empty Item' : 'Add Empty Item'}</DialogTitle>
             <DialogDescription>
-              Create a new returnable empty item (e.g., Crate, Bottle, Keg)
+              {editingItem ? 'Update empty item details' : 'Create a new returnable empty item (e.g., Crate, Bottle, Keg)'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -189,25 +290,60 @@ export default function EmptyItemsPage() {
                 onChange={(e) => setFormData({ ...formData, deposit_value: e.target.value })}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="initial_quantity">Initial Quantity (Optional)</Label>
-              <Input
-                id="initial_quantity"
-                type="number"
-                placeholder="0"
-                value={formData.initial_quantity}
-                onChange={(e) => setFormData({ ...formData, initial_quantity: e.target.value })}
-              />
-              <p className="text-xs text-muted-foreground">
-                Add initial stock to warehouse. Leave as 0 to add stock later via Manufacturer Supply.
-              </p>
-            </div>
+            {!editingItem && (
+              <div className="space-y-2">
+                <Label htmlFor="initial_quantity">Initial Quantity (Optional)</Label>
+                <Input
+                  id="initial_quantity"
+                  type="number"
+                  placeholder="0"
+                  value={formData.initial_quantity}
+                  onChange={(e) => setFormData({ ...formData, initial_quantity: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Add initial stock to warehouse. Leave as 0 to add stock later via Manufacturer Supply.
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)}>
+            <Button variant="outline" onClick={handleDialogClose}>
               Cancel
             </Button>
-            <Button onClick={handleCreate}>Create</Button>
+            <Button onClick={editingItem ? handleUpdate : handleCreate}>
+              {editingItem ? 'Update' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Empty Item</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{deletingItem?.name}"?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              This action cannot be undone. This empty item will be permanently deleted.
+            </p>
+            {deletingItem && (
+              <div className="mt-4 p-3 bg-muted rounded-lg">
+                <p className="text-sm font-medium">{deletingItem.name}</p>
+                <p className="text-sm text-muted-foreground">Deposit Value: {formatCurrency(deletingItem.deposit_value)}</p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Delete
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
