@@ -679,6 +679,28 @@ export async function POST(request) {
         .eq('business_id', userProfile.business_id)
         .eq('empty_item_id', empty_item_id)
 
+      if (warehouseError) throw warehouseError
+
+      // Log movement
+      const { data: movement } = await adminSupabase
+        .from('empty_movements')
+        .insert({
+          business_id: userProfile.business_id,
+          empty_item_id,
+          retailer_id,
+          type: 'returned_from_retailer',
+          quantity,
+          reference_type: order_id ? 'order' : 'return',
+          reference_id: order_id || null,
+          notes,
+          created_by: userProfile.id
+        })
+        .select()
+        .single()
+
+      return handleCORS(NextResponse.json({ success: true, movement }))
+    }
+
     // ============================================
     // POST: Process Bottle Exchange
     // Customer buys products and brings empties
@@ -864,73 +886,6 @@ export async function POST(request) {
 
       console.log(`✅ Empty item deleted: ${id}`)
       return handleCORS(NextResponse.json({ success: true, message: 'Empty item deleted successfully' }))
-    }
-
-    // ============================================
-    // POST: Process Empty Return from Retailer (continued)
-    // ============================================
-    if (route === 'process-empty-return') {
-      const { retailer_id, empty_item_id, quantity, order_id, notes } = body
-
-      // Validate retailer balance
-      const { data: balance } = await adminSupabase
-        .from('retailer_empty_balances')
-        .select('quantity_outstanding')
-        .eq('business_id', userProfile.business_id)
-        .eq('retailer_id', retailer_id)
-        .eq('empty_item_id', empty_item_id)
-        .single()
-
-      if (!balance || balance.quantity_outstanding < quantity) {
-        return handleCORS(NextResponse.json({ 
-          error: `Insufficient retailer balance. Available: ${balance?.quantity_outstanding || 0}, Requested: ${quantity}` 
-        }, { status: 400 }))
-      }
-
-      // Reduce retailer balance
-      const { error: balanceError } = await adminSupabase
-        .from('retailer_empty_balances')
-        .update({ quantity_outstanding: balance.quantity_outstanding - quantity })
-        .eq('business_id', userProfile.business_id)
-        .eq('retailer_id', retailer_id)
-        .eq('empty_item_id', empty_item_id)
-
-      if (balanceError) throw balanceError
-
-      // Increase warehouse inventory
-      const { data: warehouse } = await adminSupabase
-        .from('warehouse_empty_inventory')
-        .select('quantity_available')
-        .eq('business_id', userProfile.business_id)
-        .eq('empty_item_id', empty_item_id)
-        .single()
-
-      const { error: warehouseError } = await adminSupabase
-        .from('warehouse_empty_inventory')
-        .update({ quantity_available: (warehouse?.quantity_available || 0) + quantity })
-        .eq('business_id', userProfile.business_id)
-        .eq('empty_item_id', empty_item_id)
-
-      if (warehouseError) throw warehouseError
-
-      // Log movement
-      const { data: movement } = await adminSupabase
-        .from('empty_movements')
-        .insert({
-          business_id: userProfile.business_id,
-          empty_item_id,
-          retailer_id,
-          type: 'returned_from_retailer',
-          quantity,
-          reference_type: order_id ? 'order' : 'return',
-          reference_id: order_id || null,
-          notes,
-          created_by: userProfile.id
-        })
-        .select()
-        .single()
-
-      return handleCORS(NextResponse.json({ success: true, movement }))
     }
 
     // ============================================
