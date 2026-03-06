@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Truck, Plus, Package } from 'lucide-react'
+import { Truck, Plus, Package, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Table,
   TableBody,
@@ -38,8 +39,10 @@ export default function ManufacturerSupplyPage() {
   const [emptyItems, setEmptyItems] = useState([])
   const [warehouseInventory, setWarehouseInventory] = useState([])
   const [recentMovements, setRecentMovements] = useState([])
-  const [showDialog, setShowDialog] = useState(false)
-  const [formData, setFormData] = useState({ empty_item_id: '', quantity: '', notes: '' })
+  const [showReceiveDialog, setShowReceiveDialog] = useState(false)
+  const [showReturnDialog, setShowReturnDialog] = useState(false)
+  const [receiveFormData, setReceiveFormData] = useState({ empty_item_id: '', quantity: '', notes: '' })
+  const [returnFormData, setReturnFormData] = useState({ empty_item_id: '', quantity: '', notes: '' })
   const [loading, setLoading] = useState(false)
   const [dataLoading, setDataLoading] = useState(true)
 
@@ -59,7 +62,7 @@ export default function ManufacturerSupplyPage() {
   const loadEmptyItems = async () => {
     try {
       const response = await fetch('/api/empty-bottles?route=empty-items', {
-        cache: 'no-store' // Ensure fresh data on each load
+        cache: 'no-store'
       })
       if (!response.ok) throw new Error('Failed to load empty items')
       const data = await response.json()
@@ -79,26 +82,29 @@ export default function ManufacturerSupplyPage() {
       const data = await response.json()
       setWarehouseInventory(data)
     } catch (error) {
-      console.error('Failed to load warehouse inventory:', error)
+      console.error('Failed to load inventory:', error)
     }
   }
 
   const loadRecentMovements = async () => {
     try {
-      const response = await fetch('/api/empty-bottles?route=empty-movements&limit=10', {
+      const response = await fetch('/api/empty-bottles?route=empty-movements&limit=20', {
         cache: 'no-store'
       })
       if (!response.ok) throw new Error('Failed to load movements')
       const data = await response.json()
-      // Filter for manufacturer_in movements only
-      setRecentMovements(data.filter(m => m.type === 'manufacturer_in').slice(0, 10))
+      // Filter for manufacturer-related movements only
+      const manufacturerMovements = data.filter(m => 
+        m.type === 'manufacturer_in' || m.type === 'returned_to_manufacturer'
+      )
+      setRecentMovements(manufacturerMovements)
     } catch (error) {
       console.error('Failed to load movements:', error)
     }
   }
 
-  const handleSubmit = async () => {
-    if (!formData.empty_item_id || !formData.quantity || parseInt(formData.quantity) <= 0) {
+  const handleReceiveSubmit = async () => {
+    if (!receiveFormData.empty_item_id || !receiveFormData.quantity || parseInt(receiveFormData.quantity) <= 0) {
       toast.error('Please fill all fields correctly')
       return
     }
@@ -110,9 +116,9 @@ export default function ManufacturerSupplyPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           route: 'manufacturer-supply',
-          empty_item_id: formData.empty_item_id,
-          quantity: parseInt(formData.quantity),
-          notes: formData.notes
+          empty_item_id: receiveFormData.empty_item_id,
+          quantity: parseInt(receiveFormData.quantity),
+          notes: receiveFormData.notes || 'Received empties from manufacturer with full drink delivery'
         })
       })
 
@@ -121,10 +127,44 @@ export default function ManufacturerSupplyPage() {
         throw new Error(error.error || 'Failed to record supply')
       }
 
-      toast.success('Manufacturer supply recorded successfully')
-      setShowDialog(false)
-      setFormData({ empty_item_id: '', quantity: '', notes: '' })
-      // Refresh data after successful submission
+      toast.success('Empties received from manufacturer successfully')
+      setShowReceiveDialog(false)
+      setReceiveFormData({ empty_item_id: '', quantity: '', notes: '' })
+      loadData()
+    } catch (error) {
+      toast.error(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleReturnSubmit = async () => {
+    if (!returnFormData.empty_item_id || !returnFormData.quantity || parseInt(returnFormData.quantity) <= 0) {
+      toast.error('Please fill all fields correctly')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const response = await fetch('/api/empty-bottles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          route: 'return-to-manufacturer',
+          empty_item_id: returnFormData.empty_item_id,
+          quantity: parseInt(returnFormData.quantity),
+          notes: returnFormData.notes || 'Returned empties when purchasing new drinks'
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to record return')
+      }
+
+      toast.success('Empties returned to manufacturer successfully')
+      setShowReturnDialog(false)
+      setReturnFormData({ empty_item_id: '', quantity: '', notes: '' })
       loadData()
     } catch (error) {
       toast.error(error.message)
@@ -141,13 +181,25 @@ export default function ManufacturerSupplyPage() {
     return new Date(dateString).toLocaleString()
   }
 
+  const getMovementTypeLabel = (type) => {
+    if (type === 'manufacturer_in') return 'Received'
+    if (type === 'returned_to_manufacturer') return 'Returned'
+    return type
+  }
+
+  const getMovementTypeColor = (type) => {
+    if (type === 'manufacturer_in') return 'text-green-600 bg-green-50'
+    if (type === 'returned_to_manufacturer') return 'text-blue-600 bg-blue-50'
+    return 'text-gray-600 bg-gray-50'
+  }
+
   if (!['admin', 'manager', 'warehouse'].includes(userProfile?.role)) {
     return (
       <div className="p-6">
         <Card>
           <CardHeader>
             <CardTitle>Access Denied</CardTitle>
-            <CardDescription>Only authorized roles can record manufacturer supplies.</CardDescription>
+            <CardDescription>Only authorized roles can manage manufacturer supplies.</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -156,178 +208,227 @@ export default function ManufacturerSupplyPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Manufacturer Supply</h1>
-          <p className="text-muted-foreground">Record empty items received from manufacturer</p>
-        </div>
-        <Button onClick={() => {
-          loadEmptyItems() // Refresh empty items list when opening dialog
-          setShowDialog(true)
-        }}>
-          <Truck className="h-4 w-4 mr-2" />
-          Record Supply
-        </Button>
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Manufacturer Supply Management</h1>
+        <p className="text-muted-foreground mt-2">
+          Manage empties received from and returned to manufacturer
+        </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>How It Works</CardTitle>
-            <CardDescription>Manufacturer supply workflow</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">1</div>
-              <div>
-                <p className="font-medium">Receive Empties</p>
-                <p className="text-sm text-muted-foreground">Record quantity of empties received from manufacturer</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">2</div>
-              <div>
-                <p className="font-medium">Warehouse Stock Updated</p>
-                <p className="text-sm text-muted-foreground">Empties are added to your warehouse inventory</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold flex-shrink-0">3</div>
-              <div>
-                <p className="font-medium">Movement Logged</p>
-                <p className="text-sm text-muted-foreground">Transaction is recorded for audit and reconciliation</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Tabs for Receive and Return */}
+      <Tabs defaultValue="receive" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="receive" className="gap-2">
+            <ArrowDownToLine className="h-4 w-4" />
+            Receive Empties
+          </TabsTrigger>
+          <TabsTrigger value="return" className="gap-2">
+            <ArrowUpFromLine className="h-4 w-4" />
+            Return Empties
+          </TabsTrigger>
+        </TabsList>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Guidelines</CardTitle>
-            <CardDescription>Best practices</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>✓ Count empties carefully before recording</p>
-            <p>✓ Verify quality and condition</p>
-            <p>✓ Add notes about supplier, delivery date, or condition</p>
-            <p>✓ Damaged empties should be recorded separately</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Warehouse Inventory Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Current Warehouse Stock
-          </CardTitle>
-          <CardDescription>Available empty items in your warehouse</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {dataLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading inventory...</div>
-          ) : warehouseInventory.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No inventory yet. Record your first manufacturer supply.</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Empty Item</TableHead>
-                  <TableHead>Deposit Value</TableHead>
-                  <TableHead className="text-right">Quantity Available</TableHead>
-                  <TableHead className="text-right">Total Value</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {warehouseInventory.map((inv) => (
-                  <TableRow key={inv.id}>
-                    <TableCell className="font-medium">{inv.empty_items?.name || 'Unknown'}</TableCell>
-                    <TableCell>{formatCurrency(inv.empty_items?.deposit_value)}</TableCell>
-                    <TableCell className="text-right font-semibold">{inv.quantity_available}</TableCell>
-                    <TableCell className="text-right">
-                      {formatCurrency((inv.empty_items?.deposit_value || 0) * inv.quantity_available)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                <TableRow className="font-bold bg-muted/50">
-                  <TableCell colSpan={3}>Total Warehouse Value</TableCell>
-                  <TableCell className="text-right">
-                    {formatCurrency(
-                      warehouseInventory.reduce(
-                        (sum, inv) => sum + ((inv.empty_items?.deposit_value || 0) * inv.quantity_available),
-                        0
-                      )
+        {/* Receive Tab */}
+        <TabsContent value="receive" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Receive Empties from Manufacturer</CardTitle>
+                  <CardDescription>
+                    Record empties received when manufacturer delivers full drinks
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setShowReceiveDialog(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Receive Empties
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {dataLoading ? (
+                <div className="text-center py-8">Loading...</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Empty Item</TableHead>
+                      <TableHead>Current Stock</TableHead>
+                      <TableHead>Deposit Value</TableHead>
+                      <TableHead>Total Value</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {warehouseInventory.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground">
+                          No inventory yet
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      warehouseInventory.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">
+                            {item.empty_items?.name || 'Unknown'}
+                          </TableCell>
+                          <TableCell>{item.quantity_available} units</TableCell>
+                          <TableCell>
+                            {formatCurrency(item.empty_items?.deposit_value || 0)}
+                          </TableCell>
+                          <TableCell className="font-semibold">
+                            {formatCurrency(
+                              item.quantity_available * (item.empty_items?.deposit_value || 0)
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
                     )}
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Recent Supply History Section */}
+        {/* Return Tab */}
+        <TabsContent value="return" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Return Empties to Manufacturer</CardTitle>
+                  <CardDescription>
+                    Record empties returned when purchasing new drinks
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setShowReturnDialog(true)}>
+                  <ArrowUpFromLine className="mr-2 h-4 w-4" />
+                  Return Empties
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {dataLoading ? (
+                <div className="text-center py-8">Loading...</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Empty Item</TableHead>
+                      <TableHead>Available to Return</TableHead>
+                      <TableHead>Deposit Value</TableHead>
+                      <TableHead>Total Value</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {warehouseInventory.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground">
+                          No empties available to return
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      warehouseInventory
+                        .filter((item) => item.quantity_available > 0)
+                        .map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">
+                              {item.empty_items?.name || 'Unknown'}
+                            </TableCell>
+                            <TableCell>{item.quantity_available} units</TableCell>
+                            <TableCell>
+                              {formatCurrency(item.empty_items?.deposit_value || 0)}
+                            </TableCell>
+                            <TableCell className="font-semibold">
+                              {formatCurrency(
+                                item.quantity_available * (item.empty_items?.deposit_value || 0)
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Recent Transactions History */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Truck className="h-5 w-5" />
-            Recent Manufacturer Supplies
-          </CardTitle>
-          <CardDescription>Last 10 supplies received from manufacturer</CardDescription>
+          <CardTitle>Recent Manufacturer Transactions</CardTitle>
+          <CardDescription>History of empties received from and returned to manufacturer</CardDescription>
         </CardHeader>
         <CardContent>
           {dataLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading history...</div>
-          ) : recentMovements.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Truck className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No supply records yet. Click "Record Supply" to add your first entry.</p>
-            </div>
+            <div className="text-center py-8">Loading...</div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date & Time</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Empty Item</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Date</TableHead>
                   <TableHead>Notes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentMovements.map((movement) => (
-                  <TableRow key={movement.id}>
-                    <TableCell>{formatDate(movement.created_at)}</TableCell>
-                    <TableCell className="font-medium">{movement.empty_items?.name || 'Unknown'}</TableCell>
-                    <TableCell className="text-right font-semibold text-green-600">+{movement.quantity}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{movement.notes || '-'}</TableCell>
+                {recentMovements.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      No transactions yet
+                    </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  recentMovements.map((movement) => (
+                    <TableRow key={movement.id}>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMovementTypeColor(movement.type)}`}>
+                          {getMovementTypeLabel(movement.type)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {movement.empty_items?.name || 'Unknown'}
+                      </TableCell>
+                      <TableCell>{movement.quantity} units</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(movement.created_at)}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {movement.notes || '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           )}
         </CardContent>
       </Card>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      {/* Receive Dialog */}
+      <Dialog open={showReceiveDialog} onOpenChange={setShowReceiveDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Record Manufacturer Supply</DialogTitle>
+            <DialogTitle>Receive Empties from Manufacturer</DialogTitle>
             <DialogDescription>
-              Record empties received from manufacturer
+              Record empties received with full drink delivery
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="empty_item">Empty Item</Label>
+              <Label htmlFor="receive-empty-item">Empty Item Type</Label>
               <Select
-                value={formData.empty_item_id}
-                onValueChange={(value) => setFormData({ ...formData, empty_item_id: value })}
+                value={receiveFormData.empty_item_id}
+                onValueChange={(value) =>
+                  setReceiveFormData({ ...receiveFormData, empty_item_id: value })
+                }
               >
-                <SelectTrigger>
+                <SelectTrigger id="receive-empty-item">
                   <SelectValue placeholder="Select empty item" />
                 </SelectTrigger>
                 <SelectContent>
@@ -340,32 +441,121 @@ export default function ManufacturerSupplyPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="quantity">Quantity Received</Label>
+              <Label htmlFor="receive-quantity">Quantity</Label>
               <Input
-                id="quantity"
+                id="receive-quantity"
                 type="number"
-                placeholder="0"
-                value={formData.quantity}
-                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                min="1"
+                placeholder="Enter quantity"
+                value={receiveFormData.quantity}
+                onChange={(e) =>
+                  setReceiveFormData({ ...receiveFormData, quantity: e.target.value })
+                }
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Label htmlFor="receive-notes">Notes (Optional)</Label>
               <Textarea
-                id="notes"
-                placeholder="E.g., Supplier name, delivery date, condition..."
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                rows={3}
+                id="receive-notes"
+                placeholder="Additional information..."
+                value={receiveFormData.notes}
+                onChange={(e) =>
+                  setReceiveFormData({ ...receiveFormData, notes: e.target.value })
+                }
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)}>
+            <Button variant="outline" onClick={() => setShowReceiveDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={loading}>
-              {loading ? 'Recording...' : 'Record Supply'}
+            <Button onClick={handleReceiveSubmit} disabled={loading}>
+              {loading ? 'Recording...' : 'Receive Empties'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Return Dialog */}
+      <Dialog open={showReturnDialog} onOpenChange={setShowReturnDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Return Empties to Manufacturer</DialogTitle>
+            <DialogDescription>
+              Record empties returned when buying new drinks
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="return-empty-item">Empty Item Type</Label>
+              <Select
+                value={returnFormData.empty_item_id}
+                onValueChange={(value) =>
+                  setReturnFormData({ ...returnFormData, empty_item_id: value })
+                }
+              >
+                <SelectTrigger id="return-empty-item">
+                  <SelectValue placeholder="Select empty item" />
+                </SelectTrigger>
+                <SelectContent>
+                  {emptyItems.map((item) => {
+                    const inventory = warehouseInventory.find(
+                      (inv) => inv.empty_item_id === item.id
+                    )
+                    const available = inventory?.quantity_available || 0
+                    return (
+                      <SelectItem 
+                        key={item.id} 
+                        value={item.id}
+                        disabled={available === 0}
+                      >
+                        {item.name} ({available} available)
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="return-quantity">Quantity</Label>
+              <Input
+                id="return-quantity"
+                type="number"
+                min="1"
+                placeholder="Enter quantity"
+                value={returnFormData.quantity}
+                onChange={(e) =>
+                  setReturnFormData({ ...returnFormData, quantity: e.target.value })
+                }
+              />
+              {returnFormData.empty_item_id && (
+                <p className="text-sm text-muted-foreground">
+                  Available:{' '}
+                  {warehouseInventory.find(
+                    (inv) => inv.empty_item_id === returnFormData.empty_item_id
+                  )?.quantity_available || 0}{' '}
+                  units
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="return-notes">Notes (Optional)</Label>
+              <Textarea
+                id="return-notes"
+                placeholder="Additional information..."
+                value={returnFormData.notes}
+                onChange={(e) =>
+                  setReturnFormData({ ...returnFormData, notes: e.target.value })
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowReturnDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleReturnSubmit} disabled={loading}>
+              {loading ? 'Recording...' : 'Return Empties'}
             </Button>
           </DialogFooter>
         </DialogContent>

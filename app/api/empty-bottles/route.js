@@ -830,23 +830,18 @@ export async function POST(request) {
     // POST: Delete Empty Item
     // ============================================
     if (route === 'delete-empty-item') {
-      console.log('🗑️ Delete request received for id:', body.id)
-      
       if (!['admin', 'manager'].includes(userProfile.role)) {
-        console.log('❌ Delete forbidden - user role:', userProfile.role)
         return handleCORS(NextResponse.json({ error: 'Forbidden' }, { status: 403 }))
       }
 
       const { id } = body
 
       if (!id) {
-        console.log('❌ Delete failed - missing id')
         return handleCORS(NextResponse.json({ 
           error: 'Missing required field: id' 
         }, { status: 400 }))
       }
 
-      console.log('✅ Checking for linked products...')
       // Check if empty item is linked to any products
       const { data: linkedProducts, error: checkError } = await adminSupabase
         .from('products')
@@ -855,19 +850,15 @@ export async function POST(request) {
         .limit(5)
 
       if (checkError) {
-        console.error('❌ Error checking linked products:', checkError)
+        console.error('Error checking linked products:', checkError)
       }
 
-      console.log('📦 Linked products found:', linkedProducts?.length || 0)
-      
       if (linkedProducts && linkedProducts.length > 0) {
-        console.log('❌ Cannot delete - linked to products:', linkedProducts.map(p => p.name).join(', '))
         return handleCORS(NextResponse.json({ 
           error: `Cannot delete. This empty item is linked to ${linkedProducts.length} product(s): ${linkedProducts.map(p => p.name).join(', ')}. Please unlink products first.` 
         }, { status: 400 }))
       }
 
-      console.log('✅ Checking for movements...')
       // Check if there are any movements or inventory
       const { data: movements } = await adminSupabase
         .from('empty_movements')
@@ -875,16 +866,12 @@ export async function POST(request) {
         .eq('empty_item_id', id)
         .limit(1)
 
-      console.log('📊 Movements found:', movements?.length || 0)
-      
       if (movements && movements.length > 0) {
-        console.log('❌ Cannot delete - has movement history')
         return handleCORS(NextResponse.json({ 
           error: 'Cannot delete. This empty item has movement history. Consider marking it as inactive instead.' 
         }, { status: 400 }))
       }
 
-      console.log('✅ Proceeding with delete...')
       // Delete the empty item
       const { error: deleteError } = await adminSupabase
         .from('empty_items')
