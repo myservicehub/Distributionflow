@@ -867,6 +867,106 @@ export async function POST(request) {
       }))
     }
 
+    // ============================================
+    // Update Empty Item
+    // ============================================
+    if (route === 'update-empty-item') {
+      if (!['admin', 'manager'].includes(userProfile.role)) {
+        return handleCORS(NextResponse.json({ error: 'Forbidden' }, { status: 403 }))
+      }
+
+      const { id, name, deposit_value } = body
+
+      if (!id || !name || !deposit_value) {
+        return handleCORS(NextResponse.json({ 
+          error: 'Missing required fields: id, name, deposit_value' 
+        }, { status: 400 }))
+      }
+
+      const { data, error } = await adminSupabase
+        .from('empty_items')
+        .update({ 
+          name,
+          deposit_value: parseFloat(deposit_value),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .eq('business_id', userProfile.business_id)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating empty item:', error)
+        return handleCORS(NextResponse.json({ error: error.message }, { status: 400 }))
+      }
+
+      console.log(`✅ Empty item updated: ${name}`)
+      return handleCORS(NextResponse.json(data))
+    }
+
+    // ============================================
+    // Delete Empty Item
+    // ============================================
+    if (route === 'delete-empty-item') {
+      if (!['admin', 'manager'].includes(userProfile.role)) {
+        return handleCORS(NextResponse.json({ error: 'Forbidden' }, { status: 403 }))
+      }
+
+      const { id } = body
+
+      if (!id) {
+        return handleCORS(NextResponse.json({ 
+          error: 'Missing required field: id' 
+        }, { status: 400 }))
+      }
+
+      // Check if empty item is linked to any products
+      const { data: linkedProducts, error: checkError } = await adminSupabase
+        .from('products')
+        .select('id, name')
+        .eq('empty_item_id', id)
+        .limit(5)
+
+      if (checkError) {
+        console.error('Error checking linked products:', checkError)
+      }
+
+      if (linkedProducts && linkedProducts.length > 0) {
+        return handleCORS(NextResponse.json({ 
+          error: `Cannot delete. This empty item is linked to ${linkedProducts.length} product(s): ${linkedProducts.map(p => p.name).join(', ')}. Please unlink products first.` 
+        }, { status: 400 }))
+      }
+
+      // Check if there are any movements or inventory
+      const { data: movements } = await adminSupabase
+        .from('empty_movements')
+        .select('id')
+        .eq('empty_item_id', id)
+        .limit(1)
+
+      if (movements && movements.length > 0) {
+        return handleCORS(NextResponse.json({ 
+          error: 'Cannot delete. This empty item has movement history. Consider marking it as inactive instead.' 
+        }, { status: 400 }))
+      }
+
+      // Delete the empty item
+      const { error: deleteError } = await adminSupabase
+        .from('empty_items')
+        .delete()
+        .eq('id', id)
+        .eq('business_id', userProfile.business_id)
+
+      if (deleteError) {
+        console.error('Error deleting empty item:', deleteError)
+        return handleCORS(NextResponse.json({ error: deleteError.message }, { status: 400 }))
+      }
+
+      console.log(`✅ Empty item deleted: ${id}`)
+      return handleCORS(NextResponse.json({ success: true, message: 'Empty item deleted successfully' }))
+    }
+
+
 
       if (warehouseError) throw warehouseError
 
