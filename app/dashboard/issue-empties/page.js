@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Package, Users, Send, AlertCircle } from 'lucide-react'
+import { Package, Users, Send, AlertCircle, History, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -12,6 +12,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -33,6 +42,9 @@ export default function IssueEmptiesPage() {
   const [loading, setLoading] = useState(true)
   const [showDialog, setShowDialog] = useState(false)
   const [processing, setProcessing] = useState(false)
+  const [viewingHistory, setViewingHistory] = useState(null)
+  const [movements, setMovements] = useState([])
+  const [loadingMovements, setLoadingMovements] = useState(false)
   
   const [formData, setFormData] = useState({
     retailer_id: '',
@@ -130,6 +142,47 @@ export default function IssueEmptiesPage() {
       setProcessing(false)
     }
   }
+
+  const loadMovements = async (emptyItemId) => {
+    setLoadingMovements(true)
+    setViewingHistory(emptyItemId)
+    
+    try {
+      const response = await fetch(`/api/empty-bottles?route=empty-movements&empty_item_id=${emptyItemId}`)
+      if (!response.ok) throw new Error('Failed to load movements')
+      
+      const data = await response.json()
+      setMovements(data)
+    } catch (error) {
+      console.error('Error loading movements:', error)
+      toast.error('Failed to load movement history')
+      setMovements([])
+    } finally {
+      setLoadingMovements(false)
+    }
+  }
+
+  const getMovementTypeLabel = (type) => {
+    const labels = {
+      'manufacturer_in': 'Received from Manufacturer',
+      'returned_from_retailer': 'Returned by Retailer',
+      'issued_to_retailer': 'Issued to Retailer',
+      'returned_to_manufacturer': 'Returned to Manufacturer',
+      'bottle_exchange': 'Bottle Exchange'
+    }
+    return labels[type] || type
+  }
+
+  const getMovementTypeColor = (type) => {
+    if (type === 'manufacturer_in' || type === 'returned_from_retailer' || type === 'bottle_exchange') {
+      return 'bg-green-100 text-green-700'
+    }
+    if (type === 'issued_to_retailer' || type === 'returned_to_manufacturer') {
+      return 'bg-blue-100 text-blue-700'
+    }
+    return 'bg-gray-100 text-gray-700'
+  }
+
 
   const selectedInventory = warehouseInventory.find(
     inv => inv.empty_item_id === formData.empty_item_id
@@ -272,6 +325,69 @@ export default function IssueEmptiesPage() {
         </CardContent>
       </Card>
 
+      {/* Warehouse Inventory */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Warehouse Empty Inventory</CardTitle>
+          <CardDescription>Current stock and movement history</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Empty Item</TableHead>
+                <TableHead className="text-right">Available Quantity</TableHead>
+                <TableHead className="text-right">Deposit Value</TableHead>
+                <TableHead className="text-right">Total Value</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {warehouseInventory.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    No empties in warehouse
+                  </TableCell>
+                </TableRow>
+              ) : (
+                warehouseInventory.map((inv) => {
+                  const emptyItem = emptyItems.find(e => e.id === inv.empty_item_id)
+                  return (
+                    <TableRow key={inv.id}>
+                      <TableCell className="font-medium">
+                        {emptyItem?.name || 'Unknown'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="text-2xl font-bold text-blue-600">
+                          {inv.quantity_available}
+                        </span>
+                        <span className="text-sm text-muted-foreground ml-1">units</span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ₦{parseFloat(emptyItem?.deposit_value || 0).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        ₦{parseFloat(inv.quantity_available * (emptyItem?.deposit_value || 0)).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => loadMovements(inv.empty_item_id)}
+                        >
+                          <History className="h-3 w-3 mr-1" />
+                          View History
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
       {/* Issue Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-md">
@@ -378,6 +494,141 @@ export default function IssueEmptiesPage() {
             </Button>
             <Button onClick={handleSubmit} disabled={processing}>
               {processing ? 'Processing...' : 'Issue Empties'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Movement History Dialog */}
+      <Dialog open={!!viewingHistory} onOpenChange={() => setViewingHistory(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Movement History - {emptyItems.find(e => e.id === viewingHistory)?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Complete history of how this empty item entered and left your warehouse
+            </DialogDescription>
+          </DialogHeader>
+          
+          {loadingMovements ? (
+            <div className="py-8 text-center">
+              <p className="text-muted-foreground">Loading movement history...</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Summary */}
+              <div className="grid grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground">Total Received</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {movements.filter(m => m.type === 'manufacturer_in' || m.type === 'returned_from_retailer').reduce((sum, m) => sum + m.quantity, 0)}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground">Total Issued</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {movements.filter(m => m.type === 'issued_to_retailer' || m.type === 'returned_to_manufacturer').reduce((sum, m) => sum + m.quantity, 0)}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground">Current Balance</p>
+                      <p className="text-2xl font-bold">
+                        {warehouseInventory.find(inv => inv.empty_item_id === viewingHistory)?.quantity_available || 0}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Movements Table */}
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
+                      <TableHead>Notes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {movements.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                          No movements found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      movements.map((movement) => (
+                        <TableRow key={movement.id}>
+                          <TableCell className="text-sm">
+                            {new Date(movement.created_at).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={getMovementTypeColor(movement.type)}>
+                              {getMovementTypeLabel(movement.type)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className={`font-bold ${
+                              movement.type === 'manufacturer_in' || movement.type === 'returned_from_retailer' 
+                                ? 'text-green-600' 
+                                : 'text-blue-600'
+                            }`}>
+                              {movement.type === 'manufacturer_in' || movement.type === 'returned_from_retailer' ? '+' : '-'}
+                              {movement.quantity}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {movement.notes || '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Legend */}
+              <div className="bg-gray-50 border rounded-lg p-4">
+                <h4 className="font-semibold text-sm mb-2">Understanding the Sources:</h4>
+                <ul className="text-sm space-y-1 text-gray-700">
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-600 font-bold">+</span>
+                    <strong>Received from Manufacturer:</strong> When you buy drinks, empties come with them
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-600 font-bold">+</span>
+                    <strong>Returned by Retailer:</strong> Retailers bring empties back to you
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-blue-600 font-bold">-</span>
+                    <strong>Issued to Retailer:</strong> You gave empties to retailer (they owe you)
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-blue-600 font-bold">-</span>
+                    <strong>Returned to Manufacturer:</strong> You returned empties when buying new drinks
+                  </li>
+                </ul>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewingHistory(null)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
