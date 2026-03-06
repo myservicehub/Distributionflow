@@ -14,16 +14,19 @@ import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { toast } from 'sonner'
 import { Plus, Eye, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import BottleExchangeSection from '@/components/BottleExchangeSection'
 
 export default function OrdersPage() {
   const { userProfile } = useAuth()
   const [orders, setOrders] = useState([])
   const [retailers, setRetailers] = useState([])
   const [products, setProducts] = useState([])
+  const [emptyItems, setEmptyItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [expandedOrders, setExpandedOrders] = useState({})
   const [orderItems, setOrderItems] = useState([{ product_id: '', quantity: 1, unit_price: 0, total_price: 0 }])
+  const [bottleExchange, setBottleExchange] = useState({ enabled: false, empties: [] })
   const [formData, setFormData] = useState({
     retailer_id: '',
     payment_status: 'paid'
@@ -41,6 +44,7 @@ export default function OrdersPage() {
     loadOrders()
     loadRetailers()
     loadProducts()
+    loadEmptyItems()
   }, [])
 
   const loadOrders = async () => {
@@ -73,6 +77,19 @@ export default function OrdersPage() {
       if (!response.ok) throw new Error('Failed to load products')
       const data = await response.json()
       setProducts(data)
+
+  const loadEmptyItems = async () => {
+    try {
+      const response = await fetch('/api/empty-bottles?route=empty-items')
+      if (response.ok) {
+        const data = await response.json()
+        setEmptyItems(data)
+      }
+    } catch (error) {
+      console.error('Failed to load empty items:', error)
+    }
+  }
+
     } catch (error) {
       console.error(error)
     }
@@ -128,7 +145,8 @@ export default function OrdersPage() {
           retailer_id: formData.retailer_id,
           payment_status: formData.payment_status,
           total_amount: calculateTotal(),
-          items: orderItems
+          items: orderItems,
+          bottle_exchange: bottleExchange.enabled ? bottleExchange : null
         })
       })
 
@@ -138,6 +156,10 @@ export default function OrdersPage() {
       }
 
       toast.success('Order created successfully!')
+      if (bottleExchange.enabled) {
+        const totalEmpties = bottleExchange.empties.reduce((sum, e) => sum + (parseInt(e.quantity) || 0), 0)
+        toast.info(`Recorded ${totalEmpties} empties brought by customer`)
+      }
       setDialogOpen(false)
       resetForm()
       loadOrders()
@@ -150,6 +172,7 @@ export default function OrdersPage() {
   const resetForm = () => {
     setFormData({ retailer_id: '', payment_status: 'paid' })
     setOrderItems([{ product_id: '', quantity: 1, unit_price: 0, total_price: 0 }])
+    setBottleExchange({ enabled: false, empties: [] })
   }
 
   const getStatusColor = (status) => {
@@ -356,6 +379,17 @@ export default function OrdersPage() {
                   <span>₦{calculateTotal().toLocaleString()}</span>
                 </div>
               </div>
+
+              {/* Bottle Exchange Section */}
+              <BottleExchangeSection
+                products={orderItems.map(item => ({
+                  ...item,
+                  empty_item_id: products.find(p => p.id === item.product_id)?.empty_item_id
+                }))}
+                emptyItems={emptyItems}
+                value={bottleExchange}
+                onChange={setBottleExchange}
+              />
 
               <Button type="submit" className="w-full">Create Order</Button>
             </form>

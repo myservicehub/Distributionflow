@@ -988,6 +988,69 @@ async function handleRoute(request, { params }) {
     if (route.startsWith('/orders/') && route.endsWith('/items') && method === 'GET') {
       const userContext = await getUserBusinessId(supabase)
       if (!userContext) {
+
+      // STEP 8: Process bottle exchange if provided
+      if (body.bottle_exchange && body.bottle_exchange.enabled && body.bottle_exchange.empties && body.bottle_exchange.empties.length > 0) {
+        console.log('Processing bottle exchange for order:', order.id)
+        
+        // Use admin client for bottle exchange
+        const adminSupabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
+          process.env.SUPABASE_SERVICE_ROLE_KEY
+        )
+
+        for (const empty of body.bottle_exchange.empties) {
+          if (!empty.empty_item_id || !empty.quantity) continue
+          
+          const quantity = parseInt(empty.quantity)
+
+          // Add empties to warehouse inventory
+          const { data: existing } = await adminSupabase
+            .from('warehouse_empty_inventory')
+            .select('quantity_available')
+            .eq('business_id', userContext.businessId)
+            .eq('empty_item_id', empty.empty_item_id)
+            .maybeSingle()
+
+          if (existing) {
+            await adminSupabase
+              .from('warehouse_empty_inventory')
+              .update({ 
+                quantity_available: existing.quantity_available + quantity,
+                updated_at: new Date().toISOString()
+              })
+              .eq('business_id', userContext.businessId)
+              .eq('empty_item_id', empty.empty_item_id)
+          } else {
+            await adminSupabase
+              .from('warehouse_empty_inventory')
+              .insert({
+                business_id: userContext.businessId,
+                empty_item_id: empty.empty_item_id,
+                quantity_available: quantity
+              })
+          }
+
+          // Log movement
+          await adminSupabase
+            .from('empty_movements')
+            .insert({
+              business_id: userContext.businessId,
+              empty_item_id: empty.empty_item_id,
+              retailer_id: body.retailer_id,
+              type: 'returned_from_retailer',
+              quantity,
+              reference_type: 'order',
+              reference_id: order.id,
+              notes: `Customer brought empties with order ${order.id.slice(0,8)}`,
+              created_by: userContext.userId
+            })
+        }
+
+        const totalEmpties = body.bottle_exchange.empties.reduce((sum, e) => sum + parseInt(e.quantity || 0), 0)
+        console.log(`✅ Bottle exchange processed: ${totalEmpties} empties added to warehouse`)
+      }
+
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
