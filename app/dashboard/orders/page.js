@@ -215,36 +215,6 @@ export default function OrdersPage() {
     setBottleExchange({ enabled: false, empties: [] })
   }
 
-  // Calculate empties that will be issued upon delivery
-  const calculateEmptiesToIssue = () => {
-    const emptiesToIssue = {}
-    
-    orderItems.forEach(item => {
-      if (item.product_id && item.quantity > 0) {
-        const product = products.find(p => p.id === item.product_id)
-        if (product && product.empty_item_id) {
-          const emptyItem = emptyItems.find(e => e.id === product.empty_item_id)
-          if (emptyItem) {
-            if (!emptiesToIssue[product.empty_item_id]) {
-              emptiesToIssue[product.empty_item_id] = {
-                name: emptyItem.name,
-                quantity: 0,
-                deposit_value: emptyItem.deposit_value
-              }
-            }
-            emptiesToIssue[product.empty_item_id].quantity += parseInt(item.quantity)
-          }
-        }
-      }
-    })
-    
-    return Object.values(emptiesToIssue)
-  }
-
-  const emptiesToIssue = calculateEmptiesToIssue()
-  const totalEmptiesToIssue = emptiesToIssue.reduce((sum, e) => sum + e.quantity, 0)
-  const totalEmptyDeposit = emptiesToIssue.reduce((sum, e) => sum + (e.quantity * e.deposit_value), 0)
-
   const getStatusColor = (status) => {
     switch (status) {
       case 'confirmed': return 'default'
@@ -384,87 +354,63 @@ export default function OrdersPage() {
                   </Button>
                 </div>
                 
-                {orderItems.map((item, index) => {
-                  const product = products.find(p => p.id === item.product_id)
-                  const emptyItem = product?.empty_item_id ? emptyItems.find(e => e.id === product.empty_item_id) : null
-                  
-                  return (
-                    <div key={index} className="mb-4 p-3 border rounded-lg bg-gray-50">
-                      <div className="grid grid-cols-12 gap-2 items-end">
-                        <div className="col-span-5">
-                          <Label>Product</Label>
-                          <Select
-                            value={item.product_id}
-                            onValueChange={(value) => handleItemChange(index, 'product_id', value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {products.map((p) => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  <div className="flex flex-col">
-                                    <span className="font-medium">{p.name}</span>
-                                    <span className="text-xs text-muted-foreground">
-                                      {p.sku ? `SKU: ${p.sku} • ` : ''}Stock: {p.stock_quantity}
-                                    </span>
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="col-span-2">
-                          <Label>Qty</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            value={item.quantity}
-                            onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <Label>Price</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.unit_price}
-                            onChange={(e) => handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <Label>Total</Label>
-                          <Input value={item.total_price.toFixed(2)} disabled />
-                        </div>
-                        <div className="col-span-1">
-                          {orderItems.length > 1 && (
-                            <Button type="button" size="sm" variant="destructive" onClick={() => handleRemoveItem(index)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Empty Details for this product */}
-                      {emptyItem && item.quantity > 0 && (
-                        <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
-                          <div className="flex items-center gap-2">
-                            <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                            </svg>
-                            <span className="font-medium text-blue-900">
-                              Will issue: <span className="text-blue-600 font-bold">{item.quantity}x {emptyItem.name}</span>
-                            </span>
-                            <span className="text-xs text-blue-700 ml-auto">
-                              (₦{parseFloat(emptyItem.deposit_value).toLocaleString()} deposit each • Total: ₦{(item.quantity * parseFloat(emptyItem.deposit_value)).toLocaleString()})
-                            </span>
-                          </div>
-                        </div>
+                {orderItems.map((item, index) => (
+                  <div key={index} className="grid grid-cols-12 gap-2 mb-3 items-end">
+                    <div className="col-span-5">
+                      <Label>Product</Label>
+                      <Select
+                        value={item.product_id}
+                        onValueChange={(value) => handleItemChange(index, 'product_id', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {products.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{p.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {p.sku ? `SKU: ${p.sku} • ` : ''}Stock: {p.stock_quantity}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2">
+                      <Label>Qty</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 1)}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label>Price</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={item.unit_price}
+                        onChange={(e) => handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label>Total</Label>
+                      <Input value={item.total_price.toFixed(2)} disabled />
+                    </div>
+                    <div className="col-span-1">
+                      {orderItems.length > 1 && (
+                        <Button type="button" size="sm" variant="destructive" onClick={() => handleRemoveItem(index)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       )}
                     </div>
-                  )
-                })}
+                  </div>
+                ))}
               </div>
 
               <div className="border-t pt-4 space-y-2">
@@ -644,48 +590,26 @@ export default function OrdersPage() {
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                  {order.order_items.map((item, idx) => {
-                                    const emptyItem = item.product?.empty_item_id ? 
-                                      emptyItems.find(e => e.id === item.product.empty_item_id) : null
-                                    
-                                    return (
-                                      <TableRow key={idx}>
-                                        <TableCell className="font-medium">
-                                          <div className="flex flex-col gap-2">
-                                            <span>{item.product?.name || 'Unknown Product'}</span>
-                                            {item.product?.sku && (
-                                              <span className="text-xs text-muted-foreground">
-                                                SKU: {item.product.sku}
-                                              </span>
-                                            )}
-                                            {/* Empty Details */}
-                                            {emptyItem && (
-                                              <div className="mt-1 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-                                                <div className="flex items-center gap-1">
-                                                  <svg className="h-3 w-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                                  </svg>
-                                                  <span className="font-medium text-blue-900">
-                                                    Empties: <span className="text-blue-600 font-bold">{item.quantity}x {emptyItem.name}</span>
-                                                  </span>
-                                                </div>
-                                                <div className="text-blue-700 mt-1">
-                                                  Deposit: ₦{parseFloat(emptyItem.deposit_value).toLocaleString()} each • 
-                                                  Total: ₦{(item.quantity * parseFloat(emptyItem.deposit_value)).toLocaleString()}
-                                                </div>
-                                              </div>
-                                            )}
-                                          </div>
-                                        </TableCell>
-                                        <TableCell>{item.product?.sku || '-'}</TableCell>
-                                        <TableCell className="text-right">{item.quantity}</TableCell>
-                                        <TableCell className="text-right">₦{parseFloat(item.unit_price).toLocaleString()}</TableCell>
-                                        <TableCell className="text-right font-semibold">
-                                          ₦{parseFloat(item.total_price).toLocaleString()}
-                                        </TableCell>
-                                      </TableRow>
-                                    )
-                                  })}
+                                  {order.order_items.map((item, idx) => (
+                                    <TableRow key={idx}>
+                                      <TableCell className="font-medium">
+                                        <div className="flex flex-col">
+                                          <span>{item.product?.name || 'Unknown Product'}</span>
+                                          {item.product?.sku && (
+                                            <span className="text-xs text-muted-foreground">
+                                              SKU: {item.product.sku}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>{item.product?.sku || '-'}</TableCell>
+                                      <TableCell className="text-right">{item.quantity}</TableCell>
+                                      <TableCell className="text-right">₦{parseFloat(item.unit_price).toLocaleString()}</TableCell>
+                                      <TableCell className="text-right font-semibold">
+                                        ₦{parseFloat(item.total_price).toLocaleString()}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
                                 </TableBody>
                               </Table>
                             ) : (
