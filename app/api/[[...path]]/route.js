@@ -827,6 +827,69 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json(ordersWithSalesRep))
     }
 
+    // GET single order with items
+    if (route.startsWith('/orders/') && !route.endsWith('/items') && method === 'GET') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      // Extract order ID from route
+      const orderId = route.split('/orders/')[1]
+
+      // Fetch order with items
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_status,
+          delivery_status,
+          is_legacy_order,
+          confirmed_by,
+          confirmed_at,
+          packed_at,
+          dispatched_at,
+          delivered_at,
+          delivery_reference,
+          driver_name,
+          vehicle_number,
+          retailers(shop_name, owner_name)
+        `)
+        .eq('id', orderId)
+        .eq('business_id', userContext.businessId)
+        .single()
+
+      if (orderError) {
+        console.error('Order query error:', orderError)
+        return handleCORS(NextResponse.json({ error: 'Order not found' }, { status: 404 }))
+      }
+
+      // Fetch order items
+      const { data: items, error: itemsError } = await supabase
+        .from('order_items')
+        .select(`
+          *,
+          product:products(name, sku)
+        `)
+        .eq('order_id', orderId)
+
+      if (itemsError) {
+        console.error('Order items query error:', itemsError)
+      }
+
+      // Format response
+      const response = {
+        ...order,
+        retailer_name: order.retailers?.shop_name || 'Unknown',
+        items: (items || []).map(item => ({
+          ...item,
+          product_name: item.product?.name || 'Unknown Product'
+        }))
+      }
+
+      return handleCORS(NextResponse.json(response))
+    }
+
     if (route === '/orders' && method === 'POST') {
       const userContext = await getUserBusinessId(supabase)
       if (!userContext) {
