@@ -1241,6 +1241,96 @@ async function handleRoute(request, { params }) {
             .update({ current_balance: newBalance })
             .eq('id', order.retailer_id)
         }
+
+        // AUTOMATIC EMPTY BOTTLE ISSUANCE
+        // When order is delivered, automatically issue empties to retailer for products with linked empties
+        try {
+          // Get order items
+          const { data: orderItems } = await supabase
+            .from('order_items')
+            .select('product_id, quantity')
+            .eq('order_id', orderId)
+
+          if (orderItems && orderItems.length > 0) {
+            // Get products with their linked empty items
+            const productIds = orderItems.map(item => item.product_id)
+            const { data: products } = await supabase
+              .from('products')
+              .select('id, name, empty_item_id')
+              .in('id', productIds)
+              .not('empty_item_id', 'is', null)
+
+            // Create a map of product_id to empty_item_id
+            const productEmptyMap = {}
+            products?.forEach(product => {
+              productEmptyMap[product.id] = product.empty_item_id
+            })
+
+            // Calculate empties to issue for each empty item type
+            const emptiesToIssue = {}
+            orderItems.forEach(item => {
+              const emptyItemId = productEmptyMap[item.product_id]
+              if (emptyItemId) {
+                emptiesToIssue[emptyItemId] = (emptiesToIssue[emptyItemId] || 0) + item.quantity
+              }
+            })
+
+            // Issue empties to retailer
+            for (const [emptyItemId, quantity] of Object.entries(emptiesToIssue)) {
+              // Check if retailer already has a balance for this empty item
+              const { data: existingBalance } = await supabase
+                .from('retailer_empty_balances')
+                .select('quantity_outstanding')
+                .eq('business_id', userContext.business_id)
+                .eq('retailer_id', order.retailer_id)
+                .eq('empty_item_id', emptyItemId)
+                .maybeSingle()
+
+              if (existingBalance) {
+                // Update existing balance
+                await supabase
+                  .from('retailer_empty_balances')
+                  .update({ 
+                    quantity_outstanding: existingBalance.quantity_outstanding + quantity,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('business_id', userContext.business_id)
+                  .eq('retailer_id', order.retailer_id)
+                  .eq('empty_item_id', emptyItemId)
+              } else {
+                // Create new balance record
+                await supabase
+                  .from('retailer_empty_balances')
+                  .insert({
+                    business_id: userContext.business_id,
+                    retailer_id: order.retailer_id,
+                    empty_item_id: emptyItemId,
+                    quantity_outstanding: quantity
+                  })
+              }
+
+              // Log the empty movement
+              await supabase
+                .from('empty_movements')
+                .insert({
+                  business_id: userContext.business_id,
+                  empty_item_id: emptyItemId,
+                  retailer_id: order.retailer_id,
+                  type: 'issued_to_retailer',
+                  quantity: quantity,
+                  reference_type: 'order',
+                  reference_id: orderId,
+                  notes: `Automatic empty issuance for order #${orderId.substring(0, 8)}`,
+                  created_by: userContext.id
+                })
+            }
+
+            console.log(`✅ Automatically issued empties for order ${orderId}:`, emptiesToIssue)
+          }
+        } catch (emptyError) {
+          console.error('Error issuing empties:', emptyError)
+          // Don't fail the order delivery if empty issuance fails
+        }
         
         notificationTitle = 'Order Delivered'
         notificationMessage = `Order #${orderId.substring(0, 8)} for {RETAILER_NAME} has been successfully delivered.`
