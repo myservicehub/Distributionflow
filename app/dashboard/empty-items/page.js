@@ -88,6 +88,7 @@ export default function EmptyItemsPage() {
     } catch (error) {
       toast.error(error.message)
     }
+  }
 
   const handleEdit = (item) => {
     setEditingItem(item)
@@ -348,3 +349,4 @@ export default function EmptyItemsPage() {
     </div>
   )
 }
+
