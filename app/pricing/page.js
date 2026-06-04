@@ -1,5 +1,4 @@
-'use client'
-
+import Link from 'next/link'
 import { useState } from 'react'
 import { 
   Check, 
@@ -21,6 +20,7 @@ export default function PricingPage() {
 
   const plans = [
     {
+      id: 'starter',
       name: 'Starter',
       price: billingCycle === 'monthly' ? 20000 : 18000,
       period: billingCycle === 'monthly' ? 'month' : 'month',
@@ -45,6 +45,7 @@ export default function PricingPage() {
       ]
     },
     {
+      id: 'business',
       name: 'Business',
       price: billingCycle === 'monthly' ? 35000 : 31500,
       period: billingCycle === 'monthly' ? 'month' : 'month',
@@ -67,6 +68,7 @@ export default function PricingPage() {
       limitations: []
     },
     {
+      id: 'enterprise',
       name: 'Enterprise',
       price: billingCycle === 'monthly' ? 70000 : 63000,
       period: billingCycle === 'monthly' ? 'month' : 'month',
@@ -314,16 +316,18 @@ export default function PricingPage() {
                       </p>
                     </div>
 
-                    <Button
-                      className={`w-full mt-4 sm:mt-6 ${
-                        plan.popular
-                          ? 'bg-blue-600 hover:bg-blue-700'
-                          : 'bg-slate-900 hover:bg-slate-800'
-                      }`}
-                      size="lg"
-                    >
-                      Start Free Trial
-                    </Button>
+                    <Link href={`/signup?plan=${plan.id}`} className="w-full">
+                      <Button
+                        className={`w-full mt-4 sm:mt-6 ${
+                          plan.popular
+                            ? 'bg-blue-600 hover:bg-blue-700'
+                            : 'bg-slate-900 hover:bg-slate-800'
+                        }`}
+                        size="lg"
+                      >
+                        Start Free Trial
+                      </Button>
+                    </Link>
                   </CardHeader>
 
                   <CardContent className="space-y-2 sm:space-y-3">
