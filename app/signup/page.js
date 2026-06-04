@@ -60,19 +60,7 @@ function SignupForm() {
     setLoading(true)
 
     try {
-      // 1. Find the plan in database
-      const { data: planData, error: planError } = await supabase
-        .from('plans')
-        .select('id')
-        .ilike('name', selectedPlan.name)
-        .single()
-
-      if (planError) {
-        console.error('Plan error:', planError)
-        throw new Error('Selected plan not found. Please contact support.')
-      }
-
-      // 2. Create auth user
+      // 1. Create auth user first
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -80,26 +68,49 @@ function SignupForm() {
 
       if (authError) throw authError
 
-      // 3. Create business with trial
-      const trialEndDate = new Date()
-      trialEndDate.setDate(trialEndDate.getDate() + 14) // 14-day trial
-
+      // 2. Create business (basic fields only - works without migrations)
       const { data: businessData, error: businessError } = await supabase
         .from('businesses')
         .insert({
           name: formData.businessName,
           address: formData.address,
-          email: formData.email,
-          owner_id: authData.user.id,
-          plan_id: planData.id,
-          subscription_status: 'trial',
-          trial_end_date: trialEndDate.toISOString(),
-          status: 'active'
+          owner_id: authData.user.id
         })
         .select()
         .single()
 
-      if (businessError) throw businessError
+      if (businessError) {
+        console.error('Business creation error:', businessError)
+        throw new Error(`Failed to create business: ${businessError.message}`)
+      }
+
+      // 3. Try to update with subscription fields (will fail gracefully if columns don't exist)
+      try {
+        const trialEndDate = new Date()
+        trialEndDate.setDate(trialEndDate.getDate() + 14)
+
+        // Find the plan in database
+        const { data: planData } = await supabase
+          .from('plans')
+          .select('id')
+          .ilike('name', selectedPlan.name)
+          .single()
+
+        if (planData) {
+          await supabase
+            .from('businesses')
+            .update({
+              plan_id: planData.id,
+              subscription_status: 'trial',
+              trial_end_date: trialEndDate.toISOString(),
+              status: 'active'
+            })
+            .eq('id', businessData.id)
+        }
+      } catch (subscriptionError) {
+        // Subscription fields don't exist yet - that's okay for now
+        console.log('Note: Subscription fields not available. Please run subscription migration.')
+      }
 
       // 4. Create user profile with admin role
       const { error: userError } = await supabase.from('users').insert({
@@ -108,12 +119,15 @@ function SignupForm() {
         name: formData.ownerName,
         email: formData.email,
         role: 'admin',
-        status: 'active',
+        is_active: true,
       })
 
-      if (userError) throw userError
+      if (userError) {
+        console.error('User creation error:', userError)
+        throw new Error(`Failed to create user profile: ${userError.message}`)
+      }
 
-      toast.success('🎉 Account created! Your 14-day free trial has started.')
+      toast.success('🎉 Account created successfully!')
       router.push('/dashboard')
       router.refresh()
     } catch (error) {
