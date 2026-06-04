@@ -1,0 +1,8 @@
+# Netlify Configuration for Next.js App
+
+[build]
+  command = "yarn build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
