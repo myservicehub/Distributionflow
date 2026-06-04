@@ -24,15 +24,30 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) throw error
 
+      // Check if user is a super admin
+      if (authData?.user) {
+        const { data: adminData } = await supabase
+          .from('platform_admins')
+          .select('id, role')
+          .eq('auth_user_id', authData.user.id)
+          .eq('status', 'active')
+          .single()
+
+        if (adminData && adminData.role === 'super_admin') {
+          toast.success('Welcome, Super Admin!')
+          window.location.href = '/platform/dashboard'
+          return
+        }
+      }
+
       toast.success('Logged in successfully!')
-      // Force redirect using window.location
       window.location.href = '/dashboard'
     } catch (error) {
       toast.error(error.message || 'Failed to login')
