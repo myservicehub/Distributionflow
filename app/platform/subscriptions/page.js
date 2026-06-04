@@ -1,10 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { CreditCard, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 
 export default function SubscriptionsPage() {
@@ -14,153 +21,217 @@ export default function SubscriptionsPage() {
 
   useEffect(() => {
     fetchSubscriptions()
-  }, [statusFilter])
+  }, [])
 
   const fetchSubscriptions = async () => {
     try {
-      const url = statusFilter === 'all' 
-        ? '/api/platform?route=subscriptions'
-        : `/api/platform?route=subscriptions&status=${statusFilter}`
-      
-      const res = await fetch(url)
+      const res = await fetch('/api/platform?route=subscriptions')
       const data = await res.json()
       if (data.success) {
         setSubscriptions(data.data)
       }
     } catch (error) {
-      console.error('Error fetching subscriptions:', error)
+      console.error('Error:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const getStatusBadge = (status) => {
-    const variants = {
-      active: 'default',
-      pending: 'secondary',
-      cancelled: 'outline',
-      expired: 'destructive',
-      failed: 'destructive'
+  const filteredSubscriptions = statusFilter === 'all' 
+    ? subscriptions 
+    : subscriptions.filter(s => s.subscription_status === statusFilter)
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800 border-green-200'
+      case 'trial': return 'bg-purple-100 text-purple-800 border-purple-200'
+      case 'expired': return 'bg-red-100 text-red-800 border-red-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
     }
-    return (
-      <Badge variant={variants[status] || 'outline'}>
-        {status}
-      </Badge>
-    )
+  }
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      minimumFractionDigits: 0
+    }).format(amount || 0)
+  }
+
+  const getDaysRemaining = (endDate) => {
+    if (!endDate) return null
+    const days = Math.ceil((new Date(endDate) - new Date()) / (1000 * 60 * 60 * 24))
+    return days > 0 ? days : 0
   }
 
   if (loading) {
     return (
       <div className="p-8">
-        <Skeleton className="h-8 w-64 mb-6" />
-        <Skeleton className="h-96" />
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 w-64 bg-gray-200 rounded"></div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-32 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
 
+  const stats = {
+    total: subscriptions.length,
+    active: subscriptions.filter(s => s.subscription_status === 'active').length,
+    trial: subscriptions.filter(s => s.subscription_status === 'trial').length,
+    expired: subscriptions.filter(s => s.subscription_status === 'expired').length,
+  }
+
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Subscriptions</h1>
-        <p className="text-gray-500 mt-2">Monitor all active and past subscriptions</p>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+          <CreditCard className="h-8 w-8" />
+          Subscriptions Management
+        </h1>
+        <p className="text-gray-600 mt-1">Monitor all business subscriptions</p>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filter by Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            {['all', 'active', 'pending', 'cancelled', 'expired'].map((status) => (
-              <Button
-                key={status}
-                variant={statusFilter === status ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setStatusFilter(status)}
-              >
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-              </Button>
-            ))}
+      {/* Stats */}
+      <div className="grid gap-4 md:grid-cols-4 mb-6">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-600">Total Subscriptions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-green-200 bg-green-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-green-800">Active</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-purple-200 bg-purple-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-purple-800">Trial</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{stats.trial}</div>
+          </CardContent>
+        </Card>
+        
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-red-800">Expired</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{stats.expired}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filter */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium">Filter by status:</span>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Subscriptions</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="trial">Trial</SelectItem>
+                <SelectItem value="expired">Expired</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
 
-      {/* Subscriptions Table */}
+      {/* Subscriptions List */}
       <Card>
         <CardHeader>
-          <CardTitle>All Subscriptions ({subscriptions.length})</CardTitle>
-          <CardDescription>Complete subscription records</CardDescription>
+          <CardTitle>{filteredSubscriptions.length} Subscriptions</CardTitle>
+          <CardDescription>
+            {statusFilter !== 'all' && `Showing ${statusFilter} subscriptions`}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Business</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Plan</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Base Price</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Extra Users</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Total Amount</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Cycle</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Next Billing</th>
-                </tr>
-              </thead>
-              <tbody>
-                {subscriptions.length === 0 ? (
-                  <tr>
-                    <td colSpan="8" className="text-center py-8 text-gray-500">
-                      No subscriptions found
-                    </td>
-                  </tr>
-                ) : (
-                  subscriptions.map((sub) => (
-                    <tr key={sub.id} className="border-b hover:bg-gray-50">
-                      <td className="py-4 px-4">
-                        <Link 
-                          href={`/platform/businesses/${sub.business_id}`}
-                          className="font-medium text-blue-600 hover:underline"
-                        >
-                          {sub.businesses?.name || 'Unknown'}
-                        </Link>
-                      </td>
-                      <td className="py-4 px-4">
-                        {sub.plans?.display_name || 'N/A'}
-                      </td>
-                      <td className="py-4 px-4">
-                        ₦{sub.base_price?.toLocaleString() || 0}
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="text-sm">
-                          <div>{sub.extra_users || 0} users</div>
-                          <div className="text-gray-500">
-                            ₦{((sub.extra_users || 0) * (sub.price_per_extra_user || 0)).toLocaleString()}
-                          </div>
+          {filteredSubscriptions.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">No subscriptions found</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredSubscriptions.map((sub) => {
+                const daysRemaining = getDaysRemaining(sub.trial_end_date || sub.subscription_end)
+                
+                return (
+                  <div 
+                    key={sub.id} 
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="font-semibold text-lg">{sub.name}</h3>
+                        <Badge className={getStatusColor(sub.subscription_status)}>
+                          {sub.subscription_status}
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <span className="flex items-center gap-1">
+                          <span className="font-medium">Plan:</span>
+                          {sub.plan_name || 'N/A'}
+                        </span>
+                        
+                        {sub.plan_price && (
+                          <span className="flex items-center gap-1">
+                            <span className="font-medium">Price:</span>
+                            {formatCurrency(sub.plan_price)}/month
+                          </span>
+                        )}
+                        
+                        {daysRemaining !== null && daysRemaining >= 0 && (
+                          <span className={`font-medium ${
+                            daysRemaining <= 7 ? 'text-orange-600' : 'text-gray-600'
+                          }`}>
+                            {daysRemaining === 0 
+                              ? 'Expires today' 
+                              : `${daysRemaining} days remaining`}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {sub.subscription_status === 'trial' && daysRemaining <= 7 && (
+                        <div className="mt-2 flex items-center gap-2 text-sm text-orange-600">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>Trial expiring soon</span>
                         </div>
-                      </td>
-                      <td className="py-4 px-4 font-semibold">
-                        ₦{sub.total_amount?.toLocaleString() || 0}
-                      </td>
-                      <td className="py-4 px-4 capitalize">
-                        {sub.billing_cycle}
-                      </td>
-                      <td className="py-4 px-4">
-                        {getStatusBadge(sub.status)}
-                      </td>
-                      <td className="py-4 px-4 text-sm text-gray-500">
-                        {sub.next_billing_date 
-                          ? new Date(sub.next_billing_date).toLocaleDateString()
-                          : 'N/A'
-                        }
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Link href={`/platform/businesses/${sub.id}`}>
+                        <Button size="sm" variant="outline">
+                          View Business
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
