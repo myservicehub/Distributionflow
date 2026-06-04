@@ -4,6 +4,9 @@
 import { NextResponse } from 'next/server'
 import { checkAndExpireTrials } from '@/lib/subscription'
 
+// Mark this route as dynamic (not statically rendered)
+export const dynamic = 'force-dynamic'
+
 export async function GET(request) {
   try {
     // Optional: Add API key authentication for security

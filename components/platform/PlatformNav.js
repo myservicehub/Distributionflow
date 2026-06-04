@@ -15,13 +15,18 @@ import {
   LogOut
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 
 export default function PlatformNav() {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  
+  // Create Supabase browser client
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  )
 
   const navItems = [
     { name: 'Dashboard', href: '/platform/dashboard', icon: LayoutDashboard },
