@@ -12,30 +12,42 @@ export default function PlatformDashboard() {
   const [kpis, setKpis] = useState(null)
   const [businesses, setBusinesses] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
+    console.log('🚀 PlatformDashboard mounted')
     fetchDashboardData()
   }, [])
 
   const fetchDashboardData = async () => {
     try {
+      console.log('📡 Fetching KPIs...')
       // Fetch KPIs
       const kpisRes = await fetch('/api/platform?route=kpis')
+      console.log('📊 KPIs response status:', kpisRes.status)
       const kpisData = await kpisRes.json()
+      console.log('📊 KPIs data:', kpisData)
       if (kpisData.success) {
         setKpis(kpisData.data)
+      } else {
+        setError(kpisData.error || 'Failed to fetch KPIs')
       }
 
+      console.log('📡 Fetching businesses...')
       // Fetch businesses for risk alerts
       const businessesRes = await fetch('/api/platform?route=businesses')
+      console.log('🏢 Businesses response status:', businessesRes.status)
       const businessesData = await businessesRes.json()
+      console.log('🏢 Businesses data:', businessesData)
       if (businessesData.success) {
         setBusinesses(businessesData.data)
       }
     } catch (error) {
-      console.error('Error fetching dashboard data:', error)
+      console.error('❌ Error fetching dashboard data:', error)
+      setError(error.message)
     } finally {
       setLoading(false)
+      console.log('✅ Dashboard data fetch complete')
     }
   }
 
@@ -62,6 +74,27 @@ export default function PlatformDashboard() {
           {[...Array(8)].map((_, i) => (
             <Skeleton key={i} className="h-32" />
           ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <h2 className="text-xl font-bold text-red-800 mb-2">Error Loading Dashboard</h2>
+          <p className="text-red-600">{error}</p>
+          <button 
+            onClick={() => {
+              setError(null)
+              setLoading(true)
+              fetchDashboardData()
+            }}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Retry
+          </button>
         </div>
       </div>
     )

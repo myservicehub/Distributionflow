@@ -22,11 +22,16 @@ export default function PlatformNav() {
   const pathname = usePathname()
   const router = useRouter()
   
-  // Create Supabase browser client
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  )
+  // Create Supabase browser client with fallback error handling
+  let supabase = null
+  try {
+    supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+    )
+  } catch (error) {
+    console.error('Failed to initialize Supabase client:', error)
+  }
 
   const navItems = [
     { name: 'Dashboard', href: '/platform/dashboard', icon: LayoutDashboard },
