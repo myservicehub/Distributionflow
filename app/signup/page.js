@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -9,13 +9,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Package, Check, ArrowRight } from 'lucide-react'
+import { Package, Check, ArrowRight, Mail, RefreshCw } from 'lucide-react'
 import PublicNav from '@/components/PublicNav'
 import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 function SignupForm() {
   const searchParams = useSearchParams()
-  const planId = searchParams.get('plan') || 'business' // Default to business plan
+  const planId = searchParams.get('plan') || 'business'
   
   const [formData, setFormData] = useState({
     businessName: '',
@@ -25,6 +26,9 @@ function SignupForm() {
     password: '',
   })
   const [loading, setLoading] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
+  const [resending, setResending] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -55,6 +59,23 @@ function SignupForm() {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
+  const handleResendEmail = async () => {
+    setResending(true)
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: userEmail,
+      })
+
+      if (error) throw error
+      toast.success('Verification email sent! Check your inbox.')
+    } catch (error) {
+      toast.error(error.message || 'Failed to resend email')
+    } finally {
+      setResending(false)
+    }
+  }
+
   const handleSignup = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -64,10 +85,27 @@ function SignupForm() {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+          data: {
+            business_name: formData.businessName,
+            full_name: formData.ownerName
+          }
+        }
       })
 
       if (authError) throw authError
 
+      // Check if email confirmation is required
+      if (authData.user && !authData.user.confirmed_at) {
+        // Email confirmation required
+        setUserEmail(formData.email)
+        setEmailSent(true)
+        setLoading(false)
+        return
+      }
+
+      // If no email confirmation needed, continue with business creation
       // 2. Create business (basic fields only - works without migrations)
       const { data: businessData, error: businessError } = await supabase
         .from('businesses')
@@ -108,7 +146,6 @@ function SignupForm() {
             .eq('id', businessData.id)
         }
       } catch (subscriptionError) {
-        // Subscription fields don't exist yet - that's okay for now
         console.log('Note: Subscription fields not available. Please run subscription migration.')
       }
 
@@ -133,11 +170,105 @@ function SignupForm() {
     } catch (error) {
       console.error('Signup error:', error)
       toast.error(error.message || 'Failed to create account')
-    } finally {
       setLoading(false)
     }
   }
 
+  // Show email verification screen
+  if (emailSent) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <PublicNav />
+        <div className="container mx-auto px-4 py-8 min-h-[calc(100vh-64px)] flex items-center justify-center">
+          <Card className="max-w-2xl w-full">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                <Mail className="h-8 w-8 text-blue-600" />
+              </div>
+              <CardTitle className="text-2xl">Check Your Email</CardTitle>
+              <CardDescription className="text-base">
+                We've sent a verification link to <strong>{userEmail}</strong>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <Alert>
+                <AlertTitle className="flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  What to do next:
+                </AlertTitle>
+                <AlertDescription className="mt-2 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="font-semibold">1.</span>
+                    <span>Check your email inbox (and spam folder)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="font-semibold">2.</span>
+                    <span>Click the verification link in the email</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="font-semibold">3.</span>
+                    <span>You'll be automatically redirected to your dashboard</span>
+                  </div>
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-4">
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Didn't receive the email?
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={handleResendEmail}
+                    disabled={resending}
+                    className="w-full"
+                  >
+                    {resending ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Resend Verification Email
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                <div className="text-center pt-4 border-t">
+                  <p className="text-sm text-gray-600 mb-2">
+                    Wrong email address?
+                  </p>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setEmailSent(false)
+                      setUserEmail('')
+                    }}
+                  >
+                    Try Again with Different Email
+                  </Button>
+                </div>
+
+                <div className="text-center pt-4 border-t">
+                  <p className="text-sm text-gray-600">
+                    Need help?{' '}
+                    <Link href="/support" className="text-blue-600 hover:underline font-medium">
+                      Contact Support
+                    </Link>
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  // Show signup form
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <PublicNav />
@@ -253,6 +384,9 @@ function SignupForm() {
                       onChange={handleChange}
                       required
                     />
+                    <p className="text-xs text-gray-500">
+                      We'll send a verification link to this email
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -275,9 +409,14 @@ function SignupForm() {
                     size="lg"
                     disabled={loading}
                   >
-                    {loading ? 'Creating Account...' : (
+                    {loading ? (
                       <>
-                        Start Free Trial
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Creating Account...
+                      </>
+                    ) : (
+                      <>
+                        Create Account
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </>
                     )}
@@ -320,11 +459,11 @@ function SignupForm() {
               </div>
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-green-600" />
-                <span>Cancel anytime</span>
+                <span>Email verification required</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-green-600" />
-                <span>Setup in 5 minutes</span>
+                <span>Cancel anytime</span>
               </div>
             </div>
           </div>
