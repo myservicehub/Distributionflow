@@ -1,6 +1,6 @@
-import PublicNav from '@/components/PublicNav'
 'use client'
 
+import PublicNav from '@/components/PublicNav'
 import { useState } from 'react'
 import Link from 'next/link'
 import { Check, X, ArrowRight, HelpCircle } from 'lucide-react'
