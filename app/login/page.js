@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -9,15 +9,43 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Package } from 'lucide-react'
+import { Package, AlertCircle } from 'lucide-react'
 import PublicNav from '@/components/PublicNav'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
+
+  // Check for error messages from callback
+  useEffect(() => {
+    const error = searchParams.get('error')
+    const message = searchParams.get('message')
+    
+    if (error) {
+      let errorMessage = 'An error occurred'
+      
+      switch (error) {
+        case 'verification_failed':
+          errorMessage = 'Email verification failed. Please try signing up again.'
+          break
+        case 'account_setup_failed':
+          errorMessage = message ? decodeURIComponent(message) : 'Account setup failed. Please contact support.'
+          break
+        case 'callback_error':
+          errorMessage = 'An error occurred during login. Please try again.'
+          break
+        default:
+          errorMessage = error
+      }
+      
+      toast.error(errorMessage)
+    }
+  }, [searchParams])
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -117,5 +145,20 @@ export default function LoginPage() {
       </Card>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }

@@ -81,7 +81,7 @@ function SignupForm() {
     setLoading(true)
 
     try {
-      // 1. Create auth user first
+      // 1. Create auth user first - store all required data in metadata
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -89,7 +89,9 @@ function SignupForm() {
           emailRedirectTo: `${window.location.origin}/api/auth/callback`,
           data: {
             business_name: formData.businessName,
-            full_name: formData.ownerName
+            full_name: formData.ownerName,
+            address: formData.address,
+            plan_id: planId // Store the selected plan
           }
         }
       })
@@ -98,73 +100,17 @@ function SignupForm() {
 
       // Check if email confirmation is required
       if (authData.user && !authData.user.confirmed_at) {
-        // Email confirmation required
+        // Email confirmation required - show verification screen
+        // Business and user records will be created in the callback after email verification
         setUserEmail(formData.email)
         setEmailSent(true)
         setLoading(false)
         return
       }
 
-      // If no email confirmation needed, continue with business creation
-      // 2. Create business (basic fields only - works without migrations)
-      const { data: businessData, error: businessError } = await supabase
-        .from('businesses')
-        .insert({
-          name: formData.businessName,
-          address: formData.address,
-          owner_id: authData.user.id
-        })
-        .select()
-        .single()
-
-      if (businessError) {
-        console.error('Business creation error:', businessError)
-        throw new Error(`Failed to create business: ${businessError.message}`)
-      }
-
-      // 3. Try to update with subscription fields (will fail gracefully if columns don't exist)
-      try {
-        const trialEndDate = new Date()
-        trialEndDate.setDate(trialEndDate.getDate() + 14)
-
-        // Find the plan in database
-        const { data: planData } = await supabase
-          .from('plans')
-          .select('id')
-          .ilike('name', selectedPlan.name)
-          .single()
-
-        if (planData) {
-          await supabase
-            .from('businesses')
-            .update({
-              plan_id: planData.id,
-              subscription_status: 'trial',
-              trial_end_date: trialEndDate.toISOString(),
-              status: 'active'
-            })
-            .eq('id', businessData.id)
-        }
-      } catch (subscriptionError) {
-        console.log('Note: Subscription fields not available. Please run subscription migration.')
-      }
-
-      // 4. Create user profile with admin role
-      const { error: userError } = await supabase.from('users').insert({
-        business_id: businessData.id,
-        auth_user_id: authData.user.id,
-        name: formData.ownerName,
-        email: formData.email,
-        role: 'admin',
-        is_active: true,
-      })
-
-      if (userError) {
-        console.error('User creation error:', userError)
-        throw new Error(`Failed to create user profile: ${userError.message}`)
-      }
-
-      toast.success('🎉 Account created successfully!')
+      // If no email confirmation needed (rare in production), redirect to dashboard
+      // The callback will handle business/user creation
+      toast.success('🎉 Account created! Redirecting...')
       router.push('/dashboard')
       router.refresh()
     } catch (error) {
