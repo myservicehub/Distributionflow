@@ -86,7 +86,7 @@ function SignupForm() {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/api/auth/callback`,
           data: {
             business_name: formData.businessName,
             full_name: formData.ownerName
