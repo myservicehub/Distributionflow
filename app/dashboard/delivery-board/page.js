@@ -294,71 +294,71 @@ export default function DeliveryBoardPage() {
   }
 
   const OrderCard = ({ order }) => (
-    <Card className="mb-3 hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-3">
+    <Card className="border-0 shadow-soft hover:shadow-medium transition-all duration-300 animate-fade-in">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="font-semibold text-sm text-gray-900">
+            <h3 className="font-semibold text-base text-neutral-900">
               Order #{order.id.substring(0, 8)}
             </h3>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-sm text-neutral-600 mt-1">
               {order.retailer_name || 'Unknown Retailer'}
             </p>
           </div>
-          <Badge className={getStatusBadgeColor(order.delivery_status)}>
+          <Badge className={`${getStatusBadgeColor(order.delivery_status)} border font-medium`}>
             {order.delivery_status.replace('_', ' ').toUpperCase()}
           </Badge>
         </div>
 
-        <div className="space-y-2 text-xs">
-          <div className="flex items-center gap-2 text-gray-600">
-            <User className="h-3 w-3" />
+        <div className="space-y-3 text-sm">
+          <div className="flex items-center gap-2 text-neutral-700">
+            <User className="h-4 w-4 text-neutral-500" />
             <span>{order.sales_rep_name || 'N/A'}</span>
           </div>
-          <div className="flex items-center gap-2 text-gray-600">
-            <CreditCard className="h-3 w-3" />
-            <span className="font-semibold">₦{parseFloat(order.total_amount).toLocaleString()}</span>
-            <Badge variant="outline" className="text-xs">
+          <div className="flex items-center gap-2 text-neutral-700">
+            <CreditCard className="h-4 w-4 text-neutral-500" />
+            <span className="font-semibold text-neutral-900">₦{parseFloat(order.total_amount).toLocaleString()}</span>
+            <Badge variant="outline" className="text-xs border-neutral-300">
               {order.payment_status}
             </Badge>
           </div>
           {order.confirmed_at && (
-            <div className="flex items-center gap-2 text-gray-500">
-              <Calendar className="h-3 w-3" />
-              <span>{new Date(order.confirmed_at).toLocaleString()}</span>
+            <div className="flex items-center gap-2 text-neutral-600">
+              <Calendar className="h-4 w-4 text-neutral-500" />
+              <span className="text-xs">{new Date(order.confirmed_at).toLocaleString()}</span>
             </div>
           )}
           {order.driver_name && (
-            <div className="flex items-center gap-2 text-gray-600">
-              <Truck className="h-3 w-3" />
-              <span>{order.driver_name} • {order.vehicle_number}</span>
+            <div className="flex items-center gap-2 text-neutral-700">
+              <Truck className="h-4 w-4 text-neutral-500" />
+              <span className="text-xs">{order.driver_name} • {order.vehicle_number}</span>
             </div>
           )}
         </div>
 
-        <div className="mt-4 flex flex-col gap-2">
+        <div className="mt-5 flex flex-col gap-2">
           {/* View Details Button - Always visible */}
           <Button 
             size="sm" 
             variant="outline" 
             onClick={() => loadOrderItems(order.id)}
-            className="w-full"
+            className="w-full hover:bg-primary-50 hover:border-primary-300 hover:text-primary-700"
           >
-            <FileText className="h-3 w-3 mr-1" />
+            <FileText className="h-4 w-4 mr-1" />
             View Order Details
           </Button>
 
           {/* Action Buttons */}
           <div className="flex gap-2">
             {order.delivery_status === 'preparing' && (
-              <Button size="sm" onClick={() => handleAction(order, 'pack')} className="flex-1">
-                <Package className="h-3 w-3 mr-1" />
+              <Button size="sm" onClick={() => handleAction(order, 'pack')} className="flex-1 bg-primary-500 hover:bg-primary-600">
+                <Package className="h-4 w-4 mr-1" />
                 Mark as Packed
               </Button>
             )}
             {order.delivery_status === 'packed' && (
-              <Button size="sm" onClick={() => handleAction(order, 'dispatch')} className="flex-1">
-                <Truck className="h-3 w-3 mr-1" />
+              <Button size="sm" onClick={() => handleAction(order, 'dispatch')} className="flex-1 bg-primary-500 hover:bg-primary-600">
+                <Truck className="h-4 w-4 mr-1" />
                 Dispatch
               </Button>
             )}
@@ -367,9 +367,9 @@ export default function DeliveryBoardPage() {
                 <Button 
                   size="sm" 
                   onClick={() => handleAction(order, 'deliver')} 
-                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  className="flex-1 bg-success-500 hover:bg-success-600 text-white"
                 >
-                  <CheckCircle className="h-3 w-3 mr-1" />
+                  <CheckCircle className="h-4 w-4 mr-1" />
                   Delivered
                 </Button>
                 <Button 
@@ -378,7 +378,7 @@ export default function DeliveryBoardPage() {
                   onClick={() => handleAction(order, 'fail_delivery')} 
                   className="flex-1"
                 >
-                  <XCircle className="h-3 w-3 mr-1" />
+                  <XCircle className="h-4 w-4 mr-1" />
                   Failed
                 </Button>
               </>
@@ -397,21 +397,21 @@ export default function DeliveryBoardPage() {
   ]
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Delivery Board</h1>
-        <p className="text-gray-600 mt-1">Track and manage order deliveries</p>
+    <div className="space-y-8">
+      <div className="animate-slide-down">
+        <h2 className="text-4xl font-bold text-neutral-900 tracking-tight">Delivery Board</h2>
+        <p className="text-neutral-600 mt-2">Track and manage order deliveries</p>
       </div>
 
       {/* Search Bar */}
       <div className="flex gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
           <Input
             placeholder="Search by order ID, retailer, or sales rep..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 h-12"
           />
         </div>
       </div>
@@ -422,14 +422,16 @@ export default function DeliveryBoardPage() {
           <button
             key={tab.id}
             onClick={() => setSelectedTab(tab.id)}
-            className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${
+            className={`px-6 py-3 rounded-xl font-medium text-sm whitespace-nowrap transition-all duration-300 ${
               selectedTab === tab.id
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-gradient-primary text-white shadow-glow-primary'
+                : 'bg-white text-neutral-700 hover:bg-neutral-50 border-2 border-neutral-200 hover:border-primary-300'
             }`}
           >
             {tab.label}
-            <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-white/20">
+            <span className={`ml-2 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+              selectedTab === tab.id ? 'bg-white/20' : 'bg-neutral-100'
+            }`}>
               {tab.count}
             </span>
           </button>
@@ -438,14 +440,17 @@ export default function DeliveryBoardPage() {
 
       {/* Orders Grid */}
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
         </div>
       ) : getTabOrders().length === 0 ? (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-600">No orders in this status</p>
+        <Card className="border-0 shadow-soft">
+          <CardContent className="p-16 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+              <Package className="h-8 w-8 text-neutral-400" />
+            </div>
+            <p className="text-neutral-600 text-lg font-medium">No orders in this status</p>
+            <p className="text-neutral-500 text-sm mt-1">Orders will appear here when they match this delivery status</p>
           </CardContent>
         </Card>
       ) : (

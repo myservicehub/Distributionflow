@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
-import { Package, TrendingUp, TrendingDown, AlertTriangle, Plus, ArrowUpCircle, ArrowDownCircle } from 'lucide-react'
+import { Package, TrendingUp, TrendingDown, AlertTriangle, Plus, ArrowUpCircle, ArrowDownCircle, Warehouse } from 'lucide-react'
 
 export default function InventoryPage() {
   const { user } = useAuth()
@@ -105,26 +105,23 @@ export default function InventoryPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading inventory...</p>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Inventory Management</h1>
-          <p className="text-muted-foreground">Track and manage stock levels</p>
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div className="animate-slide-down">
+          <h2 className="text-4xl font-bold text-neutral-900 tracking-tight">Inventory Management</h2>
+          <p className="text-neutral-600 mt-2">Track and manage stock levels</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button className="bg-gradient-primary hover:opacity-90 text-white shadow-glow-primary group h-12">
+              <Plus className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
               Record Stock Movement
             </Button>
           </DialogTrigger>
@@ -184,7 +181,7 @@ export default function InventoryPage() {
                   required
                 />
                 {selectedProduct && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-neutral-600">
                     Current stock: {selectedProduct.stock_quantity} units
                     {formData.quantity && formData.movement_type === 'in' && (
                       <> → New stock: {selectedProduct.stock_quantity + parseInt(formData.quantity || 0)} units</>
@@ -221,54 +218,62 @@ export default function InventoryPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 animate-scale-in">
+        <Card className="border-0 shadow-soft hover:shadow-medium transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-neutral-600">Total Products</CardTitle>
+            <div className="p-2 bg-primary-100 rounded-lg">
+              <Package className="h-5 w-5 text-primary-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{products.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <div className="text-3xl font-bold text-neutral-900">{products.length}</div>
+            <p className="text-xs text-neutral-500 mt-1">
               Active SKUs in inventory
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-0 shadow-soft hover:shadow-medium transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-neutral-600">Total Value</CardTitle>
+            <div className="p-2 bg-success-100 rounded-lg">
+              <TrendingUp className="h-5 w-5 text-success-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₦{totalValue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <div className="text-3xl font-bold text-neutral-900">₦{totalValue.toLocaleString()}</div>
+            <p className="text-xs text-neutral-500 mt-1">
               Based on cost price
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-0 shadow-soft hover:shadow-medium transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            <CardTitle className="text-sm font-medium text-neutral-600">Low Stock Items</CardTitle>
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{lowStockProducts.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <div className="text-3xl font-bold text-orange-600">{lowStockProducts.length}</div>
+            <p className="text-xs text-neutral-500 mt-1">
               Below threshold level
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-0 shadow-soft hover:shadow-medium transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Out of Stock</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-500" />
+            <CardTitle className="text-sm font-medium text-neutral-600">Out of Stock</CardTitle>
+            <div className="p-2 bg-red-100 rounded-lg">
+              <TrendingDown className="h-5 w-5 text-red-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{outOfStockProducts.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <div className="text-3xl font-bold text-red-600">{outOfStockProducts.length}</div>
+            <p className="text-xs text-neutral-500 mt-1">
               Requires immediate restocking
             </p>
           </CardContent>
@@ -276,154 +281,175 @@ export default function InventoryPage() {
       </div>
 
       {/* Tabs for different views */}
-      <Tabs defaultValue="current" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="current">Current Stock</TabsTrigger>
-          <TabsTrigger value="movements">Stock Movements</TabsTrigger>
-          <TabsTrigger value="alerts">Alerts</TabsTrigger>
+      <Tabs defaultValue="current" className="space-y-6">
+        <TabsList className="bg-white border border-neutral-200 p-1">
+          <TabsTrigger value="current" className="data-[state=active]:bg-primary-500 data-[state=active]:text-white">Current Stock</TabsTrigger>
+          <TabsTrigger value="movements" className="data-[state=active]:bg-primary-500 data-[state=active]:text-white">Stock Movements</TabsTrigger>
+          <TabsTrigger value="alerts" className="data-[state=active]:bg-primary-500 data-[state=active]:text-white">Alerts</TabsTrigger>
         </TabsList>
 
         <TabsContent value="current" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Current Stock Levels</CardTitle>
-              <CardDescription>Overview of all products and their stock quantities</CardDescription>
+          <Card className="border-0 shadow-soft animate-fade-in">
+            <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Warehouse className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl font-bold text-neutral-900">Current Stock Levels</CardTitle>
+                  <CardDescription className="text-neutral-600">Overview of all products and their stock quantities</CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead className="text-right">Stock Qty</TableHead>
-                    <TableHead className="text-right">Threshold</TableHead>
-                    <TableHead className="text-right">Value</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {products.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">
-                        No products found
-                      </TableCell>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-neutral-50">
+                      <TableHead className="font-semibold">Product</TableHead>
+                      <TableHead className="font-semibold">SKU</TableHead>
+                      <TableHead className="text-right font-semibold">Stock Qty</TableHead>
+                      <TableHead className="text-right font-semibold">Threshold</TableHead>
+                      <TableHead className="text-right font-semibold">Value</TableHead>
+                      <TableHead className="font-semibold">Status</TableHead>
                     </TableRow>
-                  ) : (
-                    products.map(product => (
-                      <TableRow key={product.id}>
-                        <TableCell className="font-medium">{product.name}</TableCell>
-                        <TableCell>{product.sku || '-'}</TableCell>
-                        <TableCell className="text-right">{product.stock_quantity || 0}</TableCell>
-                        <TableCell className="text-right">{product.low_stock_threshold || 10}</TableCell>
-                        <TableCell className="text-right">
-                          ₦{((product.stock_quantity || 0) * (product.cost_price || 0)).toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          {product.stock_quantity === 0 ? (
-                            <Badge variant="destructive">Out of Stock</Badge>
-                          ) : product.stock_quantity <= (product.low_stock_threshold || 10) ? (
-                            <Badge variant="warning" className="bg-yellow-500">Low Stock</Badge>
-                          ) : (
-                            <Badge variant="success" className="bg-green-500">In Stock</Badge>
-                          )}
+                  </TableHeader>
+                  <TableBody>
+                    {products.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-16">
+                          <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                            <Package className="h-8 w-8 text-neutral-400" />
+                          </div>
+                          <p className="text-neutral-600 text-lg font-medium">No products found</p>
+                          <p className="text-neutral-500 text-sm mt-1">Add products to track inventory</p>
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : (
+                      products.map(product => (
+                        <TableRow key={product.id} className="hover:bg-neutral-50 transition-colors duration-150">
+                          <TableCell className="font-medium text-neutral-900">{product.name}</TableCell>
+                          <TableCell className="text-neutral-700">{product.sku || '-'}</TableCell>
+                          <TableCell className="text-right text-neutral-900 font-medium">{product.stock_quantity || 0}</TableCell>
+                          <TableCell className="text-right text-neutral-700">{product.low_stock_threshold || 10}</TableCell>
+                          <TableCell className="text-right text-neutral-900 font-medium">
+                            ₦{((product.stock_quantity || 0) * (product.cost_price || 0)).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            {product.stock_quantity === 0 ? (
+                              <Badge variant="destructive" className="font-medium">Out of Stock</Badge>
+                            ) : product.stock_quantity <= (product.low_stock_threshold || 10) ? (
+                              <Badge className="bg-orange-100 text-orange-700 border border-orange-200 font-medium">Low Stock</Badge>
+                            ) : (
+                              <Badge className="bg-success-100 text-success-700 border border-success-200 font-medium">In Stock</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="movements" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Stock Movement History</CardTitle>
-              <CardDescription>Recent stock in and out transactions</CardDescription>
+          <Card className="border-0 shadow-soft animate-fade-in">
+            <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50">
+              <CardTitle className="text-2xl font-bold text-neutral-900">Stock Movement History</CardTitle>
+              <CardDescription className="text-neutral-600">Recent stock in and out transactions</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead>Notes</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {stockMovements.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
-                        No stock movements recorded
-                      </TableCell>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-neutral-50">
+                      <TableHead className="font-semibold">Date</TableHead>
+                      <TableHead className="font-semibold">Product</TableHead>
+                      <TableHead className="font-semibold">Type</TableHead>
+                      <TableHead className="text-right font-semibold">Quantity</TableHead>
+                      <TableHead className="font-semibold">Notes</TableHead>
                     </TableRow>
-                  ) : (
-                    stockMovements.slice(0, 50).map(movement => (
-                      <TableRow key={movement.id}>
-                        <TableCell>
-                          {new Date(movement.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {movement.product?.name || 'Unknown Product'}
-                        </TableCell>
-                        <TableCell>
-                          {movement.type === 'in' ? (
-                            <Badge variant="success" className="bg-green-500">
-                              <ArrowUpCircle className="h-3 w-3 mr-1" />
-                              Stock In
-                            </Badge>
-                          ) : (
-                            <Badge variant="destructive">
-                              <ArrowDownCircle className="h-3 w-3 mr-1" />
-                              Stock Out
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">{movement.quantity}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {movement.notes || '-'}
+                  </TableHeader>
+                  <TableBody>
+                    {stockMovements.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-16">
+                          <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                            <Plus className="h-8 w-8 text-neutral-400" />
+                          </div>
+                          <p className="text-neutral-600 text-lg font-medium">No stock movements recorded</p>
+                          <p className="text-neutral-500 text-sm mt-1">Stock movements will appear here</p>
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : (
+                      stockMovements.slice(0, 50).map(movement => (
+                        <TableRow key={movement.id} className="hover:bg-neutral-50 transition-colors duration-150">
+                          <TableCell className="text-neutral-700">
+                            {new Date(movement.created_at).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="font-medium text-neutral-900">
+                            {movement.product?.name || 'Unknown Product'}
+                          </TableCell>
+                          <TableCell>
+                            {movement.type === 'in' ? (
+                              <Badge className="bg-success-100 text-success-700 border border-success-200 font-medium">
+                                <ArrowUpCircle className="h-3 w-3 mr-1" />
+                                Stock In
+                              </Badge>
+                            ) : (
+                              <Badge variant="destructive" className="font-medium">
+                                <ArrowDownCircle className="h-3 w-3 mr-1" />
+                                Stock Out
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right text-neutral-900 font-medium">{movement.quantity}</TableCell>
+                          <TableCell className="text-sm text-neutral-600">
+                            {movement.notes || '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="alerts" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Stock Alerts</CardTitle>
-              <CardDescription>Products requiring attention</CardDescription>
+          <Card className="border-0 shadow-soft animate-fade-in">
+            <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50">
+              <CardTitle className="text-2xl font-bold text-neutral-900">Stock Alerts</CardTitle>
+              <CardDescription className="text-neutral-600">Products requiring attention</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               {outOfStockProducts.length === 0 && lowStockProducts.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No stock alerts at the moment</p>
-                  <p className="text-sm">All products are adequately stocked</p>
+                <div className="text-center py-16">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-success-100 rounded-full mb-4">
+                    <Package className="h-8 w-8 text-success-600" />
+                  </div>
+                  <p className="text-neutral-900 text-lg font-medium">No stock alerts at the moment</p>
+                  <p className="text-neutral-500 text-sm mt-1">All products are adequately stocked</p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {outOfStockProducts.length > 0 && (
-                    <div className="space-y-2">
-                      <h3 className="font-semibold text-red-600 flex items-center gap-2">
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-lg text-red-600 flex items-center gap-2">
                         <AlertTriangle className="h-5 w-5" />
                         Out of Stock ({outOfStockProducts.length})
                       </h3>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {outOfStockProducts.map(product => (
-                          <div key={product.id} className="flex items-center justify-between p-3 border border-red-200 rounded-lg bg-red-50">
+                          <div key={product.id} className="flex items-center justify-between p-4 border-2 border-red-200 rounded-xl bg-red-50 hover:shadow-soft transition-all">
                             <div>
-                              <p className="font-medium">{product.name}</p>
-                              <p className="text-sm text-muted-foreground">SKU: {product.sku || '-'}</p>
+                              <p className="font-medium text-neutral-900">{product.name}</p>
+                              <p className="text-sm text-neutral-600">SKU: {product.sku || '-'}</p>
                             </div>
-                            <Badge variant="destructive">0 units</Badge>
+                            <Badge variant="destructive" className="font-medium">0 units</Badge>
                           </div>
                         ))}
                       </div>
@@ -431,21 +457,21 @@ export default function InventoryPage() {
                   )}
 
                   {lowStockProducts.filter(p => p.stock_quantity > 0).length > 0 && (
-                    <div className="space-y-2">
-                      <h3 className="font-semibold text-yellow-600 flex items-center gap-2">
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-lg text-orange-600 flex items-center gap-2">
                         <AlertTriangle className="h-5 w-5" />
                         Low Stock ({lowStockProducts.filter(p => p.stock_quantity > 0).length})
                       </h3>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {lowStockProducts.filter(p => p.stock_quantity > 0).map(product => (
-                          <div key={product.id} className="flex items-center justify-between p-3 border border-yellow-200 rounded-lg bg-yellow-50">
+                          <div key={product.id} className="flex items-center justify-between p-4 border-2 border-orange-200 rounded-xl bg-orange-50 hover:shadow-soft transition-all">
                             <div>
-                              <p className="font-medium">{product.name}</p>
-                              <p className="text-sm text-muted-foreground">
+                              <p className="font-medium text-neutral-900">{product.name}</p>
+                              <p className="text-sm text-neutral-600">
                                 SKU: {product.sku || '-'} • Threshold: {product.low_stock_threshold || 10}
                               </p>
                             </div>
-                            <Badge variant="warning" className="bg-yellow-500">
+                            <Badge className="bg-orange-100 text-orange-700 border border-orange-300 font-medium">
                               {product.stock_quantity} units
                             </Badge>
                           </div>
