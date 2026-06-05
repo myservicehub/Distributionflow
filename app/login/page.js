@@ -7,21 +7,20 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Package, AlertCircle } from 'lucide-react'
-import PublicNav from '@/components/PublicNav'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Package, ArrowRight, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
 
-  // Check for error messages from callback
   useEffect(() => {
     const error = searchParams.get('error')
     const message = searchParams.get('message')
@@ -49,6 +48,12 @@ function LoginForm() {
 
   const handleLogin = async (e) => {
     e.preventDefault()
+    
+    if (!email || !password) {
+      toast.error('Please fill in all fields')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -69,80 +74,155 @@ function LoginForm() {
           .single()
 
         if (adminData && adminData.role === 'super_admin') {
-          toast.success('Welcome, Super Admin!')
+          toast.success('Welcome, Super Admin')
           window.location.href = '/platform/dashboard'
           return
         }
       }
 
-      toast.success('Logged in successfully!')
+      toast.success('Logged in successfully')
       window.location.href = '/dashboard'
     } catch (error) {
-      toast.error(error.message || 'Failed to login')
+      toast.error(error.message || 'Invalid email or password')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <PublicNav />
-      <div className="flex items-center justify-center p-4 min-h-[calc(100vh-64px)]">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
-            <Package className="h-10 w-10 text-indigo-600" />
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-success-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md animate-scale-in">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-2xl shadow-glow-primary mb-4">
+            <Package className="h-8 w-8 text-white" />
           </div>
-          <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
-          <CardDescription className="text-center">
-            Sign in to your DistributionFlow account
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="text-right">
-              <Link 
-                href="/forgot-password" 
-                className="text-sm text-indigo-600 hover:underline"
+          <h1 className="text-3xl font-bold text-neutral-900 mb-2">
+            DistributionFlow
+          </h1>
+          <p className="text-neutral-600">
+            Sign in to your account
+          </p>
+        </div>
+
+        {/* Login Card */}
+        <Card className="border-0 shadow-strong">
+          <div className="p-8">
+            <form onSubmit={handleLogin} className="space-y-6">
+              {/* Email Field */}
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-neutral-700 font-medium">
+                  Email Address
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-12 border-neutral-300 focus:border-primary-500 focus:ring-primary-500"
+                  disabled={loading}
+                  required
+                />
+              </div>
+
+              {/* Password Field */}
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-neutral-700 font-medium">
+                  Password
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-12 pr-10 border-neutral-300 focus:border-primary-500 focus:ring-primary-500"
+                    disabled={loading}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-700"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Forgot Password Link */}
+              <div className="flex items-center justify-end">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 bg-gradient-primary hover:opacity-90 text-white shadow-glow-primary group"
               >
-                Forgot password?
-              </Link>
+                {loading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    Sign In
+                    <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </Button>
+            </form>
+
+            {/* Divider */}
+            <div className="relative my-8">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-neutral-200"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-4 bg-white text-neutral-500">
+                  New to DistributionFlow?
+                </span>
+              </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign In'}
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm">
-            Don't have an account?{' '}
-            <Link href="/signup" className="text-indigo-600 hover:underline">
-              Sign up
-            </Link>
+            {/* Sign Up Link */}
+            <div className="text-center">
+              <Link href="/signup">
+                <Button
+                  variant="outline"
+                  className="w-full h-12 border-2 border-neutral-300 hover:border-primary-500 hover:text-primary-600 hover:bg-primary-50"
+                >
+                  Create an account
+                </Button>
+              </Link>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </Card>
+
+        {/* Footer */}
+        <p className="text-center text-sm text-neutral-600 mt-8">
+          By signing in, you agree to our{' '}
+          <Link href="/terms" className="text-primary-600 hover:text-primary-700 font-medium">
+            Terms of Service
+          </Link>
+          {' and '}
+          <Link href="/privacy" className="text-primary-600 hover:text-primary-700 font-medium">
+            Privacy Policy
+          </Link>
+        </p>
       </div>
     </div>
   )
@@ -151,10 +231,10 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-success-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600 mx-auto mb-4" />
+          <p className="text-neutral-600">Loading...</p>
         </div>
       </div>
     }>
