@@ -59,9 +59,15 @@ export default function DynamicSidebar() {
   const MobileMenuButton = () => (
     <button
       onClick={toggleMobile}
-      className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-medium border border-neutral-200 hover:bg-neutral-50 transition-colors"
+      className="lg:hidden fixed top-4 left-4 z-50 p-3 bg-white rounded-lg shadow-strong border-2 border-primary-200 hover:bg-primary-50 hover:border-primary-300 transition-all active:scale-95"
+      aria-label={isMobileOpen ? 'Close menu' : 'Open menu'}
+      type="button"
     >
-      {isMobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+      {isMobileOpen ? (
+        <X className="h-6 w-6 text-primary-600" />
+      ) : (
+        <Menu className="h-6 w-6 text-primary-600" />
+      )}
     </button>
   )
 
@@ -72,9 +78,9 @@ export default function DynamicSidebar() {
       <div className={`border-b border-neutral-200 transition-all duration-300 ${
         isCollapsed ? 'p-4' : 'p-6'
       }`}>
-        <div className="flex items-center justify-between">
-          <div className={`transition-all duration-300 ${
-            isCollapsed ? 'opacity-0 w-0' : 'opacity-100'
+        <div className="flex items-center justify-between gap-2">
+          <div className={`transition-all duration-300 overflow-hidden ${
+            isCollapsed ? 'opacity-0 w-0' : 'opacity-100 flex-1'
           }`}>
             <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent whitespace-nowrap">
               DistributionFlow
@@ -87,10 +93,12 @@ export default function DynamicSidebar() {
             </p>
           </div>
           
-          {/* Desktop Collapse Toggle */}
+          {/* Desktop Collapse Toggle - Always visible */}
           <button
             onClick={toggleCollapse}
-            className="hidden lg:flex p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+            className="hidden lg:flex p-2 hover:bg-neutral-100 rounded-lg transition-colors flex-shrink-0 border border-neutral-200"
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            type="button"
           >
             {isCollapsed ? 
               <ChevronRight className="h-5 w-5 text-neutral-600" /> : 
@@ -173,8 +181,9 @@ export default function DynamicSidebar() {
       {/* Mobile Overlay */}
       {isMobileOpen && (
         <div 
-          className="lg:hidden fixed inset-0 bg-black/50 z-40 animate-fade-in"
-          onClick={() => setIsMobileOpen(false)}
+          className="lg:hidden fixed inset-0 bg-black/50 z-40 animate-fade-in cursor-pointer"
+          onClick={toggleMobile}
+          aria-label="Close menu"
         />
       )}
 
