@@ -15,8 +15,7 @@ import {
   ArrowRight,
   Activity,
   Clock,
-  CheckCircle2,
-  XCircle
+  CheckCircle2
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -83,7 +82,9 @@ export default function AdminDashboard() {
               <div className="space-y-1">
                 <p className="text-3xl font-bold text-neutral-900">{value}</p>
                 {trend && (
-                  <div className={`flex items-center gap-1 text-xs font-medium ${trend === 'up' ? 'text-success-600' : 'text-red-600'}`}>
+                  <div className={`flex items-center gap-1 text-xs font-medium ${
+                    trend === 'up' ? 'text-success-600' : 'text-red-600'
+                  }`}>
                     {trend === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                     <span>{trendValue}</span>
                   </div>
@@ -123,7 +124,7 @@ export default function AdminDashboard() {
             <span>DASHBOARD OVERVIEW</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 tracking-tight">
-            Welcome back 👋
+            Welcome back
           </h1>
           <p className="text-neutral-600 mt-2 text-lg">
             Here's what's happening with your business today
