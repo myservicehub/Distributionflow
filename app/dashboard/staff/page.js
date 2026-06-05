@@ -29,7 +29,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Edit, Trash2, Copy, Check } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Plus, Edit, Trash2, Copy, Check, Users } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 export default function StaffPage() {
@@ -178,98 +179,115 @@ export default function StaffPage() {
 
   const getRoleBadge = (role) => {
     const colors = {
-      admin: 'bg-purple-100 text-purple-700',
-      manager: 'bg-blue-100 text-blue-700',
-      sales_rep: 'bg-green-100 text-green-700',
-      warehouse: 'bg-orange-100 text-orange-700'
+      admin: 'bg-purple-100 text-purple-700 border-purple-200',
+      manager: 'bg-blue-100 text-blue-700 border-blue-200',
+      sales_rep: 'bg-success-100 text-success-700 border-success-200',
+      warehouse: 'bg-orange-100 text-orange-700 border-orange-200'
     }
-    return colors[role] || 'bg-gray-100 text-gray-700'
+    return colors[role] || 'bg-neutral-100 text-neutral-700 border-neutral-200'
   }
 
   const getStatusBadge = (status) => {
     return status === 'active' 
-      ? 'bg-green-100 text-green-700' 
-      : 'bg-red-100 text-red-700'
+      ? 'bg-success-100 text-success-700 border-success-200' 
+      : 'bg-red-100 text-red-700 border-red-200'
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Staff Management</h1>
-          <p className="text-gray-500 mt-1">Manage your team members and their roles</p>
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div className="animate-slide-down">
+          <h2 className="text-4xl font-bold text-neutral-900 tracking-tight">Staff Management</h2>
+          <p className="text-neutral-600 mt-2">Manage your team members and their roles</p>
         </div>
-        <Button onClick={() => setShowAddDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
+        <Button onClick={() => setShowAddDialog(true)} className="bg-gradient-primary hover:opacity-90 text-white shadow-glow-primary group h-12">
+          <Plus className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
           Add Staff Member
         </Button>
       </div>
 
-      <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {staff.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                  No staff members found. Add your first staff member to get started.
-                </TableCell>
-              </TableRow>
-            ) : (
-              staff.map((member) => (
-                <TableRow key={member.id}>
-                  <TableCell className="font-medium">{member.name}</TableCell>
-                  <TableCell>{member.email}</TableCell>
-                  <TableCell>
-                    <Badge className={getRoleBadge(member.role)}>
-                      {member.role?.replace('_', ' ').toUpperCase()}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getStatusBadge(member.status)}>
-                      {member.status?.toUpperCase()}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openEditDialog(member)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    {member.status === 'active' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeactivateStaff(member.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      </Button>
-                    )}
-                  </TableCell>
+      <Card className="border-0 shadow-soft animate-fade-in">
+        <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary-100 rounded-lg">
+              <Users className="h-5 w-5 text-primary-600" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-neutral-900">Team Members ({staff.length})</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-neutral-50">
+                  <TableHead className="font-semibold">Name</TableHead>
+                  <TableHead className="font-semibold">Email</TableHead>
+                  <TableHead className="font-semibold">Role</TableHead>
+                  <TableHead className="font-semibold">Status</TableHead>
+                  <TableHead className="text-right font-semibold">Actions</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {staff.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-16">
+                      <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                        <Plus className="h-8 w-8 text-neutral-400" />
+                      </div>
+                      <p className="text-neutral-600 text-lg font-medium">No staff members yet</p>
+                      <p className="text-neutral-500 text-sm mt-1">Add your first team member to get started</p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  staff.map((member) => (
+                    <TableRow key={member.id} className="hover:bg-neutral-50 transition-colors duration-150">
+                      <TableCell className="font-medium text-neutral-900">{member.name}</TableCell>
+                      <TableCell className="text-neutral-700">{member.email}</TableCell>
+                      <TableCell>
+                        <Badge className={`${getRoleBadge(member.role)} border font-medium`}>
+                          {member.role?.replace('_', ' ').toUpperCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${getStatusBadge(member.status)} border font-medium`}>
+                          {member.status?.toUpperCase()}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditDialog(member)}
+                          className="hover:bg-primary-50 hover:border-primary-300 hover:text-primary-700"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        {member.status === 'active' && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeactivateStaff(member.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Add Staff Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
@@ -362,7 +380,7 @@ export default function StaffPage() {
                   type="email"
                   value={formData.email}
                   disabled
-                  className="bg-gray-50"
+                  className="bg-neutral-50"
                 />
               </div>
               <div className="space-y-2">
@@ -411,45 +429,6 @@ export default function StaffPage() {
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Password Display Dialog */}
-      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Staff Member Created Successfully!</DialogTitle>
-            <DialogDescription>
-              Save this temporary password. The staff member should change it on first login.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="p-4 bg-gray-50 rounded-lg border">
-              <Label className="text-sm text-gray-600">Temporary Password</Label>
-              <div className="flex items-center justify-between mt-2">
-                <code className="text-lg font-mono font-bold">{tempPassword}</code>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={copyPassword}
-                >
-                  {copied ? (
-                    <Check className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-            <p className="text-sm text-amber-600">
-              ⚠️ Make sure to save this password. It cannot be retrieved later.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setShowPasswordDialog(false)}>
-              Done
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

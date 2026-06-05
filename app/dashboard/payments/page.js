@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Plus } from 'lucide-react'
+import { Plus, DollarSign } from 'lucide-react'
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState([])
@@ -50,10 +50,7 @@ export default function PaymentsPage() {
       const response = await fetch('/api/retailers')
       if (!response.ok) throw new Error('Failed to load retailers')
       const data = await response.json()
-      // Show all retailers, not just those with balance > 0
-      // User might want to record a payment even if balance shows as 0
       setRetailers(data)
-      console.log('Loaded retailers:', data.length)
     } catch (error) {
       console.error('Error loading retailers:', error)
       toast.error('Failed to load retailers')
@@ -81,7 +78,7 @@ export default function PaymentsPage() {
       setDialogOpen(false)
       resetForm()
       loadPayments()
-      loadRetailers() // Reload to update balances
+      loadRetailers()
     } catch (error) {
       toast.error(error.message)
     }
@@ -100,25 +97,25 @@ export default function PaymentsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900">Payments</h2>
-          <p className="text-gray-600 mt-2">Record and track customer payments</p>
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div className="animate-slide-down">
+          <h2 className="text-4xl font-bold text-neutral-900 tracking-tight">Payments</h2>
+          <p className="text-neutral-600 mt-2">Record and track customer payments</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => {
           setDialogOpen(open)
           if (!open) resetForm()
         }}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button className="bg-gradient-primary hover:opacity-90 text-white shadow-glow-primary group h-12">
+              <Plus className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
               Record Payment
             </Button>
           </DialogTrigger>
@@ -159,7 +156,7 @@ export default function PaymentsPage() {
                   </SelectContent>
                 </Select>
                 {selectedRetailer && (
-                  <p className="text-sm text-gray-600 mt-2">
+                  <p className="text-sm text-neutral-600 mt-2">
                     Current Balance: <span className="font-semibold">₦{parseFloat(selectedRetailer.current_balance || 0).toLocaleString()}</span>
                   </p>
                 )}
@@ -212,39 +209,48 @@ export default function PaymentsPage() {
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment History ({payments.length})</CardTitle>
+      <Card className="border-0 shadow-soft animate-fade-in">
+        <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-success-100 rounded-lg">
+              <DollarSign className="h-5 w-5 text-success-600" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-neutral-900">Payment History ({payments.length})</CardTitle>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Retailer</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Payment Method</TableHead>
-                  <TableHead>Recorded By</TableHead>
-                  <TableHead>Notes</TableHead>
+                <TableRow className="bg-neutral-50">
+                  <TableHead className="font-semibold">Date</TableHead>
+                  <TableHead className="font-semibold">Retailer</TableHead>
+                  <TableHead className="font-semibold">Amount</TableHead>
+                  <TableHead className="font-semibold">Payment Method</TableHead>
+                  <TableHead className="font-semibold">Recorded By</TableHead>
+                  <TableHead className="font-semibold">Notes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {payments.map((payment) => (
-                  <TableRow key={payment.id}>
-                    <TableCell>{new Date(payment.created_at).toLocaleString()}</TableCell>
-                    <TableCell className="font-medium">{payment.retailers?.shop_name || 'N/A'}</TableCell>
-                    <TableCell className="font-semibold text-green-600">₦{parseFloat(payment.amount_paid).toLocaleString()}</TableCell>
-                    <TableCell className="capitalize">{payment.payment_method?.replace('_', ' ')}</TableCell>
-                    <TableCell>{payment.users?.name || 'N/A'}</TableCell>
-                    <TableCell className="text-sm text-gray-600">{payment.notes || '-'}</TableCell>
+                  <TableRow key={payment.id} className="hover:bg-neutral-50 transition-colors duration-150">
+                    <TableCell className="text-neutral-700">{new Date(payment.created_at).toLocaleString()}</TableCell>
+                    <TableCell className="font-medium text-neutral-900">{payment.retailers?.shop_name || 'N/A'}</TableCell>
+                    <TableCell className="font-semibold text-success-600">₦{parseFloat(payment.amount_paid).toLocaleString()}</TableCell>
+                    <TableCell className="capitalize text-neutral-700">{payment.payment_method?.replace('_', ' ')}</TableCell>
+                    <TableCell className="text-neutral-700">{payment.users?.name || 'N/A'}</TableCell>
+                    <TableCell className="text-sm text-neutral-600">{payment.notes || '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
             {payments.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No payments recorded yet.
+              <div className="text-center py-16 px-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                  <Plus className="h-8 w-8 text-neutral-400" />
+                </div>
+                <p className="text-neutral-600 text-lg font-medium">No payments recorded yet</p>
+                <p className="text-neutral-500 text-sm mt-1">Start recording customer payments</p>
               </div>
             )}
           </div>
