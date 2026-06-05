@@ -6,7 +6,8 @@ import { sendStaffInvitation } from '@/lib/email'
 import { can } from '@/lib/permissions'
 import { sendNotification } from '@/lib/notifications'
 import { sendDeliverySMS, formatNigerianPhone } from '@/lib/sms-notifications'
-import { isSubscriptionActive, hasFeature, FEATURES } from '@/lib/subscription'
+import { isSubscriptionActive, hasFeature, FEATURES, canAddUser } from '@/lib/subscription'
+import { sendLowStockAlert, sendOverduePaymentAlert, sendLargeOrderAlert } from '@/lib/email-alerts'
 
 // Initialize Supabase client (server-side with service role for admin operations)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -802,6 +803,15 @@ async function handleRoute(request, { params }) {
         movement.id
       )
 
+      // Check for low stock and send alert
+      const threshold = product.low_stock_threshold || 10
+      if (newStock <= threshold && newStock > 0) {
+        // Send email alert asynchronously (don't wait for it)
+        sendLowStockAlert(userContext.businessId, product, newStock, threshold).catch(err => {
+          console.error('Failed to send low stock alert:', err)
+        })
+      }
+
       return handleCORS(NextResponse.json(movement))
     }
 
@@ -1110,6 +1120,11 @@ async function handleRoute(request, { params }) {
       } catch (notifError) {
         console.error('Failed to send order notification:', notifError)
       }
+
+      // Send large order email alert (async, don't block response)
+      sendLargeOrderAlert(userContext.businessId, order, retailer, body.items, 100000).catch(err => {
+        console.error('Failed to send large order alert:', err)
+      })
 
       return handleCORS(NextResponse.json({
         ...order,
