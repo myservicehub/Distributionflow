@@ -79,6 +79,7 @@ export default function DynamicSidebar() {
         isCollapsed ? 'p-4' : 'p-6'
       }`}>
         <div className="flex items-center justify-between gap-2">
+          {/* Logo and Role - Hidden when collapsed */}
           <div className={`transition-all duration-300 overflow-hidden ${
             isCollapsed ? 'opacity-0 w-0' : 'opacity-100 flex-1'
           }`}>
@@ -92,17 +93,31 @@ export default function DynamicSidebar() {
               {userProfile.role === 'warehouse' && 'Warehouse Staff'}
             </p>
           </div>
+
+          {/* Collapsed Logo - Only show when collapsed */}
+          {isCollapsed && (
+            <div className="flex items-center justify-center w-full">
+              <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
+                <span className="text-white font-bold text-lg">D</span>
+              </div>
+            </div>
+          )}
           
-          {/* Desktop Collapse Toggle - Always visible */}
+          {/* Desktop Collapse Toggle - ALWAYS VISIBLE on desktop */}
           <button
             onClick={toggleCollapse}
-            className="hidden lg:flex p-2 hover:bg-neutral-100 rounded-lg transition-colors flex-shrink-0 border border-neutral-200"
+            className={`p-2.5 hover:bg-neutral-100 rounded-lg transition-all flex-shrink-0 border-2 hover:border-primary-300 group ${
+              isCollapsed 
+                ? 'border-primary-200 bg-primary-50 absolute top-4 right-2' 
+                : 'border-neutral-200 relative'
+            }`}
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             type="button"
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {isCollapsed ? 
-              <ChevronRight className="h-5 w-5 text-neutral-600" /> : 
-              <ChevronLeft className="h-5 w-5 text-neutral-600" />
+              <ChevronRight className="h-5 w-5 text-primary-600 group-hover:scale-110 transition-transform" /> : 
+              <ChevronLeft className="h-5 w-5 text-neutral-600 group-hover:text-primary-600 group-hover:scale-110 transition-all" />
             }
           </button>
         </div>
