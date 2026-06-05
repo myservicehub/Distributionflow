@@ -33,6 +33,7 @@ export async function OPTIONS() {
  * GET /api/invoices?order_id=xxx&action=download
  * GET /api/invoices?order_id=xxx&action=view
  * GET /api/invoices?order_id=xxx&action=send
+ * GET /api/invoices?order_id=xxx&action=share-info (NEW - get sharing links)
  */
 export async function GET(request) {
   try {
@@ -44,6 +45,71 @@ export async function GET(request) {
       return handleCORS(NextResponse.json({ 
         error: 'order_id required' 
       }, { status: 400 }))
+    }
+
+    // For share-info action, return sharing URLs without generating PDF
+    if (action === 'share-info') {
+      const supabase = getAdminClient()
+      
+      const { data: order } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          retailers (
+            shop_name,
+            owner_email,
+            phone,
+            phone_number
+          )
+        `)
+        .eq('id', orderId)
+        .single()
+
+      if (!order) {
+        return handleCORS(NextResponse.json({ 
+          error: 'Order not found' 
+        }, { status: 404 }))
+      }
+
+      const retailer = order.retailers
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL
+      const downloadUrl = `${baseUrl}/api/invoices?order_id=${orderId}&action=download`
+      const viewUrl = `${baseUrl}/api/invoices?order_id=${orderId}&action=view`
+
+      // Get invoice number if exists
+      const { data: invoice } = await supabase
+        .from('invoices')
+        .select('invoice_number')
+        .eq('order_id', orderId)
+        .single()
+
+      const invoiceNumber = invoice?.invoice_number || `INV-${orderId.substring(0, 8).toUpperCase()}`
+      
+      const shareInfo = {
+        invoiceNumber,
+        downloadUrl,
+        viewUrl,
+        hasEmail: !!retailer?.owner_email,
+        emailAddress: retailer?.owner_email || null,
+        hasPhone: !!(retailer?.phone || retailer?.phone_number),
+        canWhatsApp: !!(retailer?.phone || retailer?.phone_number)
+      }
+
+      // Generate WhatsApp URL if phone exists
+      const phone = retailer?.phone || retailer?.phone_number
+      if (phone) {
+        const cleanPhone = phone.replace(/[^0-9]/g, '')
+        const message = `📄 Invoice ${invoiceNumber}\n\n` +
+                       `Hello ${retailer.shop_name}!\n\n` +
+                       `Your invoice for order #${orderId.substring(0, 8)} is ready.\n\n` +
+                       `View/Download: ${viewUrl}\n\n` +
+                       `Thank you for your business!`
+        
+        shareInfo.whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+        shareInfo.whatsappMessage = message
+      }
+
+      return handleCORS(NextResponse.json(shareInfo))
     }
 
     // Generate invoice
@@ -88,6 +154,8 @@ export async function GET(request) {
         success: sendResult.success,
         invoiceNumber: sendResult.invoiceNumber,
         emailSent: sendResult.emailSent,
+        whatsappUrl: sendResult.whatsappUrl,
+        deliveryMethods: sendResult.deliveryMethods,
         error: sendResult.error
       }))
     }
