@@ -249,6 +249,12 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
+      // SUBSCRIPTION CHECK: Enforce active subscription
+      const subscriptionError = await enforceSubscription(userContext.businessId)
+      if (subscriptionError) {
+        return handleCORS(NextResponse.json(subscriptionError, { status: 402 }))
+      }
+
       const today = new Date()
       today.setHours(0, 0, 0, 0)
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -388,11 +394,41 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
+      // SUBSCRIPTION CHECK: Enforce active subscription
+      const subscriptionError = await enforceSubscription(userContext.businessId)
+      if (subscriptionError) {
+        return handleCORS(NextResponse.json(subscriptionError, { status: 402 }))
+      }
+
       // Check permission - only admin and manager can create retailers
       if (!['admin', 'manager'].includes(userContext.role)) {
         return handleCORS(NextResponse.json({ 
           error: 'Forbidden: Only admins and managers can create retailers' 
         }, { status: 403 }))
+      }
+
+      // PLAN LIMIT CHECK: Enforce max_retailers limit
+      const { data: planData } = await supabase
+        .from('businesses')
+        .select('plans(features)')
+        .eq('id', userContext.businessId)
+        .single()
+
+      const maxRetailers = planData?.plans?.features?.max_retailers || 999999
+
+      // Count current retailers
+      const { count: currentRetailers } = await supabase
+        .from('retailers')
+        .select('*', { count: 'exact', head: true })
+        .eq('business_id', userContext.businessId)
+
+      if (currentRetailers >= maxRetailers) {
+        return handleCORS(NextResponse.json({
+          error: 'Retailer limit reached',
+          message: `Your current plan allows ${maxRetailers} retailers. You have ${currentRetailers}. Please upgrade to add more.`,
+          code: 'LIMIT_REACHED',
+          upgradeUrl: '/settings/billing'
+        }, { status: 402 }))
       }
 
       const body = await request.json()
@@ -524,6 +560,36 @@ async function handleRoute(request, { params }) {
       const userContext = await getUserBusinessId(supabase)
       if (!userContext) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      // SUBSCRIPTION CHECK: Enforce active subscription
+      const subscriptionError = await enforceSubscription(userContext.businessId)
+      if (subscriptionError) {
+        return handleCORS(NextResponse.json(subscriptionError, { status: 402 }))
+      }
+
+      // PLAN LIMIT CHECK: Enforce max_products limit
+      const { data: planData } = await supabase
+        .from('businesses')
+        .select('plans(features)')
+        .eq('id', userContext.businessId)
+        .single()
+
+      const maxProducts = planData?.plans?.features?.max_products || 999999
+
+      // Count current products
+      const { count: currentProducts } = await supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .eq('business_id', userContext.businessId)
+
+      if (currentProducts >= maxProducts) {
+        return handleCORS(NextResponse.json({
+          error: 'Product limit reached',
+          message: `Your current plan allows ${maxProducts} products. You have ${currentProducts}. Please upgrade to add more.`,
+          code: 'LIMIT_REACHED',
+          upgradeUrl: '/settings/billing'
+        }, { status: 402 }))
       }
 
       const body = await request.json()
@@ -894,6 +960,12 @@ async function handleRoute(request, { params }) {
       const userContext = await getUserBusinessId(supabase)
       if (!userContext) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      // SUBSCRIPTION CHECK: Enforce active subscription
+      const subscriptionError = await enforceSubscription(userContext.businessId)
+      if (subscriptionError) {
+        return handleCORS(NextResponse.json(subscriptionError, { status: 402 }))
       }
 
       // Check permission
@@ -1929,6 +2001,29 @@ async function handleRoute(request, { params }) {
       // Only admin can CREATE/MANAGE staff
       if (!userContext || userContext.role !== 'admin') {
         return handleCORS(NextResponse.json({ error: 'Forbidden - Admin only' }, { status: 403 }))
+      }
+
+      // SUBSCRIPTION CHECK: Enforce active subscription
+      const subscriptionError = await enforceSubscription(userContext.businessId)
+      if (subscriptionError) {
+        return handleCORS(NextResponse.json(subscriptionError, { status: 402 }))
+      }
+
+      // USER LIMIT CHECK: Enforce user count limits
+      const userLimitCheck = await canAddUser(userContext.businessId)
+      if (!userLimitCheck.allowed) {
+        return handleCORS(NextResponse.json({
+          error: 'User limit reached',
+          message: userLimitCheck.message,
+          code: 'LIMIT_REACHED',
+          upgradeUrl: '/settings/billing'
+        }, { status: 402 }))
+      }
+
+      // If adding user requires extra payment, notify admin
+      if (userLimitCheck.requiresConfirmation && userLimitCheck.extraCost > 0) {
+        // Log this for potential follow-up billing
+        console.log(`⚠️ Adding user will incur extra cost: ₦${userLimitCheck.extraCost}/month for business ${userContext.businessId}`)
       }
 
       const body = await request.json()

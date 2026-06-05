@@ -66,16 +66,16 @@ export async function GET(request) {
     }
 
     // CHECK FEATURE ACCESS: Empty Lifecycle Management
-    // TEMPORARILY DISABLED FOR TESTING - All users can access
-    // const hasEmptyLifecycle = await hasFeature(userProfile.business_id, FEATURES.EMPTY_LIFECYCLE)
-    // if (!hasEmptyLifecycle) {
-    //   return handleCORS(NextResponse.json({
-    //     error: 'Feature not available',
-    //     message: 'Empty Bottle Lifecycle Management is not available on your current plan. Please upgrade to the Business or Enterprise plan.',
-    //     code: 'FEATURE_NOT_AVAILABLE',
-    //     requiredFeature: 'empty_lifecycle'
-    //   }, { status: 403 }))
-    // }
+    const hasEmptyLifecycle = await hasFeature(userProfile.business_id, FEATURES.EMPTY_LIFECYCLE)
+    if (!hasEmptyLifecycle) {
+      return handleCORS(NextResponse.json({
+        error: 'Feature not available',
+        message: 'Empty Bottle Lifecycle Management is available on Business and Enterprise plans only. Please upgrade to access this feature.',
+        code: 'FEATURE_NOT_AVAILABLE',
+        requiredFeature: 'empty_lifecycle',
+        upgradeUrl: '/settings/billing'
+      }, { status: 402 }))
+    }
 
     // Use service client for queries (bypasses RLS)
     const { createClient } = await import('@supabase/supabase-js')
@@ -370,16 +370,16 @@ export async function POST(request) {
     }
 
     // CHECK FEATURE ACCESS: Empty Lifecycle Management
-    // TEMPORARILY DISABLED FOR TESTING - All users can access
-    // const hasEmptyLifecycle = await hasFeature(userProfile.business_id, FEATURES.EMPTY_LIFECYCLE)
-    // if (!hasEmptyLifecycle) {
-    //   return handleCORS(NextResponse.json({
-    //     error: 'Feature not available',
-    //     message: 'Empty Bottle Lifecycle Management is not available on your current plan. Please upgrade to the Business or Enterprise plan.',
-    //     code: 'FEATURE_NOT_AVAILABLE',
-    //     requiredFeature: 'empty_lifecycle'
-    //   }, { status: 403 }))
-    // }
+    const hasEmptyLifecycle = await hasFeature(userProfile.business_id, FEATURES.EMPTY_LIFECYCLE)
+    if (!hasEmptyLifecycle) {
+      return handleCORS(NextResponse.json({
+        error: 'Feature not available',
+        message: 'Empty Bottle Lifecycle Management is available on Business and Enterprise plans only. Please upgrade to access this feature.',
+        code: 'FEATURE_NOT_AVAILABLE',
+        requiredFeature: 'empty_lifecycle',
+        upgradeUrl: '/settings/billing'
+      }, { status: 402 }))
+    }
 
     // Use service client for queries (bypasses RLS)
     const { createClient } = await import('@supabase/supabase-js')
