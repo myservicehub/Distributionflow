@@ -1953,20 +1953,22 @@ async function handleRoute(request, { params }) {
         .eq('id', userContext.businessId)
         .single()
 
-      // Use Supabase's inviteUserByEmail - sends professional invitation email
-      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-        body.email,
-        {
-          data: {
-            name: body.name,
-            role: body.role,
-            business_id: userContext.businessId,
-            business_name: business?.name || 'DistributionFlow',
-            needs_password_change: false // User sets their own password via invitation
-          },
-          redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/accept-invite`
+      // Generate temporary password
+      const tempPassword = `Temp${Math.random().toString(36).slice(-8)}@${Math.floor(Math.random() * 999)}`
+
+      // Create auth user with temporary password
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: body.email,
+        password: tempPassword,
+        email_confirm: true, // Auto-confirm email
+        user_metadata: {
+          name: body.name,
+          role: body.role,
+          business_id: userContext.businessId,
+          business_name: business?.name || 'DistributionFlow',
+          needs_password_change: true // Force password change on first login
         }
-      )
+      })
 
       if (authError) {
         console.error('Auth user invitation error:', authError)
@@ -1991,6 +1993,23 @@ async function handleRoute(request, { params }) {
         // Rollback: delete auth user if profile creation fails
         await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
         throw profileError
+      }
+
+      // Send custom invitation email with credentials
+      try {
+        const { sendStaffInvitation } = await import('@/lib/email')
+        await sendStaffInvitation({
+          to: body.email,
+          staffName: body.name,
+          businessName: business?.name || 'DistributionFlow',
+          role: body.role,
+          tempPassword: tempPassword,
+          loginUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/login`
+        })
+        console.log(`✅ Staff invitation email sent to ${body.email}`)
+      } catch (emailError) {
+        console.error('Failed to send staff invitation email:', emailError)
+        // Don't fail the request if email fails
       }
 
       // Log the action
@@ -2040,7 +2059,7 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json({
         user: userProfile,
         invitationSent: true,
-        message: 'Staff member created and secure invitation email sent. They will set their own password.'
+        message: `Staff member created successfully. Invitation email sent to ${body.email} with temporary password.`
       }))
     }
 
