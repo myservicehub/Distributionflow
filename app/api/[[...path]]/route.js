@@ -1621,6 +1621,29 @@ async function handleRoute(request, { params }) {
       if (updateError) throw updateError
 
       // ============================================
+      // GENERATE INVOICE ON ORDER CONFIRMATION
+      // ============================================
+      if (body.action === 'approve' || (body.status === 'confirmed' || body.status === 'approved')) {
+        try {
+          const { generateAndSendInvoice } = await import('@/lib/invoice-generator')
+          
+          // Generate invoice and send to retailer (async, don't block response)
+          generateAndSendInvoice(orderId).then(result => {
+            if (result.success) {
+              console.log(`✅ Invoice ${result.invoiceNumber} generated and ${result.emailSent ? 'emailed' : 'created'} for order ${orderId}`)
+            } else {
+              console.error(`❌ Invoice generation failed for order ${orderId}:`, result.error)
+            }
+          }).catch(err => {
+            console.error('Invoice generation error:', err)
+          })
+        } catch (invoiceError) {
+          console.error('Invoice module error:', invoiceError)
+          // Don't fail the order confirmation if invoice generation fails
+        }
+      }
+
+      // ============================================
       // AUTO EMPTY ISSUANCE ON DELIVERY
       // ============================================
       if (body.action === 'deliver' && updatedOrder) {
