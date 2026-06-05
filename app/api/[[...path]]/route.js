@@ -1998,13 +1998,14 @@ async function handleRoute(request, { params }) {
       // Send custom invitation email with credentials
       try {
         const { sendStaffInvitation } = await import('@/lib/email')
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://distribution-flow.com'
         await sendStaffInvitation({
           to: body.email,
           staffName: body.name,
           businessName: business?.name || 'DistributionFlow',
           role: body.role,
           tempPassword: tempPassword,
-          loginUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/login`
+          loginUrl: `${baseUrl}/login`
         })
         console.log(`✅ Staff invitation email sent to ${body.email}`)
       } catch (emailError) {
