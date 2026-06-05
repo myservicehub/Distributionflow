@@ -64,62 +64,69 @@ export default function NotificationBell() {
   }
 
   const subscribeToNotifications = () => {
+    // Add all event listeners BEFORE subscribing
     const channel = supabase
       .channel('notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `business_id=eq.${userProfile.business_id}`
-        },
-        (payload) => {
-          const newNotification = payload.new
+    
+    // Add INSERT listener
+    channel.on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `business_id=eq.${userProfile.business_id}`
+      },
+      (payload) => {
+        const newNotification = payload.new
+        
+        // Check if notification is for this user's role
+        const isForThisRole = newNotification.target_roles && 
+          (newNotification.target_roles.includes(userProfile.role) ||
+           (userProfile.role === 'admin' || userProfile.role === 'manager'))
+        
+        if (isForThisRole) {
+          setNotifications(prev => [newNotification, ...prev.slice(0, 49)])
+          setUnreadCount(prev => prev + 1)
           
-          // Check if notification is for this user's role
-          const isForThisRole = newNotification.target_roles && 
-            (newNotification.target_roles.includes(userProfile.role) ||
-             (userProfile.role === 'admin' || userProfile.role === 'manager'))
+          // Play sound
+          if (audioRef.current) {
+            audioRef.current.play().catch(e => console.log('Audio play failed:', e))
+          }
           
-          if (isForThisRole) {
-            setNotifications(prev => [newNotification, ...prev.slice(0, 49)])
-            setUnreadCount(prev => prev + 1)
-            
-            // Play sound
-            if (audioRef.current) {
-              audioRef.current.play().catch(e => console.log('Audio play failed:', e))
+          // Show toast
+          toast(
+            newNotification.title,
+            {
+              description: newNotification.message,
+              duration: 5000
             }
-            
-            // Show toast
-            toast(
-              newNotification.title,
-              {
-                description: newNotification.message,
-                duration: 5000
-              }
-            )
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `business_id=eq.${userProfile.business_id}`
-        },
-        (payload) => {
-          setNotifications(prev =>
-            prev.map(n => n.id === payload.new.id ? payload.new : n)
           )
-          if (payload.new.is_read) {
-            setUnreadCount(prev => Math.max(0, prev - 1))
-          }
         }
-      )
-      .subscribe()
+      }
+    )
+    
+    // Add UPDATE listener
+    channel.on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'notifications',
+        filter: `business_id=eq.${userProfile.business_id}`
+      },
+      (payload) => {
+        setNotifications(prev =>
+          prev.map(n => n.id === payload.new.id ? payload.new : n)
+        )
+        if (payload.new.is_read) {
+          setUnreadCount(prev => Math.max(0, prev - 1))
+        }
+      }
+    )
+    
+    // Subscribe AFTER adding all listeners
+    channel.subscribe()
 
     return () => {
       supabase.removeChannel(channel)
