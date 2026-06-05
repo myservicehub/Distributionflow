@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, CreditCard, Users, Calendar, AlertTriangle, Check, TrendingUp } from 'lucide-react'
+import { Loader2, CreditCard, Users, Calendar, AlertTriangle, Check, TrendingUp, ArrowLeft, Home, LayoutDashboard } from 'lucide-react'
 
 export default function BillingPage() {
   const [loading, setLoading] = useState(true)
@@ -14,6 +16,7 @@ export default function BillingPage() {
   const [plans, setPlans] = useState([])
   const [invoices, setInvoices] = useState([])
   const [processingUpgrade, setProcessingUpgrade] = useState(false)
+  const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
@@ -121,6 +124,41 @@ export default function BillingPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
+      {/* Navigation Header */}
+      <div className="flex items-center gap-4 mb-6">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push('/dashboard')}
+          className="gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Dashboard
+        </Button>
+        <div className="flex gap-2 ml-auto">
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+          >
+            <Link href="/dashboard" className="gap-2">
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+          >
+            <Link href="/" className="gap-2">
+              <Home className="h-4 w-4" />
+              Home
+            </Link>
+          </Button>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Billing & Subscription</h1>
