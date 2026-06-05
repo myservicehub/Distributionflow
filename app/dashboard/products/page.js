@@ -109,25 +109,25 @@ export default function ProductsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900">Products</h2>
-          <p className="text-gray-600 mt-2">Manage your inventory</p>
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div className="animate-slide-down">
+          <h2 className="text-4xl font-bold text-neutral-900 tracking-tight">Products</h2>
+          <p className="text-neutral-600 mt-2">Manage your inventory and stock levels</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => {
           setDialogOpen(open)
           if (!open) resetForm()
         }}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button className="bg-gradient-primary hover:opacity-90 text-white shadow-glow-primary group h-12">
+              <Plus className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
               Add Product
             </Button>
           </DialogTrigger>
@@ -211,45 +211,45 @@ export default function ProductsPage() {
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Products ({products.length})</CardTitle>
+      <Card className="border-0 shadow-soft animate-fade-in">
+        <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50">
+          <CardTitle className="text-2xl font-bold text-neutral-900">All Products ({products.length})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Product Name</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Cost Price</TableHead>
-                  <TableHead>Selling Price</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead>Low Stock Alert</TableHead>
-                  <TableHead>Actions</TableHead>
+                <TableRow className="bg-neutral-50">
+                  <TableHead className="font-semibold">Product Name</TableHead>
+                  <TableHead className="font-semibold">SKU</TableHead>
+                  <TableHead className="font-semibold">Cost Price</TableHead>
+                  <TableHead className="font-semibold">Selling Price</TableHead>
+                  <TableHead className="font-semibold">Stock</TableHead>
+                  <TableHead className="font-semibold">Low Stock Alert</TableHead>
+                  <TableHead className="font-semibold">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {products.map((product) => {
                   const isLowStock = product.stock_quantity <= product.low_stock_threshold
                   return (
-                    <TableRow key={product.id}>
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell>{product.sku || '-'}</TableCell>
-                      <TableCell>₦{parseFloat(product.cost_price || 0).toLocaleString()}</TableCell>
-                      <TableCell>₦{parseFloat(product.selling_price || 0).toLocaleString()}</TableCell>
+                    <TableRow key={product.id} className="hover:bg-neutral-50 transition-colors duration-150">
+                      <TableCell className="font-medium text-neutral-900">{product.name}</TableCell>
+                      <TableCell className="text-neutral-700">{product.sku || '-'}</TableCell>
+                      <TableCell className="text-neutral-900">₦{parseFloat(product.cost_price || 0).toLocaleString()}</TableCell>
+                      <TableCell className="text-neutral-900 font-medium">₦{parseFloat(product.selling_price || 0).toLocaleString()}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          <span className={isLowStock ? 'text-orange-600 font-semibold' : ''}>
+                          <span className={isLowStock ? 'text-orange-600 font-semibold' : 'text-neutral-900'}>
                             {product.stock_quantity}
                           </span>
                           {isLowStock && <AlertTriangle className="h-4 w-4 text-orange-600" />}
                         </div>
                       </TableCell>
-                      <TableCell>{product.low_stock_threshold}</TableCell>
+                      <TableCell className="text-neutral-700">{product.low_stock_threshold}</TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          <Button size="sm" variant="outline" onClick={() => handleEdit(product)}>
+                          <Button size="sm" variant="outline" onClick={() => handleEdit(product)} className="hover:bg-primary-50 hover:border-primary-300 hover:text-primary-700">
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button size="sm" variant="destructive" onClick={() => handleDelete(product.id)}>
@@ -263,8 +263,12 @@ export default function ProductsPage() {
               </TableBody>
             </Table>
             {products.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No products yet. Click "Add Product" to create one.
+              <div className="text-center py-16 px-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                  <Plus className="h-8 w-8 text-neutral-400" />
+                </div>
+                <p className="text-neutral-600 text-lg font-medium">No products yet</p>
+                <p className="text-neutral-500 text-sm mt-1">Click "Add Product" to create your first product</p>
               </div>
             )}
           </div>

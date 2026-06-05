@@ -281,25 +281,25 @@ export default function OrdersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900">Orders</h2>
-          <p className="text-gray-600 mt-2">Manage customer orders</p>
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div className="animate-slide-down">
+          <h2 className="text-4xl font-bold text-neutral-900 tracking-tight">Orders</h2>
+          <p className="text-neutral-600 mt-2">Manage customer orders and track deliveries</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => {
           setDialogOpen(open)
           if (!open) resetForm()
         }}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button className="bg-gradient-primary hover:opacity-90 text-white shadow-glow-primary group h-12">
+              <Plus className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
               New Order
             </Button>
           </DialogTrigger>
@@ -492,66 +492,66 @@ export default function OrdersPage() {
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Orders ({orders.length})</CardTitle>
+      <Card className="border-0 shadow-soft animate-fade-in">
+        <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50">
+          <CardTitle className="text-2xl font-bold text-neutral-900">All Orders ({orders.length})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-neutral-50">
                   <TableHead className="w-10"></TableHead>
-                  <TableHead>Order ID</TableHead>
-                  <TableHead>Retailer</TableHead>
-                  <TableHead>Sales Rep</TableHead>
-                  <TableHead>Total Amount</TableHead>
-                  <TableHead>Payment Status</TableHead>
-                  <TableHead>Order Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  {canApproveOrders() && <TableHead>Actions</TableHead>}
+                  <TableHead className="font-semibold">Order ID</TableHead>
+                  <TableHead className="font-semibold">Retailer</TableHead>
+                  <TableHead className="font-semibold">Sales Rep</TableHead>
+                  <TableHead className="font-semibold">Total Amount</TableHead>
+                  <TableHead className="font-semibold">Payment Status</TableHead>
+                  <TableHead className="font-semibold">Order Status</TableHead>
+                  <TableHead className="font-semibold">Date</TableHead>
+                  {canApproveOrders() && <TableHead className="font-semibold">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {orders.map((order) => (
                   <React.Fragment key={order.id}>
-                    <TableRow className="cursor-pointer hover:bg-muted/50">
+                    <TableRow className="cursor-pointer hover:bg-neutral-50 transition-colors duration-150">
                       <TableCell>
                         <Button 
                           variant="ghost" 
                           size="sm"
                           onClick={() => toggleOrderExpand(order.id)}
-                          className="p-0 h-auto"
+                          className="p-1 h-auto hover:bg-primary-100 rounded-lg transition-colors"
                         >
                           {expandedOrders[order.id] ? (
-                            <ChevronUp className="h-4 w-4" />
+                            <ChevronUp className="h-4 w-4 text-primary-600" />
                           ) : (
-                            <ChevronDown className="h-4 w-4" />
+                            <ChevronDown className="h-4 w-4 text-neutral-600" />
                           )}
                         </Button>
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{order.id.slice(0, 8)}</TableCell>
-                      <TableCell className="font-medium">{order.retailers?.shop_name || 'N/A'}</TableCell>
-                      <TableCell>{order.sales_rep?.name || 'Unassigned'}</TableCell>
-                      <TableCell className="font-semibold">₦{parseFloat(order.total_amount).toLocaleString()}</TableCell>
+                      <TableCell className="font-mono text-xs text-neutral-600">{order.id.slice(0, 8)}</TableCell>
+                      <TableCell className="font-medium text-neutral-900">{order.retailers?.shop_name || 'N/A'}</TableCell>
+                      <TableCell className="text-neutral-700">{order.sales_rep?.name || 'Unassigned'}</TableCell>
+                      <TableCell className="font-semibold text-neutral-900">₦{parseFloat(order.total_amount).toLocaleString()}</TableCell>
                       <TableCell>
-                        <Badge variant={getPaymentStatusColor(order.payment_status)}>
+                        <Badge variant={getPaymentStatusColor(order.payment_status)} className="font-medium">
                           {order.payment_status}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getStatusColor(order.status)}>
+                        <Badge variant={getStatusColor(order.status)} className="font-medium">
                           {order.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-neutral-600">{new Date(order.created_at).toLocaleDateString()}</TableCell>
                       {canApproveOrders() && (
                         <TableCell>
                           {order.status === 'pending' && (
                             <div className="flex gap-2">
                               <Button 
                                 size="sm" 
-                                variant="default"
+                                className="bg-success-500 hover:bg-success-600 text-white h-9"
                                 onClick={() => handleApproveOrder(order.id)}
                               >
                                 <CheckCircle className="h-4 w-4 mr-1" />
@@ -560,6 +560,7 @@ export default function OrdersPage() {
                               <Button 
                                 size="sm" 
                                 variant="destructive"
+                                className="h-9"
                                 onClick={() => handleRejectOrder(order.id)}
                               >
                                 <XCircle className="h-4 w-4 mr-1" />
@@ -568,16 +569,16 @@ export default function OrdersPage() {
                             </div>
                           )}
                           {order.status !== 'pending' && (
-                            <span className="text-sm text-muted-foreground">No action needed</span>
+                            <span className="text-sm text-neutral-500">No action needed</span>
                           )}
                         </TableCell>
                       )}
                     </TableRow>
                     {expandedOrders[order.id] && (
                       <TableRow>
-                        <TableCell colSpan={canApproveOrders() ? 9 : 8} className="bg-muted/30">
-                          <div className="p-4">
-                            <h4 className="font-semibold mb-3">Order Items</h4>
+                        <TableCell colSpan={canApproveOrders() ? 9 : 8} className="bg-neutral-50 border-t border-neutral-200">
+                          <div className="p-6">
+                            <h4 className="font-semibold text-lg text-neutral-900 mb-4">Order Items</h4>
                             {order.order_items && order.order_items.length > 0 ? (
                               <Table>
                                 <TableHeader>
@@ -648,8 +649,12 @@ export default function OrdersPage() {
               </TableBody>
             </Table>
             {orders.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No orders yet. Click "New Order" to create one.
+              <div className="text-center py-16 px-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                  <Plus className="h-8 w-8 text-neutral-400" />
+                </div>
+                <p className="text-neutral-600 text-lg font-medium">No orders yet</p>
+                <p className="text-neutral-500 text-sm mt-1">Click "New Order" to create your first order</p>
               </div>
             )}
           </div>

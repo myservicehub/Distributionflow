@@ -138,25 +138,25 @@ export default function RetailersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900">Retailers</h2>
-          <p className="text-gray-600 mt-2">Manage your retail customers</p>
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div className="animate-slide-down">
+          <h2 className="text-4xl font-bold text-neutral-900 tracking-tight">Retailers</h2>
+          <p className="text-neutral-600 mt-2">Manage your retail customers and credit limits</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={(open) => {
           setDialogOpen(open)
           if (!open) resetForm()
         }}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button className="bg-gradient-primary hover:opacity-90 text-white shadow-glow-primary group h-12">
+              <Plus className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
               Add Retailer
             </Button>
           </DialogTrigger>
@@ -254,44 +254,44 @@ export default function RetailersPage() {
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Retailers ({retailers.length})</CardTitle>
+      <Card className="border-0 shadow-soft animate-fade-in">
+        <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50">
+          <CardTitle className="text-2xl font-bold text-neutral-900">All Retailers ({retailers.length})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Shop Name</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Assigned Rep</TableHead>
-                  <TableHead>Credit Limit</TableHead>
-                  <TableHead>Current Balance</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                <TableRow className="bg-neutral-50">
+                  <TableHead className="font-semibold">Shop Name</TableHead>
+                  <TableHead className="font-semibold">Owner</TableHead>
+                  <TableHead className="font-semibold">Phone</TableHead>
+                  <TableHead className="font-semibold">Assigned Rep</TableHead>
+                  <TableHead className="font-semibold">Credit Limit</TableHead>
+                  <TableHead className="font-semibold">Current Balance</TableHead>
+                  <TableHead className="font-semibold">Status</TableHead>
+                  <TableHead className="font-semibold">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {retailers.map((retailer) => (
-                  <TableRow key={retailer.id}>
-                    <TableCell className="font-medium">{retailer.shop_name}</TableCell>
-                    <TableCell>{retailer.owner_name || '-'}</TableCell>
-                    <TableCell>{retailer.phone || '-'}</TableCell>
-                    <TableCell>{retailer.users?.name || 'Unassigned'}</TableCell>
-                    <TableCell>₦{parseFloat(retailer.credit_limit || 0).toLocaleString()}</TableCell>
-                    <TableCell className={parseFloat(retailer.current_balance) > parseFloat(retailer.credit_limit) ? 'text-red-600 font-semibold' : ''}>
+                  <TableRow key={retailer.id} className="hover:bg-neutral-50 transition-colors duration-150">
+                    <TableCell className="font-medium text-neutral-900">{retailer.shop_name}</TableCell>
+                    <TableCell className="text-neutral-700">{retailer.owner_name || '-'}</TableCell>
+                    <TableCell className="text-neutral-700">{retailer.phone || '-'}</TableCell>
+                    <TableCell className="text-neutral-700">{retailer.users?.name || 'Unassigned'}</TableCell>
+                    <TableCell className="text-neutral-900 font-medium">₦{parseFloat(retailer.credit_limit || 0).toLocaleString()}</TableCell>
+                    <TableCell className={parseFloat(retailer.current_balance) > parseFloat(retailer.credit_limit) ? 'text-red-600 font-semibold' : 'text-neutral-900 font-medium'}>
                       ₦{parseFloat(retailer.current_balance || 0).toLocaleString()}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={retailer.status === 'active' ? 'default' : 'destructive'}>
+                      <Badge variant={retailer.status === 'active' ? 'default' : 'destructive'} className="font-medium">
                         {retailer.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        <Button size="sm" variant="outline" onClick={() => handleEdit(retailer)}>
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(retailer)} className="hover:bg-primary-50 hover:border-primary-300 hover:text-primary-700">
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button size="sm" variant="destructive" onClick={() => handleDelete(retailer.id)}>
@@ -304,8 +304,12 @@ export default function RetailersPage() {
               </TableBody>
             </Table>
             {retailers.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No retailers yet. Click "Add Retailer" to create one.
+              <div className="text-center py-16 px-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                  <Plus className="h-8 w-8 text-neutral-400" />
+                </div>
+                <p className="text-neutral-600 text-lg font-medium">No retailers yet</p>
+                <p className="text-neutral-500 text-sm mt-1">Click "Add Retailer" to create your first retail customer</p>
               </div>
             )}
           </div>
