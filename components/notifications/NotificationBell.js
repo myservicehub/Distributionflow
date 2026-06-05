@@ -22,18 +22,30 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
-  const audioRef = useRef(null)
   const supabase = createClient()
+  const channelRef = useRef(null)
 
-  // Show for admin, manager, and warehouse users
+  // Only show for admin, manager, and warehouse roles
   if (!userProfile || !['admin', 'manager', 'warehouse'].includes(userProfile.role)) {
     return null
   }
 
   useEffect(() => {
+    if (!userProfile?.business_id) return
+
+    // Load initial notifications
     loadNotifications()
-    subscribeToNotifications()
-  }, [userProfile])
+
+    // Setup realtime subscription
+    setupRealtimeSubscription()
+
+    // Cleanup on unmount
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+      }
+    }
+  }, [userProfile?.business_id])
 
   const loadNotifications = async () => {
     try {
@@ -42,7 +54,7 @@ export default function NotificationBell() {
         .select('*')
         .eq('business_id', userProfile.business_id)
       
-      // For warehouse users, only fetch notifications targeted to them
+      // Warehouse users only see their notifications
       if (userProfile.role === 'warehouse') {
         query = query.contains('target_roles', ['warehouse'])
       }
@@ -63,11 +75,13 @@ export default function NotificationBell() {
     }
   }
 
-  const subscribeToNotifications = () => {
-    // Add all event listeners BEFORE subscribing
-    const channel = supabase
-      .channel('notifications')
+  const setupRealtimeSubscription = () => {
+    // Create channel
+    const channel = supabase.channel(`notifications-${userProfile.business_id}`)
     
+    // Store reference for cleanup
+    channelRef.current = channel
+
     // Add INSERT listener
     channel.on(
       'postgres_changes',
@@ -77,33 +91,7 @@ export default function NotificationBell() {
         table: 'notifications',
         filter: `business_id=eq.${userProfile.business_id}`
       },
-      (payload) => {
-        const newNotification = payload.new
-        
-        // Check if notification is for this user's role
-        const isForThisRole = newNotification.target_roles && 
-          (newNotification.target_roles.includes(userProfile.role) ||
-           (userProfile.role === 'admin' || userProfile.role === 'manager'))
-        
-        if (isForThisRole) {
-          setNotifications(prev => [newNotification, ...prev.slice(0, 49)])
-          setUnreadCount(prev => prev + 1)
-          
-          // Play sound
-          if (audioRef.current) {
-            audioRef.current.play().catch(e => console.log('Audio play failed:', e))
-          }
-          
-          // Show toast
-          toast(
-            newNotification.title,
-            {
-              description: newNotification.message,
-              duration: 5000
-            }
-          )
-        }
-      }
+      handleNewNotification
     )
     
     // Add UPDATE listener
@@ -115,21 +103,46 @@ export default function NotificationBell() {
         table: 'notifications',
         filter: `business_id=eq.${userProfile.business_id}`
       },
-      (payload) => {
-        setNotifications(prev =>
-          prev.map(n => n.id === payload.new.id ? payload.new : n)
-        )
-        if (payload.new.is_read) {
-          setUnreadCount(prev => Math.max(0, prev - 1))
-        }
-      }
+      handleUpdatedNotification
     )
     
-    // Subscribe AFTER adding all listeners
-    channel.subscribe()
+    // Subscribe to channel
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('✅ Notification subscription active')
+      }
+    })
+  }
 
-    return () => {
-      supabase.removeChannel(channel)
+  const handleNewNotification = (payload) => {
+    const newNotification = payload.new
+    
+    // Check if notification is for this user's role
+    const isForThisRole = newNotification.target_roles && 
+      (newNotification.target_roles.includes(userProfile.role) ||
+       userProfile.role === 'admin' || 
+       userProfile.role === 'manager')
+    
+    if (isForThisRole) {
+      // Add to notifications list
+      setNotifications(prev => [newNotification, ...prev.slice(0, 49)])
+      setUnreadCount(prev => prev + 1)
+      
+      // Show toast notification
+      toast(newNotification.title, {
+        description: newNotification.message,
+        duration: 5000
+      })
+    }
+  }
+
+  const handleUpdatedNotification = (payload) => {
+    setNotifications(prev =>
+      prev.map(n => n.id === payload.new.id ? payload.new : n)
+    )
+    
+    if (payload.new.is_read) {
+      setUnreadCount(prev => Math.max(0, prev - 1))
     }
   }
 
@@ -184,17 +197,6 @@ export default function NotificationBell() {
     }
   }
 
-  const getNotificationBg = (type) => {
-    switch (type) {
-      case 'critical':
-        return 'bg-red-50'
-      case 'warning':
-        return 'bg-yellow-50'
-      default:
-        return 'bg-blue-50'
-    }
-  }
-
   const formatTimeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000)
     
@@ -205,88 +207,78 @@ export default function NotificationBell() {
   }
 
   return (
-    <>
-      {/* Hidden audio element for notification sound */}
-      <audio 
-        ref={audioRef} 
-        preload="auto"
-      >
-        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuFzvLZiTcIGWi77eefTRAMUKfj8LZjHAY4ktbx0IwzCBhi2PPaqnIqAw=="/>
-      </audio>
-      
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            {unreadCount > 0 && (
-              <Badge 
-                variant="destructive" 
-                className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
-              >
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </Badge>
-            )}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-80">
-          <DropdownMenuLabel className="flex justify-between items-center">
-            <span>Notifications</span>
-            {unreadCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={markAllAsRead}
-                className="h-auto p-1 text-xs"
-              >
-                Mark all read
-              </Button>
-            )}
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          
-          {loading ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              Loading...
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              No notifications
-            </div>
-          ) : (
-            notifications.map((notification) => (
-              <DropdownMenuItem
-                key={notification.id}
-                className={`flex flex-col items-start p-3 cursor-pointer ${
-                  !notification.is_read ? 'bg-muted/50' : ''
-                }`}
-                onClick={() => markAsRead(notification.id)}
-              >
-                <div className="flex items-start justify-between w-full mb-1">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${getNotificationColor(notification.type)}`} />
-                    <span className="font-semibold text-sm">
-                      {notification.title}
-                    </span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {formatTimeAgo(notification.created_at)}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="relative">
+          <Bell className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <Badge 
+              variant="destructive" 
+              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
+            >
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </Badge>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuLabel className="flex justify-between items-center">
+          <span>Notifications</span>
+          {unreadCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={markAllAsRead}
+              className="h-auto p-1 text-xs"
+            >
+              Mark all read
+            </Button>
+          )}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        
+        {loading ? (
+          <div className="p-4 text-center text-sm text-muted-foreground">
+            Loading...
+          </div>
+        ) : notifications.length === 0 ? (
+          <div className="p-4 text-center text-sm text-muted-foreground">
+            No notifications
+          </div>
+        ) : (
+          notifications.slice(0, 10).map((notification) => (
+            <DropdownMenuItem
+              key={notification.id}
+              className={`flex flex-col items-start p-3 cursor-pointer ${
+                !notification.is_read ? 'bg-muted/50' : ''
+              }`}
+              onClick={() => markAsRead(notification.id)}
+            >
+              <div className="flex items-start justify-between w-full mb-1">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${getNotificationColor(notification.type)}`} />
+                  <span className="font-semibold text-sm">
+                    {notification.title}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground line-clamp-2 pl-4">
-                  {notification.message}
-                </p>
-              </DropdownMenuItem>
-            ))
-          )}
-          
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href="/dashboard/notifications" className="w-full text-center text-sm">
-              View all notifications
-            </Link>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </>
+                <span className="text-xs text-muted-foreground">
+                  {formatTimeAgo(notification.created_at)}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground line-clamp-2 pl-4">
+                {notification.message}
+              </p>
+            </DropdownMenuItem>
+          ))
+        )}
+        
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/dashboard/notifications" className="w-full text-center text-sm">
+            View all notifications
+          </Link>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
