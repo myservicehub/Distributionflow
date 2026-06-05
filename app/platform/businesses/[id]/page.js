@@ -271,7 +271,7 @@ export default function BusinessDetailPage() {
           <CardContent>
             <div className="flex items-center gap-3">
               <Users className="h-8 w-8 text-blue-600" />
-              <div className="text-3xl font-bold">{business.user_count || 0}</div>
+              <div className="text-3xl font-bold">{business.active_users || 0}</div>
             </div>
           </CardContent>
         </Card>
