@@ -416,20 +416,20 @@ export default function DeliveryBoardPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
+      {/* Tabs - Mobile Optimized */}
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setSelectedTab(tab.id)}
-            className={`px-6 py-3 rounded-xl font-medium text-sm whitespace-nowrap transition-all duration-300 ${
+            className={`flex-shrink-0 px-4 sm:px-6 py-3 rounded-xl font-medium text-xs sm:text-sm whitespace-nowrap transition-all duration-300 ${
               selectedTab === tab.id
                 ? 'bg-gradient-primary text-white shadow-glow-primary'
                 : 'bg-white text-neutral-700 hover:bg-neutral-50 border-2 border-neutral-200 hover:border-primary-300'
             }`}
           >
-            {tab.label}
-            <span className={`ml-2 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+            <span className="block sm:inline">{tab.label}</span>
+            <span className={`ml-2 px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-bold ${
               selectedTab === tab.id ? 'bg-white/20' : 'bg-neutral-100'
             }`}>
               {tab.count}
