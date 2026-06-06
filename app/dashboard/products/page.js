@@ -10,7 +10,110 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { Plus, Edit, Trash2, AlertTriangle } from 'lucide-react'
+import { Plus, Edit, Trash2, AlertTriangle, ChevronDown, ChevronUp, Package as PackageIcon, DollarSign, Box } from 'lucide-react'
+
+// Mobile Card Component for Products
+function ProductMobileCard({ product, onEdit, onDelete }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const isLowStock = product.stock_quantity <= (product.low_stock_threshold || 10)
+
+  return (
+    <Card className="border-2 border-neutral-200 hover:border-primary-200 transition-all">
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Box className="h-4 w-4 text-primary-600 flex-shrink-0" />
+                <h3 className="font-bold text-neutral-900 truncate">{product.name}</h3>
+              </div>
+              {product.sku && (
+                <p className="text-xs text-neutral-500">SKU: {product.sku}</p>
+              )}
+            </div>
+            {isLowStock && (
+              <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0" />
+            )}
+          </div>
+
+          {/* Price and Stock */}
+          <div className="grid grid-cols-2 gap-3 py-2 border-y border-neutral-200">
+            <div>
+              <p className="text-xs text-neutral-500">Selling Price</p>
+              <p className="font-bold text-neutral-900">₦{parseFloat(product.selling_price || 0).toLocaleString()}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-neutral-500">Stock</p>
+              <p className={`font-bold ${isLowStock ? 'text-orange-600' : 'text-neutral-900'}`}>
+                {product.stock_quantity} units
+              </p>
+            </div>
+          </div>
+
+          {/* Expandable Details */}
+          {isExpanded && (
+            <div className="space-y-2 pt-2 animate-slide-down">
+              <div className="flex justify-between text-sm">
+                <span className="text-neutral-600">Cost Price:</span>
+                <span className="font-medium text-neutral-900">₦{parseFloat(product.cost_price || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-neutral-600">Low Stock Alert:</span>
+                <span className="font-medium text-neutral-900">{product.low_stock_threshold || 10} units</span>
+              </div>
+              {isLowStock && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mt-2">
+                  <p className="text-xs font-medium text-orange-800 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    Low stock warning - only {product.stock_quantity} units remaining
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="flex-1 hover:bg-primary-50"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp className="h-4 w-4 mr-1" />
+                  Show Less
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-4 w-4 mr-1" />
+                  View Details
+                </>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onEdit(product)}
+              className="hover:bg-primary-50"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => onDelete(product.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([])
@@ -216,7 +319,8 @@ export default function ProductsPage() {
           <CardTitle className="text-2xl font-bold text-neutral-900">All Products ({products.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-neutral-50">
@@ -269,6 +373,30 @@ export default function ProductsPage() {
                 </div>
                 <p className="text-neutral-600 text-lg font-medium">No products yet</p>
                 <p className="text-neutral-500 text-sm mt-1">Click "Add Product" to create your first product</p>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile Cards */}
+          <div className="md:hidden">
+            {products.length === 0 ? (
+              <div className="text-center py-16 px-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                  <Plus className="h-8 w-8 text-neutral-400" />
+                </div>
+                <p className="text-neutral-600 text-lg font-medium">No products yet</p>
+                <p className="text-neutral-500 text-sm mt-1">Click "Add Product" to create your first product</p>
+              </div>
+            ) : (
+              <div className="p-4 space-y-4">
+                {products.map((product) => (
+                  <ProductMobileCard
+                    key={product.id}
+                    product={product}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                ))}
               </div>
             )}
           </div>
