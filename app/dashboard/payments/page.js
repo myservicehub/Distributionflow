@@ -11,7 +11,93 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Plus, DollarSign } from 'lucide-react'
+import { Plus, DollarSign, ChevronDown, ChevronUp, Calendar, User, CreditCard, FileText, Store } from 'lucide-react'
+
+// Mobile Card Component for Payments
+function PaymentMobileCard({ payment }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  return (
+    <Card className="border-2 border-neutral-200 hover:border-primary-200 transition-all">
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Store className="h-4 w-4 text-primary-600 flex-shrink-0" />
+                <h3 className="font-bold text-neutral-900 truncate">
+                  {payment.retailers?.shop_name || 'Unknown Retailer'}
+                </h3>
+              </div>
+              <p className="text-xs text-neutral-500 flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {new Date(payment.created_at).toLocaleDateString()}
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <p className="text-xl font-bold text-success-600">
+                ₦{parseFloat(payment.amount_paid).toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          {/* Payment Method */}
+          <div className="flex items-center gap-2 py-2 border-y border-neutral-200">
+            <CreditCard className="h-4 w-4 text-neutral-500" />
+            <span className="text-sm text-neutral-600">Method:</span>
+            <span className="font-medium text-neutral-900 capitalize">
+              {payment.payment_method?.replace('_', ' ')}
+            </span>
+          </div>
+
+          {/* Expandable Details */}
+          {isExpanded && (
+            <div className="space-y-3 pt-2 animate-slide-down">
+              <div className="flex items-center gap-2 text-sm">
+                <User className="h-4 w-4 text-neutral-500" />
+                <span className="text-neutral-600">Recorded by:</span>
+                <span className="font-medium text-neutral-900">{payment.users?.name || 'N/A'}</span>
+              </div>
+              {payment.notes && (
+                <div className="bg-neutral-50 rounded-lg p-3">
+                  <p className="text-xs text-neutral-500 mb-1 flex items-center gap-1">
+                    <FileText className="h-3 w-3" />
+                    Notes:
+                  </p>
+                  <p className="text-sm text-neutral-700">{payment.notes}</p>
+                </div>
+              )}
+              <div className="text-xs text-neutral-500 pt-2 border-t border-neutral-200">
+                Recorded on {new Date(payment.created_at).toLocaleString()}
+              </div>
+            </div>
+          )}
+
+          {/* View More Button */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full hover:bg-primary-50"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronUp className="h-4 w-4 mr-1" />
+                Show Less
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-4 w-4 mr-1" />
+                View Details
+              </>
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState([])

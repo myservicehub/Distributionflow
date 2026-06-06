@@ -35,7 +35,7 @@ export default function AboutPage() {
       <PublicNav />
 
       {/* Hero */}
-      <section className="bg-gradient-to-b from-emerald-50 to-white py-20">
+      <section className="bg-gradient-to-b from-emerald-50 to-white py-20 md:py-24">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 mb-6">
             About DistributionFlow
@@ -70,13 +70,13 @@ export default function AboutPage() {
       </section>
 
       {/* Values */}
-      <section className="bg-neutral-50 py-16">
+      <section className="bg-neutral-50 py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-3xl font-bold text-neutral-900 mb-12 text-center">What Drives Us</h2>
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-3 gap-8 animate-fade-in">
               {values.map((value, index) => (
-                <Card key={index} className="border-2">
+                <Card key={index} className="border-2 border-neutral-200 hover:border-emerald-200 transition-all hover:shadow-lg">
                   <CardHeader>
                     <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center mb-4">
                       <value.icon className="w-6 h-6 text-emerald-600" />
@@ -94,7 +94,7 @@ export default function AboutPage() {
       </section>
 
       {/* Milestones */}
-      <section className="py-16">
+      <section className="py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl font-bold text-neutral-900 mb-12 text-center">Our Journey</h2>
@@ -117,8 +117,9 @@ export default function AboutPage() {
       </section>
 
       {/* Why Choose Us */}
-      <section className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white py-16">
-        <div className="container mx-auto px-4">
+      <section className="bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-700 text-white py-16 md:py-24 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
+        <div className="container mx-auto px-4 relative">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl font-bold mb-8 text-center">Why Distributors Choose Us</h2>
             <div className="grid md:grid-cols-2 gap-6">
@@ -156,7 +157,7 @@ export default function AboutPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-16">
+      <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold text-neutral-900 mb-6">
             Ready to Transform Your Distribution Business?
@@ -166,13 +167,13 @@ export default function AboutPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/signup">
-              <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700">
+              <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700 shadow-lg w-full sm:w-auto">
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
             <Link href="/contact">
-              <Button size="lg" variant="outline">
+              <Button size="lg" variant="outline" className="border-2 w-full sm:w-auto">
                 Contact Us
               </Button>
             </Link>

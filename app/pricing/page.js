@@ -11,7 +11,8 @@ import {
   Package,
   FileText,
   ChevronDown,
-  CheckCircle
+  CheckCircle,
+  ArrowRight
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -152,10 +153,10 @@ export default function PricingPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+    <div className="min-h-screen bg-white">
       <PublicNav />
       {/* Hero Section */}
-      <section className="container mx-auto px-4 pt-16 pb-12 md:pt-32 md:pb-24">
+      <section className="container mx-auto px-4 pt-16 pb-12 md:pt-24 md:pb-20">
         <div className="max-w-4xl mx-auto text-center">
           <Badge className="mb-4 sm:mb-6 bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-sm sm:text-base px-3 py-1 sm:px-4 sm:py-2 border-0">
             <CheckCircle className="w-4 h-4 inline mr-2" />
@@ -187,7 +188,7 @@ export default function PricingPage() {
       </section>
 
       {/* Problem Section */}
-      <section className="bg-neutral-100 py-16 md:py-24">
+      <section className="bg-neutral-50 py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12">
@@ -503,28 +504,34 @@ export default function PricingPage() {
       </section>
 
       {/* Final CTA Section */}
-      <section className="bg-gradient-to-r from-emerald-600 to-teal-700 py-16 md:py-24">
-        <div className="container mx-auto px-4">
+      <section className="bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-700 py-16 md:py-24 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
+        <div className="container mx-auto px-4 relative">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
               Ready to Control Your Distribution?
             </h2>
-            <p className="text-xl text-emerald-100 mb-8 max-w-2xl mx-auto">
-              Join hundreds of Nigerian distributors who have taken control of their business.
-              Start your free trial today.
+            <p className="text-xl text-emerald-100 mb-8 max-w-2xl mx-auto leading-relaxed">
+              Join 200+ Nigerian distributors who have taken control of their business.
+              Start your free trial today—no credit card required.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
-              <Button size="lg" className="text-lg px-8 py-6 bg-white text-emerald-600 hover:bg-neutral-50">
-                Start Free Trial
-              </Button>
-              <Button 
-                size="lg" 
-                variant="outline" 
-                className="text-lg px-8 py-6 border-2 border-white text-white hover:bg-white/10"
-              >
-                Talk to Sales
-              </Button>
+              <Link href="/signup">
+                <Button size="lg" className="text-lg px-8 py-6 bg-white text-emerald-600 hover:bg-emerald-50 shadow-xl w-full sm:w-auto">
+                  Start Free Trial
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+              <Link href="/contact">
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="text-lg px-8 py-6 border-2 border-white text-white hover:bg-white/10 w-full sm:w-auto"
+                >
+                  Talk to Sales
+                </Button>
+              </Link>
             </div>
             
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-emerald-100 text-sm">
