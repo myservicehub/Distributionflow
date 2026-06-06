@@ -94,10 +94,10 @@ export default function DynamicSidebar() {
             </div>
           )}
           
-          {/* Desktop Collapse Toggle - ALWAYS VISIBLE on desktop */}
+          {/* Desktop Collapse Toggle - ONLY VISIBLE on desktop (hidden on mobile) */}
           <button
             onClick={toggleCollapse}
-            className={`p-2.5 hover:bg-neutral-100 rounded-lg transition-all flex-shrink-0 border-2 hover:border-primary-300 group ${
+            className={`hidden lg:block p-2.5 hover:bg-neutral-100 rounded-lg transition-all flex-shrink-0 border-2 hover:border-primary-300 group ${
               isCollapsed 
                 ? 'border-primary-200 bg-primary-50 absolute top-4 right-2' 
                 : 'border-neutral-200 relative'
@@ -119,7 +119,10 @@ export default function DynamicSidebar() {
         <ul className="space-y-1">
           {navigationItems.map((item) => {
             const Icon = ICON_MAP[item.icon] || LayoutDashboard
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+            // Fix: Only highlight exact match for /dashboard, but allow sub-paths for others
+            const isActive = item.href === '/dashboard' 
+              ? pathname === '/dashboard' 
+              : pathname === item.href || pathname.startsWith(item.href + '/')
             
             return (
               <li key={item.href}>
