@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Truck, Plus, Package, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react'
+import { Truck, Plus, Package, ArrowDownToLine, ArrowUpFromLine, ChevronDown, ChevronUp, Calendar, DollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -31,8 +31,146 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/auth-context'
+
+// Mobile Card Component for Warehouse Inventory
+function WarehouseInventoryMobileCard({ item }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  
+  const formatCurrency = (amount) => {
+    return `₦${parseFloat(amount).toLocaleString()}`
+  }
+
+  const totalValue = item.quantity_available * (item.empty_items?.deposit_value || 0)
+
+  return (
+    <Card className="border-2 border-neutral-200 hover:border-emerald-200 transition-all shadow-sm">
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Package className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                <h3 className="font-bold text-neutral-900 truncate">
+                  {item.empty_items?.name || 'Unknown'}
+                </h3>
+              </div>
+              <p className="text-xs text-neutral-500">Available in warehouse</p>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <p className="text-2xl font-bold text-emerald-600">
+                {item.quantity_available}
+              </p>
+              <p className="text-xs text-neutral-500">units</p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between py-2 px-3 bg-emerald-50 rounded-lg">
+            <span className="text-sm text-neutral-600">Total Value:</span>
+            <span className="font-bold text-emerald-600">
+              {formatCurrency(totalValue)}
+            </span>
+          </div>
+
+          {isExpanded && (
+            <div className="space-y-2 pt-2 animate-slide-down border-t border-neutral-200">
+              <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 rounded-lg">
+                <span className="text-sm text-neutral-600">Deposit/Unit:</span>
+                <span className="font-medium text-neutral-900">
+                  {formatCurrency(item.empty_items?.deposit_value || 0)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full hover:bg-emerald-50 hover:border-emerald-300 border-2 transition-all"
+          >
+            {isExpanded ? (
+              <><ChevronUp className="h-4 w-4 mr-1" />Show Less</>
+            ) : (
+              <><ChevronDown className="h-4 w-4 mr-1" />View Details</>
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Mobile Card Component for Recent Movements
+function MovementMobileCard({ movement }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  
+  const formatCurrency = (amount) => {
+    return `₦${parseFloat(amount).toLocaleString()}`
+  }
+
+  const getMovementBadge = (type) => {
+    if (type === 'manufacturer_in') {
+      return <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-200">Received</Badge>
+    }
+    return <Badge className="bg-blue-100 text-blue-800 border border-blue-200">Returned</Badge>
+  }
+
+  return (
+    <Card className="border-2 border-neutral-200 hover:border-emerald-200 transition-all shadow-sm">
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Package className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                <h3 className="font-bold text-neutral-900 truncate">
+                  {movement.empty_items?.name || 'Unknown'}
+                </h3>
+              </div>
+              <p className="text-xs text-neutral-500 flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {new Date(movement.created_at).toLocaleDateString()}
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              {getMovementBadge(movement.type)}
+              <p className="text-lg font-bold text-emerald-600 mt-1">
+                {movement.quantity} units
+              </p>
+            </div>
+          </div>
+
+          {isExpanded && movement.notes && (
+            <div className="pt-2 animate-slide-down border-t border-neutral-200">
+              <div className="bg-neutral-50 rounded-lg p-3">
+                <p className="text-xs text-neutral-500 mb-1 font-medium">Notes:</p>
+                <p className="text-sm text-neutral-700">{movement.notes}</p>
+              </div>
+            </div>
+          )}
+
+          {movement.notes && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="w-full hover:bg-emerald-50 hover:border-emerald-300 border-2 transition-all"
+            >
+              {isExpanded ? (
+                <><ChevronUp className="h-4 w-4 mr-1" />Hide Notes</>
+              ) : (
+                <><ChevronDown className="h-4 w-4 mr-1" />View Notes</>
+              )}
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function ManufacturerSupplyPage() {
   const { userProfile } = useAuth()
@@ -207,23 +345,23 @@ export default function ManufacturerSupplyPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Manufacturer Supply Management</h1>
-        <p className="text-muted-foreground mt-2">
+      <div className="animate-slide-down">
+        <h1 className="text-4xl font-bold tracking-tight text-neutral-900">Manufacturer Supply Management</h1>
+        <p className="text-neutral-600 mt-2">
           Manage empties received from and returned to manufacturer
         </p>
       </div>
 
       {/* Tabs for Receive and Return */}
       <Tabs defaultValue="receive" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="receive" className="gap-2">
+        <TabsList className="bg-white border-2 border-neutral-200 p-1 grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="receive" className="gap-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
             <ArrowDownToLine className="h-4 w-4" />
             Receive Empties
           </TabsTrigger>
-          <TabsTrigger value="return" className="gap-2">
+          <TabsTrigger value="return" className="gap-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
             <ArrowUpFromLine className="h-4 w-4" />
             Return Empties
           </TabsTrigger>
