@@ -156,21 +156,22 @@ export default function PricingPage() {
       {/* Hero Section */}
       <section className="container mx-auto px-4 pt-16 pb-12 md:pt-32 md:pb-24">
         <div className="max-w-4xl mx-auto text-center">
-          <Badge className="mb-4 sm:mb-6 bg-blue-100 text-blue-700 hover:bg-blue-100 text-sm sm:text-base px-3 py-1 sm:px-4 sm:py-2">
-            🎉 14-Day Free Trial • No Credit Card Required
+          <Badge className="mb-4 sm:mb-6 bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-sm sm:text-base px-3 py-1 sm:px-4 sm:py-2 border-0">
+            <CheckCircle className="w-4 h-4 inline mr-2" />
+            14-Day Free Trial • No Credit Card Required
           </Badge>
           
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 mb-4 sm:mb-6 leading-tight px-2">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-neutral-900 mb-4 sm:mb-6 leading-tight px-2">
             Take Full Control of Your<br className="hidden sm:block" />
-            <span className="text-blue-600"> Distribution Business</span>
+            <span className="text-emerald-600"> Distribution Business</span>
           </h1>
           
-          <p className="text-lg sm:text-xl md:text-2xl text-slate-600 mb-6 sm:mb-8 max-w-3xl mx-auto px-2">
+          <p className="text-lg sm:text-xl md:text-2xl text-neutral-600 mb-6 sm:mb-8 max-w-3xl mx-auto px-2">
             Stop losing money to debt, empty bottles, and untracked deliveries.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center mb-4 sm:mb-6 px-4">
-            <Button size="lg" className="text-base sm:text-lg px-6 sm:px-8 py-5 sm:py-6 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
+            <Button size="lg" className="text-base sm:text-lg px-6 sm:px-8 py-5 sm:py-6 bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto">
               Start Free Trial
             </Button>
             <Button size="lg" variant="outline" className="text-base sm:text-lg px-6 sm:px-8 py-5 sm:py-6 w-full sm:w-auto">
@@ -178,21 +179,21 @@ export default function PricingPage() {
             </Button>
           </div>
           
-          <p className="text-xs sm:text-sm text-slate-500 px-4">
+          <p className="text-xs sm:text-sm text-neutral-500 px-4">
             ✓ No setup fee &nbsp;•&nbsp; ✓ Cancel anytime &nbsp;•&nbsp; ✓ Free support
           </p>
         </div>
       </section>
 
       {/* Problem Section */}
-      <section className="bg-slate-100 py-16 md:py-24">
+      <section className="bg-neutral-100 py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 mb-4">
                 The Challenges You Face Daily
               </h2>
-              <p className="text-lg text-slate-600">
+              <p className="text-lg text-neutral-600">
                 Running a distribution business in Nigeria is hard. These problems drain your profits:
               </p>
             </div>
@@ -207,7 +208,7 @@ export default function PricingPage() {
                     <CardTitle className="text-xl">{problem.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-slate-600">{problem.description}</p>
+                    <p className="text-neutral-600">{problem.description}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -223,7 +224,7 @@ export default function PricingPage() {
                     <CardTitle className="text-xl">{problem.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-slate-600">{problem.description}</p>
+                    <p className="text-neutral-600">{problem.description}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -237,21 +238,21 @@ export default function PricingPage() {
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-8 sm:mb-12">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3 sm:mb-4 px-2">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-neutral-900 mb-3 sm:mb-4 px-2">
                 Simple, Transparent Pricing
               </h2>
-              <p className="text-base sm:text-lg text-slate-600 mb-6 sm:mb-8 px-4">
+              <p className="text-base sm:text-lg text-neutral-600 mb-6 sm:mb-8 px-4">
                 Choose the plan that fits your business. All plans include 14-day free trial.
               </p>
 
               {/* Billing Toggle */}
-              <div className="inline-flex items-center gap-2 sm:gap-4 bg-slate-100 p-1.5 sm:p-2 rounded-lg">
+              <div className="inline-flex items-center gap-2 sm:gap-4 bg-neutral-100 p-1.5 sm:p-2 rounded-lg">
                 <button
                   onClick={() => setBillingCycle('monthly')}
                   className={`px-4 sm:px-6 py-1.5 sm:py-2 rounded-md text-sm sm:text-base font-medium transition-all ${
                     billingCycle === 'monthly'
-                      ? 'bg-white text-slate-900 shadow'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white text-neutral-900 shadow'
+                      : 'text-neutral-600 hover:text-neutral-900'
                   }`}
                 >
                   Monthly
@@ -260,8 +261,8 @@ export default function PricingPage() {
                   onClick={() => setBillingCycle('yearly')}
                   className={`px-4 sm:px-6 py-1.5 sm:py-2 rounded-md text-sm sm:text-base font-medium transition-all ${
                     billingCycle === 'yearly'
-                      ? 'bg-white text-slate-900 shadow'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white text-neutral-900 shadow'
+                      : 'text-neutral-600 hover:text-neutral-900'
                   }`}
                 >
                   Yearly
@@ -279,13 +280,13 @@ export default function PricingPage() {
                   key={index}
                   className={`relative border-2 transition-all hover:shadow-xl ${
                     plan.popular
-                      ? 'border-blue-500 shadow-lg lg:scale-105'
-                      : 'border-slate-200 hover:border-slate-300'
+                      ? 'border-emerald-500 shadow-lg lg:scale-105'
+                      : 'border-neutral-200 hover:border-neutral-300'
                   }`}
                 >
                   {plan.popular && (
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
-                      <Badge className="bg-blue-600 text-white px-3 py-1 text-xs sm:text-sm font-semibold">
+                      <Badge className="bg-emerald-600 text-white px-3 py-1 text-xs sm:text-sm font-semibold">
                         Most Popular
                       </Badge>
                     </div>
@@ -297,10 +298,10 @@ export default function PricingPage() {
                     
                     <div className="mt-4 sm:mt-6">
                       <div className="flex items-baseline gap-2 flex-wrap">
-                        <span className="text-3xl sm:text-4xl font-bold text-slate-900">
+                        <span className="text-3xl sm:text-4xl font-bold text-neutral-900">
                           ₦{plan.price.toLocaleString()}
                         </span>
-                        <span className="text-slate-600 text-sm sm:text-base">/ {plan.period}</span>
+                        <span className="text-neutral-600 text-sm sm:text-base">/ {plan.period}</span>
                       </div>
                       {billingCycle === 'yearly' && (
                         <p className="text-xs sm:text-sm text-green-600 mt-1">
@@ -309,11 +310,11 @@ export default function PricingPage() {
                       )}
                     </div>
 
-                    <div className="mt-3 sm:mt-4 p-3 bg-slate-50 rounded-lg">
-                      <p className="text-xs sm:text-sm text-slate-700">
+                    <div className="mt-3 sm:mt-4 p-3 bg-neutral-50 rounded-lg">
+                      <p className="text-xs sm:text-sm text-neutral-700">
                         <span className="font-semibold">{plan.users} users included</span>
                       </p>
-                      <p className="text-xs text-slate-600 mt-1">
+                      <p className="text-xs text-neutral-600 mt-1">
                         ₦{plan.extraUserCost.toLocaleString()} per extra user/month
                       </p>
                     </div>
@@ -322,8 +323,8 @@ export default function PricingPage() {
                       <Button
                         className={`w-full mt-4 sm:mt-6 ${
                           plan.popular
-                            ? 'bg-blue-600 hover:bg-blue-700'
-                            : 'bg-slate-900 hover:bg-slate-800'
+                            ? 'bg-emerald-600 hover:bg-emerald-700'
+                            : 'bg-neutral-900 hover:bg-neutral-800'
                         }`}
                         size="lg"
                       >
@@ -347,8 +348,8 @@ export default function PricingPage() {
                         <div className="border-t pt-2 sm:pt-3 mt-3 sm:mt-4">
                           {plan.limitations.map((limitation, i) => (
                             <div key={i} className="flex items-start gap-2 sm:gap-3 opacity-50">
-                              <X className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 flex-shrink-0 mt-0.5" />
-                              <span className="text-xs sm:text-sm text-slate-600">{limitation}</span>
+                              <X className="w-4 h-4 sm:w-5 sm:h-5 text-neutral-400 flex-shrink-0 mt-0.5" />
+                              <span className="text-xs sm:text-sm text-neutral-600">{limitation}</span>
                             </div>
                           ))}
                         </div>
@@ -359,22 +360,22 @@ export default function PricingPage() {
               ))}
             </div>
 
-            <p className="text-center text-sm text-slate-600 mt-8">
-              Need more than 10 users? <a href="#" className="text-blue-600 hover:underline font-medium">Contact us for custom Enterprise pricing</a>
+            <p className="text-center text-sm text-neutral-600 mt-8">
+              Need more than 10 users? <a href="#" className="text-emerald-600 hover:underline font-medium">Contact us for custom Enterprise pricing</a>
             </p>
           </div>
         </div>
       </section>
 
       {/* Value Comparison Section */}
-      <section className="bg-slate-50 py-16 md:py-24">
+      <section className="bg-neutral-50 py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 mb-4">
                 Manual System vs Our Platform
               </h2>
-              <p className="text-lg text-slate-600">
+              <p className="text-lg text-neutral-600">
                 See why modern distributors are switching to automated solutions
               </p>
             </div>
@@ -392,36 +393,36 @@ export default function PricingPage() {
                   <div className="flex items-start gap-3">
                     <X className="w-5 h-5 text-red-600 flex-shrink-0 mt-1" />
                     <div>
-                      <p className="font-medium text-slate-900">No empty reconciliation</p>
-                      <p className="text-sm text-slate-600">Lose thousands to untracked bottles</p>
+                      <p className="font-medium text-neutral-900">No empty reconciliation</p>
+                      <p className="text-sm text-neutral-600">Lose thousands to untracked bottles</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <X className="w-5 h-5 text-red-600 flex-shrink-0 mt-1" />
                     <div>
-                      <p className="font-medium text-slate-900">Poor debt tracking</p>
-                      <p className="text-sm text-slate-600">Credit abuse and late payments</p>
+                      <p className="font-medium text-neutral-900">Poor debt tracking</p>
+                      <p className="text-sm text-neutral-600">Credit abuse and late payments</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <X className="w-5 h-5 text-red-600 flex-shrink-0 mt-1" />
                     <div>
-                      <p className="font-medium text-slate-900">No stock reservation</p>
-                      <p className="text-sm text-slate-600">Overselling and shortages</p>
+                      <p className="font-medium text-neutral-900">No stock reservation</p>
+                      <p className="text-sm text-neutral-600">Overselling and shortages</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <X className="w-5 h-5 text-red-600 flex-shrink-0 mt-1" />
                     <div>
-                      <p className="font-medium text-slate-900">Hours on Excel sheets</p>
-                      <p className="text-sm text-slate-600">Manual data entry and errors</p>
+                      <p className="font-medium text-neutral-900">Hours on Excel sheets</p>
+                      <p className="text-sm text-neutral-600">Manual data entry and errors</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <X className="w-5 h-5 text-red-600 flex-shrink-0 mt-1" />
                     <div>
-                      <p className="font-medium text-slate-900">No fraud detection</p>
-                      <p className="text-sm text-slate-600">Sales rep manipulation</p>
+                      <p className="font-medium text-neutral-900">No fraud detection</p>
+                      <p className="text-sm text-neutral-600">Sales rep manipulation</p>
                     </div>
                   </div>
                 </CardContent>
@@ -439,36 +440,36 @@ export default function PricingPage() {
                   <div className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-1" />
                     <div>
-                      <p className="font-medium text-slate-900">Automated empty lifecycle</p>
-                      <p className="text-sm text-slate-600">Track every bottle from issue to return</p>
+                      <p className="font-medium text-neutral-900">Automated empty lifecycle</p>
+                      <p className="text-sm text-neutral-600">Track every bottle from issue to return</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-1" />
                     <div>
-                      <p className="font-medium text-slate-900">Credit control automation</p>
-                      <p className="text-sm text-slate-600">Block orders when credit limit exceeded</p>
+                      <p className="font-medium text-neutral-900">Credit control automation</p>
+                      <p className="text-sm text-neutral-600">Block orders when credit limit exceeded</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-1" />
                     <div>
-                      <p className="font-medium text-slate-900">Real-time warehouse tracking</p>
-                      <p className="text-sm text-slate-600">Know exact stock levels instantly</p>
+                      <p className="font-medium text-neutral-900">Real-time warehouse tracking</p>
+                      <p className="text-sm text-neutral-600">Know exact stock levels instantly</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-1" />
                     <div>
-                      <p className="font-medium text-slate-900">Instant reports & analytics</p>
-                      <p className="text-sm text-slate-600">One-click insights and dashboards</p>
+                      <p className="font-medium text-neutral-900">Instant reports & analytics</p>
+                      <p className="text-sm text-neutral-600">One-click insights and dashboards</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-1" />
                     <div>
-                      <p className="font-medium text-slate-900">Built-in fraud protection</p>
-                      <p className="text-sm text-slate-600">Driver accountability and audit trails</p>
+                      <p className="font-medium text-neutral-900">Built-in fraud protection</p>
+                      <p className="text-sm text-neutral-600">Driver accountability and audit trails</p>
                     </div>
                   </div>
                 </CardContent>
@@ -483,10 +484,10 @@ export default function PricingPage() {
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 mb-4">
                 Frequently Asked Questions
               </h2>
-              <p className="text-lg text-slate-600">
+              <p className="text-lg text-neutral-600">
                 Everything you need to know about our pricing and plans
               </p>
             </div>
@@ -501,19 +502,19 @@ export default function PricingPage() {
       </section>
 
       {/* Final CTA Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-blue-700 py-16 md:py-24">
+      <section className="bg-gradient-to-r from-emerald-600 to-teal-700 py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
               Ready to Control Your Distribution?
             </h2>
-            <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+            <p className="text-xl text-emerald-100 mb-8 max-w-2xl mx-auto">
               Join hundreds of Nigerian distributors who have taken control of their business.
               Start your free trial today.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
-              <Button size="lg" className="text-lg px-8 py-6 bg-white text-blue-600 hover:bg-slate-50">
+              <Button size="lg" className="text-lg px-8 py-6 bg-white text-emerald-600 hover:bg-neutral-50">
                 Start Free Trial
               </Button>
               <Button 
@@ -525,7 +526,7 @@ export default function PricingPage() {
               </Button>
             </div>
             
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-blue-100 text-sm">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-emerald-100 text-sm">
               <span className="flex items-center gap-2">
                 <Check className="w-4 h-4" />
                 14-day free trial
@@ -553,19 +554,19 @@ function FAQItem({ question, answer }) {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <Card className="border-2 hover:border-slate-300 transition-all">
+    <Card className="border-2 hover:border-neutral-300 transition-all">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full text-left p-6 flex items-start justify-between gap-4"
       >
         <div className="flex-1">
-          <h3 className="font-semibold text-lg text-slate-900 mb-1">{question}</h3>
+          <h3 className="font-semibold text-lg text-neutral-900 mb-1">{question}</h3>
           {isOpen && (
-            <p className="text-slate-600 mt-3 leading-relaxed">{answer}</p>
+            <p className="text-neutral-600 mt-3 leading-relaxed">{answer}</p>
           )}
         </div>
         <ChevronDown 
-          className={`w-5 h-5 text-slate-400 flex-shrink-0 transition-transform ${
+          className={`w-5 h-5 text-neutral-400 flex-shrink-0 transition-transform ${
             isOpen ? 'transform rotate-180' : ''
           }`}
         />

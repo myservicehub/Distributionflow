@@ -123,13 +123,13 @@ function SignupForm() {
   // Show email verification screen
   if (emailSent) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100">
         <PublicNav />
         <div className="container mx-auto px-4 py-8 min-h-[calc(100vh-64px)] flex items-center justify-center">
           <Card className="max-w-2xl w-full">
             <CardHeader className="text-center">
-              <div className="mx-auto mb-4 w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                <Mail className="h-8 w-8 text-blue-600" />
+              <div className="mx-auto mb-4 w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center">
+                <Mail className="h-8 w-8 text-emerald-600" />
               </div>
               <CardTitle className="text-2xl">Check Your Email</CardTitle>
               <CardDescription className="text-base">
@@ -201,7 +201,7 @@ function SignupForm() {
                 <div className="text-center pt-4 border-t">
                   <p className="text-sm text-gray-600">
                     Need help?{' '}
-                    <Link href="/support" className="text-blue-600 hover:underline font-medium">
+                    <Link href="/support" className="text-emerald-600 hover:underline font-medium">
                       Contact Support
                     </Link>
                   </p>
@@ -216,14 +216,15 @@ function SignupForm() {
 
   // Show signup form
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100">
       <PublicNav />
       <div className="container mx-auto px-4 py-8 min-h-[calc(100vh-64px)]">
         <div className="max-w-5xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
-            <Badge className="mb-4 bg-green-100 text-green-700">
-              🎉 14-Day Free Trial - No Credit Card Required
+            <Badge className="mb-4 bg-emerald-100 text-emerald-700 border-0">
+              <CheckCircle className="w-4 h-4 inline mr-2" />
+              14-Day Free Trial - No Credit Card Required
             </Badge>
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
               Start Your Free Trial
@@ -235,11 +236,11 @@ function SignupForm() {
 
           <div className="grid md:grid-cols-2 gap-8">
             {/* Selected Plan Card */}
-            <Card className="border-2 border-blue-200 bg-blue-50/50">
+            <Card className="border-2 border-emerald-200 bg-emerald-50/50">
               <CardHeader>
                 <div className="flex items-center justify-between mb-2">
                   <CardTitle className="text-2xl">{selectedPlan.name} Plan</CardTitle>
-                  <Badge className="bg-blue-600 text-white">Selected</Badge>
+                  <Badge className="bg-emerald-600 text-white">Selected</Badge>
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-4xl font-bold text-gray-900">
@@ -351,7 +352,7 @@ function SignupForm() {
 
                   <Button 
                     type="submit" 
-                    className="w-full bg-blue-600 hover:bg-blue-700" 
+                    className="w-full bg-emerald-600 hover:bg-emerald-700" 
                     size="lg"
                     disabled={loading}
                   >
@@ -370,11 +371,11 @@ function SignupForm() {
 
                   <p className="text-xs text-center text-gray-600">
                     By signing up, you agree to our{' '}
-                    <Link href="/terms" className="text-blue-600 hover:underline">
+                    <Link href="/terms" className="text-emerald-600 hover:underline">
                       Terms of Service
                     </Link>{' '}
                     and{' '}
-                    <Link href="/privacy" className="text-blue-600 hover:underline">
+                    <Link href="/privacy" className="text-emerald-600 hover:underline">
                       Privacy Policy
                     </Link>
                   </p>
@@ -382,7 +383,7 @@ function SignupForm() {
                   <div className="text-center pt-4">
                     <p className="text-sm text-gray-600">
                       Already have an account?{' '}
-                      <Link href="/login" className="text-blue-600 hover:underline font-medium">
+                      <Link href="/login" className="text-emerald-600 hover:underline font-medium">
                         Sign in
                       </Link>
                     </p>
@@ -422,7 +423,7 @@ function SignupForm() {
 export default function SignupPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
