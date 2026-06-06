@@ -11,7 +11,110 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { Plus, Edit, Trash2 } from 'lucide-react'
+import { Plus, Edit, Trash2, ChevronDown, ChevronUp, Store, User, Phone, CreditCard, DollarSign } from 'lucide-react'
+
+// Mobile Card Component with View More
+function RetailerMobileCard({ retailer, onEdit, onDelete }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const isOverLimit = parseFloat(retailer.current_balance) > parseFloat(retailer.credit_limit)
+
+  return (
+    <Card className="border-2 border-neutral-200 hover:border-primary-200 transition-all">
+      <CardContent className="p-4">
+        {/* Always Visible Info */}
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Store className="h-4 w-4 text-primary-600 flex-shrink-0" />
+                <h3 className="font-bold text-neutral-900 truncate">{retailer.shop_name}</h3>
+              </div>
+              <p className="text-sm text-neutral-600">{retailer.owner_name || 'No owner'}</p>
+            </div>
+            <Badge variant={retailer.status === 'active' ? 'default' : 'destructive'} className="font-medium flex-shrink-0">
+              {retailer.status}
+            </Badge>
+          </div>
+
+          <div className="flex items-center justify-between py-2 border-y border-neutral-200">
+            <div>
+              <p className="text-xs text-neutral-500">Current Balance</p>
+              <p className={`font-bold ${isOverLimit ? 'text-red-600' : 'text-neutral-900'}`}>
+                ₦{parseFloat(retailer.current_balance || 0).toLocaleString()}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-neutral-500">Credit Limit</p>
+              <p className="font-semibold text-neutral-700">
+                ₦{parseFloat(retailer.credit_limit || 0).toLocaleString()}
+              </p>
+            </div>
+          </div>
+
+          {/* Expandable Section */}
+          {isExpanded && (
+            <div className="space-y-3 pt-2 animate-slide-down">
+              <div className="flex items-center gap-2 text-sm">
+                <Phone className="h-4 w-4 text-neutral-500" />
+                <span className="text-neutral-600">Phone:</span>
+                <span className="font-medium text-neutral-900">{retailer.phone || 'Not provided'}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <User className="h-4 w-4 text-neutral-500" />
+                <span className="text-neutral-600">Assigned Rep:</span>
+                <span className="font-medium text-neutral-900">{retailer.users?.name || 'Unassigned'}</span>
+              </div>
+              {isOverLimit && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-xs font-medium text-red-800">
+                    ⚠️ Over credit limit by ₦{(parseFloat(retailer.current_balance) - parseFloat(retailer.credit_limit)).toLocaleString()}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 pt-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="flex-1 hover:bg-primary-50"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp className="h-4 w-4 mr-1" />
+                  Show Less
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-4 w-4 mr-1" />
+                  View More
+                </>
+              )}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onEdit(retailer)}
+              className="hover:bg-primary-50"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => onDelete(retailer.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function RetailersPage() {
   const [retailers, setRetailers] = useState([])
@@ -259,7 +362,8 @@ export default function RetailersPage() {
           <CardTitle className="text-2xl font-bold text-neutral-900">All Retailers ({retailers.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-neutral-50">
@@ -310,6 +414,30 @@ export default function RetailersPage() {
                 </div>
                 <p className="text-neutral-600 text-lg font-medium">No retailers yet</p>
                 <p className="text-neutral-500 text-sm mt-1">Click "Add Retailer" to create your first retail customer</p>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden">
+            {retailers.length === 0 ? (
+              <div className="text-center py-16 px-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                  <Plus className="h-8 w-8 text-neutral-400" />
+                </div>
+                <p className="text-neutral-600 text-lg font-medium">No retailers yet</p>
+                <p className="text-neutral-500 text-sm mt-1">Click "Add Retailer" to create your first retail customer</p>
+              </div>
+            ) : (
+              <div className="p-4 space-y-4">
+                {retailers.map((retailer) => (
+                  <RetailerMobileCard 
+                    key={retailer.id} 
+                    retailer={retailer} 
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                ))}
               </div>
             )}
           </div>
