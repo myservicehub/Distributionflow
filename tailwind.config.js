@@ -24,33 +24,33 @@ module.exports = {
                         background: 'hsl(var(--background))',
                         foreground: 'hsl(var(--foreground))',
                         
-                        // Modern Blue, Green, Gray Palette (Paystack-inspired)
+                        // Modern Emerald, Teal, Gray Palette
                         primary: {
-                                50: '#e6f0ff',
-                                100: '#b3d9ff',
-                                200: '#80c2ff',
-                                300: '#4dabff',
-                                400: '#1a94ff',
-                                500: '#0078e6', // Main blue
-                                600: '#0062bd',
-                                700: '#004d94',
-                                800: '#00386b',
-                                900: '#002342',
+                                50: '#ecfdf5',
+                                100: '#d1fae5',
+                                200: '#a7f3d0',
+                                300: '#6ee7b7',
+                                400: '#34d399',
+                                500: '#10b981', // Main emerald
+                                600: '#059669',
+                                700: '#047857',
+                                800: '#065f46',
+                                900: '#064e3b',
                                 DEFAULT: 'hsl(var(--primary))',
                                 foreground: 'hsl(var(--primary-foreground))'
                         },
                         
                         success: {
-                                50: '#e6f9f0',
-                                100: '#b3efd4',
-                                200: '#80e5b8',
-                                300: '#4ddb9c',
-                                400: '#1ad180',
-                                500: '#00ba68', // Main green
-                                600: '#009b56',
-                                700: '#007c44',
-                                800: '#005d32',
-                                900: '#003e20',
+                                50: '#ecfdf5',
+                                100: '#d1fae5',
+                                200: '#a7f3d0',
+                                300: '#6ee7b7',
+                                400: '#34d399',
+                                500: '#10b981', // Main emerald
+                                600: '#059669',
+                                700: '#047857',
+                                800: '#065f46',
+                                900: '#064e3b',
                                 DEFAULT: 'hsl(var(--success))',
                         },
                         
@@ -128,8 +128,8 @@ module.exports = {
                         'soft': '0 2px 8px 0 rgba(0, 0, 0, 0.05)',
                         'medium': '0 4px 12px 0 rgba(0, 0, 0, 0.08)',
                         'strong': '0 8px 24px 0 rgba(0, 0, 0, 0.12)',
-                        'glow-primary': '0 0 20px rgba(0, 120, 230, 0.3)',
-                        'glow-success': '0 0 20px rgba(0, 186, 104, 0.3)',
+                        'glow-primary': '0 0 20px rgba(5, 150, 105, 0.3)',
+                        'glow-success': '0 0 20px rgba(16, 185, 129, 0.3)',
                 },
                 keyframes: {
                         'accordion-down': {
@@ -176,8 +176,8 @@ module.exports = {
                         'float': 'float 3s ease-in-out infinite',
                 },
                 backgroundImage: {
-                        'gradient-primary': 'linear-gradient(135deg, #0078e6 0%, #00ba68 100%)',
-                        'gradient-soft': 'linear-gradient(135deg, #e6f0ff 0%, #e6f9f0 100%)',
+                        'gradient-primary': 'linear-gradient(135deg, #059669 0%, #14b8a6 100%)',
+                        'gradient-soft': 'linear-gradient(135deg, #ecfdf5 0%, #f0fdfa 100%)',
                         'gradient-overlay': 'linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.05) 100%)',
                         'gradient-radial': 'radial-gradient(circle at center, var(--tw-gradient-stops))',
                 },
