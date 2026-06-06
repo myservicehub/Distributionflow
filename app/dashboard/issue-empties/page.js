@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Package, Users, Send, AlertCircle, History, Eye } from 'lucide-react'
+import { Package, Users, Send, AlertCircle, History, Eye, ChevronDown, ChevronUp, Calendar, DollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -33,6 +33,78 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/auth-context'
+
+// Mobile Card Component for Warehouse Inventory
+function WarehouseInventoryMobileCard({ inv, emptyItem, onViewHistory }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  return (
+    <Card className="border-2 border-neutral-200 hover:border-emerald-200 transition-all shadow-sm">
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Package className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                <h3 className="font-bold text-neutral-900 truncate">
+                  {emptyItem?.name || 'Unknown'}
+                </h3>
+              </div>
+              <p className="text-xs text-neutral-500">Available in warehouse</p>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <p className="text-2xl font-bold text-emerald-600">
+                {inv.quantity_available}
+              </p>
+              <p className="text-xs text-neutral-500">units</p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between py-2 px-3 bg-emerald-50 rounded-lg">
+            <span className="text-sm text-neutral-600">Total Value:</span>
+            <span className="font-bold text-emerald-600">
+              ₦{parseFloat(inv.quantity_available * (emptyItem?.deposit_value || 0)).toLocaleString()}
+            </span>
+          </div>
+
+          {isExpanded && (
+            <div className="space-y-3 pt-2 animate-slide-down border-t border-neutral-200">
+              <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 rounded-lg">
+                <span className="text-sm text-neutral-600">Deposit Value:</span>
+                <span className="font-medium text-neutral-900">
+                  ₦{parseFloat(emptyItem?.deposit_value || 0).toLocaleString()}
+                </span>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onViewHistory(inv.empty_item_id)}
+                className="w-full border-2 hover:border-emerald-500 hover:text-emerald-600"
+              >
+                <History className="h-4 w-4 mr-1" />
+                View Movement History
+              </Button>
+            </div>
+          )}
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full hover:bg-emerald-50 hover:border-emerald-300 border-2 transition-all"
+          >
+            {isExpanded ? (
+              <><ChevronUp className="h-4 w-4 mr-1" />Show Less</>
+            ) : (
+              <><ChevronDown className="h-4 w-4 mr-1" />View More Details</>
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function IssueEmptiesPage() {
   const { userProfile } = useAuth()
@@ -330,7 +402,53 @@ export default function IssueEmptiesPage() {
       </Card>
 
       {/* Warehouse Inventory */}
-      <Card className="border-2 border-neutral-200 shadow-lg">
+      {/* Mobile View - Card Layout */}
+      <div className="block md:hidden space-y-4 animate-fade-in">
+        {warehouseInventory.length === 0 ? (
+          <Card className="border-2 border-neutral-200">
+            <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-emerald-50 to-white">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <Package className="h-5 w-5 text-emerald-600" />
+                </div>
+                <CardTitle className="text-xl font-bold text-neutral-900">Warehouse Empty Inventory</CardTitle>
+              </div>
+              <CardDescription>Current stock and movement history</CardDescription>
+            </CardHeader>
+            <CardContent className="p-8">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                  <Package className="h-8 w-8 text-neutral-400" />
+                </div>
+                <p className="text-neutral-600 text-lg font-medium">No empties in warehouse</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-emerald-100 rounded-lg">
+                <Package className="h-5 w-5 text-emerald-600" />
+              </div>
+              <h3 className="text-xl font-bold text-neutral-900">Warehouse Inventory ({warehouseInventory.length})</h3>
+            </div>
+            {warehouseInventory.map((inv) => {
+              const emptyItem = emptyItems.find(e => e.id === inv.empty_item_id)
+              return (
+                <WarehouseInventoryMobileCard
+                  key={inv.id}
+                  inv={inv}
+                  emptyItem={emptyItem}
+                  onViewHistory={loadMovements}
+                />
+              )
+            })}
+          </>
+        )}
+      </div>
+
+      {/* Desktop View - Table Layout */}
+      <Card className="hidden md:block border-2 border-neutral-200 shadow-lg">
         <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-emerald-50 to-white">
           <CardTitle className="text-neutral-900">Warehouse Empty Inventory</CardTitle>
           <CardDescription>Current stock and movement history</CardDescription>
