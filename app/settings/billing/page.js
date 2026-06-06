@@ -128,7 +128,7 @@ export default function BillingPage() {
   return (
     <div className="container mx-auto p-4 md:p-6 max-w-7xl">
       {/* Navigation Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
+      <div className="flex items-center gap-4 mb-6">
         <Button
           variant="outline"
           size="sm"
@@ -138,28 +138,6 @@ export default function BillingPage() {
           <ArrowLeft className="h-4 w-4" />
           Back to Dashboard
         </Button>
-        <div className="flex gap-2 sm:ml-auto">
-          <Button
-            variant="ghost"
-            size="sm"
-            asChild
-          >
-            <Link href="/dashboard" className="gap-2">
-              <LayoutDashboard className="h-4 w-4" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </Link>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            asChild
-          >
-            <Link href="/" className="gap-2">
-              <Home className="h-4 w-4" />
-              <span className="hidden sm:inline">Home</span>
-            </Link>
-          </Button>
-        </div>
       </div>
 
       {/* Header */}
