@@ -42,11 +42,13 @@ function PaymentMobileCard({ payment }) {
             </div>
           </div>
 
-          {/* Payment Method */}
-          <div className="flex items-center gap-2 py-2 border-y border-neutral-200">
-            <CreditCard className="h-4 w-4 text-neutral-500" />
-            <span className="text-sm text-neutral-600">Method:</span>
-            <span className="font-medium text-neutral-900 capitalize">
+          {/* Payment Method - Always Visible */}
+          <div className="flex items-center justify-between py-2 px-3 bg-emerald-50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-emerald-600" />
+              <span className="text-sm text-neutral-600">Method:</span>
+            </div>
+            <span className="font-medium text-neutral-900 capitalize text-sm">
               {payment.payment_method?.replace('_', ' ')}
             </span>
           </div>
@@ -54,32 +56,36 @@ function PaymentMobileCard({ payment }) {
           {/* Expandable Details */}
           {isExpanded && (
             <div className="space-y-3 pt-2 animate-slide-down">
-              <div className="flex items-center gap-2 text-sm">
-                <User className="h-4 w-4 text-neutral-500" />
-                <span className="text-neutral-600">Recorded by:</span>
-                <span className="font-medium text-neutral-900">{payment.users?.name || 'N/A'}</span>
+              <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-neutral-500" />
+                  <span className="text-sm text-neutral-600">Recorded by:</span>
+                </div>
+                <span className="font-medium text-neutral-900 text-sm">{payment.users?.name || 'N/A'}</span>
               </div>
+              
               {payment.notes && (
                 <div className="bg-neutral-50 rounded-lg p-3">
-                  <p className="text-xs text-neutral-500 mb-1 flex items-center gap-1">
+                  <p className="text-xs text-neutral-500 mb-2 flex items-center gap-1 font-medium">
                     <FileText className="h-3 w-3" />
                     Notes:
                   </p>
-                  <p className="text-sm text-neutral-700">{payment.notes}</p>
+                  <p className="text-sm text-neutral-700 leading-relaxed">{payment.notes}</p>
                 </div>
               )}
+              
               <div className="text-xs text-neutral-500 pt-2 border-t border-neutral-200">
                 Recorded on {new Date(payment.created_at).toLocaleString()}
               </div>
             </div>
           )}
 
-          {/* View More Button */}
+          {/* View More/Less Button */}
           <Button
             size="sm"
             variant="outline"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full hover:bg-emerald-50 hover:border-emerald-300"
+            className="w-full hover:bg-emerald-50 hover:border-emerald-300 border-2 transition-all"
           >
             {isExpanded ? (
               <>
@@ -89,7 +95,7 @@ function PaymentMobileCard({ payment }) {
             ) : (
               <>
                 <ChevronDown className="h-4 w-4 mr-1" />
-                View Details
+                View More Details
               </>
             )}
           </Button>
@@ -295,7 +301,37 @@ export default function PaymentsPage() {
         </Dialog>
       </div>
 
-      <Card className="border-2 border-neutral-200 shadow-lg animate-fade-in">
+      {/* Mobile View - Card Layout */}
+      <div className="block md:hidden space-y-4 animate-fade-in">
+        {payments.length === 0 ? (
+          <Card className="border-2 border-neutral-200">
+            <CardContent className="p-0">
+              <div className="text-center py-16 px-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                  <Plus className="h-8 w-8 text-neutral-400" />
+                </div>
+                <p className="text-neutral-600 text-lg font-medium">No payments recorded yet</p>
+                <p className="text-neutral-500 text-sm mt-1">Start recording customer payments</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-emerald-100 rounded-lg">
+                <DollarSign className="h-5 w-5 text-emerald-600" />
+              </div>
+              <h3 className="text-xl font-bold text-neutral-900">Payment History ({payments.length})</h3>
+            </div>
+            {payments.map((payment) => (
+              <PaymentMobileCard key={payment.id} payment={payment} />
+            ))}
+          </>
+        )}
+      </div>
+
+      {/* Desktop View - Table Layout */}
+      <Card className="hidden md:block border-2 border-neutral-200 shadow-lg animate-fade-in">
         <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-emerald-50 to-white">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-emerald-100 rounded-lg">
