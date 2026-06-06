@@ -42,18 +42,32 @@ export default function DashboardLayout({ children }) {
       <div className="flex-1 flex flex-col">
         {/* Top bar */}
         <header className="bg-white border-b border-neutral-200 sticky top-0 z-30 shadow-soft">
-          <div className="flex items-center justify-between pl-16 pr-4 lg:pl-8 lg:pr-8 py-4">
-            <div className="flex items-center space-x-3">
+          <div className="flex items-center gap-3 px-4 lg:px-8 py-4">
+            {/* Mobile Menu Button - Inside header */}
+            <button
+              onClick={() => document.dispatchEvent(new CustomEvent('toggle-mobile-sidebar'))}
+              className="lg:hidden p-2 hover:bg-primary-50 rounded-lg transition-colors flex-shrink-0"
+              aria-label="Toggle menu"
+            >
+              <svg className="w-6 h-6 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            {/* Logo/Business Name */}
+            <div className="flex-1 flex items-center gap-2 min-w-0">
               <h1 className="text-base sm:text-xl font-semibold text-neutral-900 truncate">
                 {business?.name || 'DistributionFlow'}
               </h1>
               {business?.name && (
-                <span className="hidden sm:inline-block px-3 py-1 text-xs font-medium text-neutral-600 bg-neutral-100 rounded-full">
+                <span className="hidden sm:inline-block px-3 py-1 text-xs font-medium text-neutral-600 bg-neutral-100 rounded-full flex-shrink-0">
                   {business.name}
                 </span>
               )}
             </div>
-            <div className="flex items-center space-x-2 sm:space-x-4">
+
+            {/* Right side items */}
+            <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
               <NotificationBell />
               <span className="text-sm text-neutral-600 hidden md:block">{userProfile?.email}</span>
             </div>
