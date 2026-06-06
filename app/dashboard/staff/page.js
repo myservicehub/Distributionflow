@@ -30,8 +30,84 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, Edit, Trash2, Copy, Check, Users } from 'lucide-react'
+import { Plus, Edit, Trash2, Copy, Check, Users, ChevronDown, ChevronUp, Mail, UserCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+
+// Mobile Card Component for Staff Members
+function StaffMemberMobileCard({ member, onEdit, onDeactivate, getRoleBadge, getStatusBadge }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  return (
+    <Card className="border-2 border-neutral-200 hover:border-emerald-200 transition-all shadow-sm">
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <UserCircle className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                <h3 className="font-bold text-neutral-900 truncate">{member.name}</h3>
+              </div>
+              <p className="text-xs text-neutral-500 flex items-center gap-1 truncate">
+                <Mail className="h-3 w-3 flex-shrink-0" />
+                {member.email}
+              </p>
+            </div>
+            <Badge className={`${getStatusBadge(member.status)} border font-medium text-xs`}>
+              {member.status?.toUpperCase()}
+            </Badge>
+          </div>
+
+          <div className="flex items-center justify-between py-2 px-3 bg-emerald-50 rounded-lg">
+            <span className="text-sm text-neutral-600">Role:</span>
+            <Badge className={`${getRoleBadge(member.role)} border font-medium text-xs`}>
+              {member.role?.replace('_', ' ').toUpperCase()}
+            </Badge>
+          </div>
+
+          {isExpanded && (
+            <div className="space-y-2 pt-2 animate-slide-down border-t border-neutral-200">
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onEdit(member)}
+                  className="flex-1 border-2 hover:border-emerald-500 hover:text-emerald-600"
+                >
+                  <Edit className="h-4 w-4 mr-1" />
+                  Edit
+                </Button>
+                {member.status === 'active' && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => onDeactivate(member.id)}
+                    className="flex-1"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Deactivate
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full hover:bg-emerald-50 hover:border-emerald-300 border-2 transition-all"
+          >
+            {isExpanded ? (
+              <><ChevronUp className="h-4 w-4 mr-1" />Show Less</>
+            ) : (
+              <><ChevronDown className="h-4 w-4 mr-1" />View More</>
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function StaffPage() {
   const { userProfile } = useAuth()
@@ -208,17 +284,57 @@ export default function StaffPage() {
           <h2 className="text-4xl font-bold text-neutral-900 tracking-tight">Staff Management</h2>
           <p className="text-neutral-600 mt-2">Manage your team members and their roles</p>
         </div>
-        <Button onClick={() => setShowAddDialog(true)} className="bg-gradient-primary hover:opacity-90 text-white shadow-glow-primary group h-12">
+        <Button 
+          onClick={() => setShowAddDialog(true)} 
+          className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg group h-12 w-full sm:w-auto"
+        >
           <Plus className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
           Add Staff Member
         </Button>
       </div>
 
-      <Card className="border-0 shadow-soft animate-fade-in">
-        <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50">
+      {/* Mobile View - Card Layout */}
+      <div className="block md:hidden space-y-4 animate-fade-in">
+        {staff.length === 0 ? (
+          <Card className="border-2 border-neutral-200">
+            <CardContent className="p-8">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                  <Plus className="h-8 w-8 text-neutral-400" />
+                </div>
+                <p className="text-neutral-600 text-lg font-medium">No staff members yet</p>
+                <p className="text-neutral-500 text-sm mt-1">Add your first team member to get started</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-emerald-100 rounded-lg">
+                <Users className="h-5 w-5 text-emerald-600" />
+              </div>
+              <h3 className="text-xl font-bold text-neutral-900">Team Members ({staff.length})</h3>
+            </div>
+            {staff.map((member) => (
+              <StaffMemberMobileCard
+                key={member.id}
+                member={member}
+                onEdit={openEditDialog}
+                onDeactivate={handleDeactivateStaff}
+                getRoleBadge={getRoleBadge}
+                getStatusBadge={getStatusBadge}
+              />
+            ))}
+          </>
+        )}
+      </div>
+
+      {/* Desktop View - Table Layout */}
+      <Card className="hidden md:block border-2 border-neutral-200 shadow-lg animate-fade-in">
+        <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-emerald-50 to-white">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary-100 rounded-lg">
-              <Users className="h-5 w-5 text-primary-600" />
+            <div className="p-2 bg-emerald-100 rounded-lg">
+              <Users className="h-5 w-5 text-emerald-600" />
             </div>
             <CardTitle className="text-2xl font-bold text-neutral-900">Team Members ({staff.length})</CardTitle>
           </div>
@@ -248,7 +364,7 @@ export default function StaffPage() {
                   </TableRow>
                 ) : (
                   staff.map((member) => (
-                    <TableRow key={member.id} className="hover:bg-neutral-50 transition-colors duration-150">
+                    <TableRow key={member.id} className="hover:bg-emerald-50 transition-colors duration-150">
                       <TableCell className="font-medium text-neutral-900">{member.name}</TableCell>
                       <TableCell className="text-neutral-700">{member.email}</TableCell>
                       <TableCell>
@@ -266,7 +382,7 @@ export default function StaffPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => openEditDialog(member)}
-                          className="hover:bg-primary-50 hover:border-primary-300 hover:text-primary-700"
+                          className="hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 border-2"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
