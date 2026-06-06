@@ -18,14 +18,14 @@ function PaymentMobileCard({ payment }) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   return (
-    <Card className="border-2 border-neutral-200 hover:border-primary-200 transition-all">
+    <Card className="border-2 border-neutral-200 hover:border-emerald-200 transition-all shadow-sm">
       <CardContent className="p-4">
         <div className="space-y-3">
           {/* Header */}
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <Store className="h-4 w-4 text-primary-600 flex-shrink-0" />
+                <Store className="h-4 w-4 text-emerald-600 flex-shrink-0" />
                 <h3 className="font-bold text-neutral-900 truncate">
                   {payment.retailers?.shop_name || 'Unknown Retailer'}
                 </h3>
@@ -36,7 +36,7 @@ function PaymentMobileCard({ payment }) {
               </p>
             </div>
             <div className="flex flex-col items-end gap-1">
-              <p className="text-xl font-bold text-success-600">
+              <p className="text-xl font-bold text-emerald-600">
                 ₦{parseFloat(payment.amount_paid).toLocaleString()}
               </p>
             </div>
@@ -79,7 +79,7 @@ function PaymentMobileCard({ payment }) {
             size="sm"
             variant="outline"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full hover:bg-primary-50"
+            className="w-full hover:bg-emerald-50 hover:border-emerald-300"
           >
             {isExpanded ? (
               <>
@@ -183,7 +183,7 @@ export default function PaymentsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
       </div>
     )
   }
@@ -200,7 +200,7 @@ export default function PaymentsPage() {
           if (!open) resetForm()
         }}>
           <DialogTrigger asChild>
-            <Button className="bg-gradient-primary hover:opacity-90 text-white shadow-glow-primary group h-12">
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg group h-12">
               <Plus className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-300" />
               Record Payment
             </Button>
@@ -289,17 +289,17 @@ export default function PaymentsPage() {
                 />
               </div>
 
-              <Button type="submit" className="w-full">Record Payment</Button>
+              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">Record Payment</Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <Card className="border-0 shadow-soft animate-fade-in">
-        <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50">
+      <Card className="border-2 border-neutral-200 shadow-lg animate-fade-in">
+        <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-emerald-50 to-white">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-success-100 rounded-lg">
-              <DollarSign className="h-5 w-5 text-success-600" />
+            <div className="p-2 bg-emerald-100 rounded-lg">
+              <DollarSign className="h-5 w-5 text-emerald-600" />
             </div>
             <CardTitle className="text-2xl font-bold text-neutral-900">Payment History ({payments.length})</CardTitle>
           </div>
@@ -319,10 +319,10 @@ export default function PaymentsPage() {
               </TableHeader>
               <TableBody>
                 {payments.map((payment) => (
-                  <TableRow key={payment.id} className="hover:bg-neutral-50 transition-colors duration-150">
+                  <TableRow key={payment.id} className="hover:bg-emerald-50 transition-colors duration-150">
                     <TableCell className="text-neutral-700">{new Date(payment.created_at).toLocaleString()}</TableCell>
                     <TableCell className="font-medium text-neutral-900">{payment.retailers?.shop_name || 'N/A'}</TableCell>
-                    <TableCell className="font-semibold text-success-600">₦{parseFloat(payment.amount_paid).toLocaleString()}</TableCell>
+                    <TableCell className="font-semibold text-emerald-600">₦{parseFloat(payment.amount_paid).toLocaleString()}</TableCell>
                     <TableCell className="capitalize text-neutral-700">{payment.payment_method?.replace('_', ' ')}</TableCell>
                     <TableCell className="text-neutral-700">{payment.users?.name || 'N/A'}</TableCell>
                     <TableCell className="text-sm text-neutral-600">{payment.notes || '-'}</TableCell>
