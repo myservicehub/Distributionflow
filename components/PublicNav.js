@@ -2,64 +2,51 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Package } from 'lucide-react'
 import { useState } from 'react'
 
 export default function PublicNav() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-      <nav className="container mx-auto flex h-16 items-center justify-between px-4">
+    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 shadow-sm">
+      <nav className="container mx-auto flex h-20 items-center justify-between px-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5 text-white"
-            >
-              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-              <line x1="12" y1="22.08" x2="12" y2="12" />
-            </svg>
+        <Link href="/" className="flex items-center space-x-3 group">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 group-hover:bg-emerald-700 transition-colors shadow-md">
+            <Package className="h-6 w-6 text-white" />
           </div>
-          <span className="text-xl font-bold text-gray-900">DistributionFlow</span>
+          <span className="text-xl font-bold text-neutral-900">DistributionFlow</span>
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center space-x-8">
-          <Link href="/#features" className="text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors">
+        <div className="hidden lg:flex items-center space-x-8">
+          <Link href="/#features" className="text-sm font-medium text-neutral-700 hover:text-emerald-600 transition-colors">
             Features
           </Link>
-          <Link href="/pricing" className="text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors">
+          <Link href="/pricing" className="text-sm font-medium text-neutral-700 hover:text-emerald-600 transition-colors">
             Pricing
           </Link>
-          <Link href="/about" className="text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors">
+          <Link href="/#how-it-works" className="text-sm font-medium text-neutral-700 hover:text-emerald-600 transition-colors">
+            How It Works
+          </Link>
+          <Link href="/about" className="text-sm font-medium text-neutral-700 hover:text-emerald-600 transition-colors">
             About
           </Link>
-          <Link href="/contact" className="text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors">
+          <Link href="/contact" className="text-sm font-medium text-neutral-700 hover:text-emerald-600 transition-colors">
             Contact
-          </Link>
-          <Link href="/support" className="text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors">
-            Support
           </Link>
         </div>
 
         {/* Desktop CTA Buttons */}
-        <div className="hidden md:flex items-center space-x-4">
+        <div className="hidden lg:flex items-center space-x-4">
           <Link href="/login">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="hover:text-emerald-600 h-11 px-5">
               Login
             </Button>
           </Link>
           <Link href="/signup">
-            <Button size="sm">
+            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white h-11 px-6 shadow-md">
               Start Free Trial
             </Button>
           </Link>
@@ -67,64 +54,65 @@ export default function PublicNav() {
 
         {/* Mobile Menu Button */}
         <button
-          className="md:hidden"
+          className="lg:hidden p-2 rounded-lg hover:bg-neutral-100 transition-colors"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Toggle menu"
         >
           {mobileMenuOpen ? (
-            <X className="h-6 w-6 text-gray-700" />
+            <X className="h-6 w-6 text-neutral-700" />
           ) : (
-            <Menu className="h-6 w-6 text-gray-700" />
+            <Menu className="h-6 w-6 text-neutral-700" />
           )}
         </button>
       </nav>
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t bg-white">
-          <div className="container mx-auto px-4 py-4 space-y-4">
+        <div className="lg:hidden border-t bg-white shadow-lg animate-slide-down">
+          <div className="container mx-auto px-4 py-6 space-y-1">
             <Link
               href="/#features"
-              className="block py-2 text-base font-medium text-gray-700 hover:text-indigo-600"
+              className="block py-3 px-4 text-base font-medium text-neutral-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               Features
             </Link>
             <Link
               href="/pricing"
-              className="block py-2 text-base font-medium text-gray-700 hover:text-indigo-600"
+              className="block py-3 px-4 text-base font-medium text-neutral-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               Pricing
             </Link>
             <Link
+              href="/#how-it-works"
+              className="block py-3 px-4 text-base font-medium text-neutral-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              How It Works
+            </Link>
+            <Link
               href="/about"
-              className="block py-2 text-base font-medium text-gray-700 hover:text-indigo-600"
+              className="block py-3 px-4 text-base font-medium text-neutral-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               About
             </Link>
             <Link
               href="/contact"
-              className="block py-2 text-base font-medium text-gray-700 hover:text-indigo-600"
+              className="block py-3 px-4 text-base font-medium text-neutral-700 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               Contact
             </Link>
-            <Link
-              href="/support"
-              className="block py-2 text-base font-medium text-gray-700 hover:text-indigo-600"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Support
-            </Link>
-            <div className="pt-4 space-y-2 border-t">
+            <div className="pt-4 space-y-3 border-t mt-4">
               <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                <Button variant="outline" className="w-full">
+                <Button variant="outline" className="w-full h-12 text-base border-2">
                   Login
                 </Button>
               </Link>
               <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                <Button className="w-full">
+                <Button className="w-full h-12 text-base bg-emerald-600 hover:bg-emerald-700 shadow-md">
                   Start Free Trial
                 </Button>
               </Link>
