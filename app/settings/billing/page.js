@@ -101,7 +101,10 @@ export default function BillingPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-emerald-600 mx-auto mb-4" />
+          <p className="text-neutral-600">Loading billing information...</p>
+        </div>
       </div>
     )
   }
@@ -123,19 +126,19 @@ export default function BillingPage() {
   const usagePercentage = (activeUsers / includedUsers) * 100
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
+    <div className="container mx-auto p-4 md:p-6 max-w-7xl">
       {/* Navigation Header */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
         <Button
           variant="outline"
           size="sm"
           onClick={() => router.push('/dashboard')}
-          className="gap-2"
+          className="gap-2 border-2"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Dashboard
         </Button>
-        <div className="flex gap-2 ml-auto">
+        <div className="flex gap-2 sm:ml-auto">
           <Button
             variant="ghost"
             size="sm"
@@ -143,7 +146,7 @@ export default function BillingPage() {
           >
             <Link href="/dashboard" className="gap-2">
               <LayoutDashboard className="h-4 w-4" />
-              Dashboard
+              <span className="hidden sm:inline">Dashboard</span>
             </Link>
           </Button>
           <Button
@@ -153,16 +156,16 @@ export default function BillingPage() {
           >
             <Link href="/" className="gap-2">
               <Home className="h-4 w-4" />
-              Home
+              <span className="hidden sm:inline">Home</span>
             </Link>
           </Button>
         </div>
       </div>
 
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Billing & Subscription</h1>
-        <p className="text-muted-foreground mt-2">
+      <div className="mb-8 animate-slide-down">
+        <h1 className="text-4xl font-bold text-neutral-900 tracking-tight">Billing & Subscription</h1>
+        <p className="text-neutral-600 mt-2">
           Manage your subscription plan and billing details
         </p>
       </div>
@@ -253,16 +256,18 @@ export default function BillingPage() {
         </Card>
 
         {/* Next Billing Card */}
-        <Card>
+        <Card className="border-2 border-neutral-200 hover:border-emerald-200 transition-all sm:col-span-2 lg:col-span-1">
           <CardHeader>
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
+              <div className="p-1.5 bg-emerald-100 rounded-lg">
+                <Calendar className="w-4 h-4 text-emerald-600" />
+              </div>
               {isOnTrial ? 'Trial Ends' : 'Next Billing'}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <span className="text-2xl font-bold">
+              <span className="text-2xl font-bold text-neutral-900">
                 {isOnTrial
                   ? `${daysUntilTrialEnd} days`
                   : billingData?.subscription_end
@@ -270,7 +275,7 @@ export default function BillingPage() {
                   : 'N/A'}
               </span>
               {!isOnTrial && billingData?.total_amount && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-neutral-600">
                   ₦{billingData.total_amount.toLocaleString()}
                 </p>
               )}
