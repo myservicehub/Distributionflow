@@ -59,14 +59,14 @@ export default function DynamicSidebar() {
   const MobileMenuButton = () => (
     <button
       onClick={toggleMobile}
-      className="lg:hidden fixed top-4 left-4 z-50 p-3 bg-white rounded-lg shadow-strong border-2 border-primary-200 hover:bg-primary-50 hover:border-primary-300 transition-all active:scale-95"
+      className="lg:hidden fixed top-5 left-4 z-50 p-2.5 bg-white rounded-xl shadow-medium border border-neutral-200 hover:bg-primary-50 hover:border-primary-300 transition-all active:scale-95"
       aria-label={isMobileOpen ? 'Close menu' : 'Open menu'}
       type="button"
     >
       {isMobileOpen ? (
-        <X className="h-6 w-6 text-primary-600" />
+        <X className="h-5 w-5 text-primary-600" />
       ) : (
-        <Menu className="h-6 w-6 text-primary-600" />
+        <Menu className="h-5 w-5 text-primary-600" />
       )}
     </button>
   )

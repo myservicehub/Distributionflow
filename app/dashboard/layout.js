@@ -42,9 +42,9 @@ export default function DashboardLayout({ children }) {
       <div className="flex-1 flex flex-col">
         {/* Top bar */}
         <header className="bg-white border-b border-neutral-200 sticky top-0 z-30 shadow-soft">
-          <div className="flex items-center justify-between px-4 lg:px-8 py-4">
+          <div className="flex items-center justify-between pl-16 pr-4 lg:pl-8 lg:pr-8 py-4">
             <div className="flex items-center space-x-3">
-              <h1 className="text-xl font-semibold text-neutral-900">
+              <h1 className="text-base sm:text-xl font-semibold text-neutral-900 truncate">
                 {business?.name || 'DistributionFlow'}
               </h1>
               {business?.name && (
@@ -53,9 +53,9 @@ export default function DashboardLayout({ children }) {
                 </span>
               )}
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               <NotificationBell />
-              <span className="text-sm text-neutral-600 hidden sm:block">{userProfile?.email}</span>
+              <span className="text-sm text-neutral-600 hidden md:block">{userProfile?.email}</span>
             </div>
           </div>
         </header>
