@@ -431,38 +431,42 @@ export default function ManufacturerSupplyPage() {
 
         {/* Return Tab */}
         <TabsContent value="return" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Return Empties to Manufacturer</CardTitle>
-                  <CardDescription>
-                    Record empties returned when purchasing new drinks
-                  </CardDescription>
-                </div>
-                <Button onClick={() => setShowReturnDialog(true)}>
-                  <ArrowUpFromLine className="mr-2 h-4 w-4" />
-                  Return Empties
-                </Button>
-              </div>
+          <Card className="border-2 border-neutral-200 shadow-sm">
+            <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-emerald-50 to-white">
+              <CardTitle className="text-neutral-900">Return Empties to Manufacturer</CardTitle>
+              <CardDescription>
+                Record empties returned when purchasing new drinks
+              </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
+              <Button 
+                onClick={() => setShowReturnDialog(true)} 
+                size="lg"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg w-full sm:w-auto mb-6"
+              >
+                <ArrowUpFromLine className="mr-2 h-5 w-5" />
+                Return Empties
+              </Button>
+              
               {dataLoading ? (
-                <div className="text-center py-8">Loading...</div>
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+                  <p className="text-neutral-600">Loading...</p>
+                </div>
               ) : (
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Empty Item</TableHead>
-                      <TableHead>Available to Return</TableHead>
-                      <TableHead>Deposit Value</TableHead>
-                      <TableHead>Total Value</TableHead>
+                    <TableRow className="bg-neutral-50">
+                      <TableHead className="font-semibold">Empty Item</TableHead>
+                      <TableHead className="font-semibold">Available to Return</TableHead>
+                      <TableHead className="font-semibold">Deposit Value</TableHead>
+                      <TableHead className="font-semibold">Total Value</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {warehouseInventory.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground">
+                        <TableCell colSpan={4} className="text-center text-neutral-600 py-8">
                           No empties available to return
                         </TableCell>
                       </TableRow>
@@ -470,15 +474,15 @@ export default function ManufacturerSupplyPage() {
                       warehouseInventory
                         .filter((item) => item.quantity_available > 0)
                         .map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">
+                          <TableRow key={item.id} className="hover:bg-emerald-50 transition-colors duration-150">
+                            <TableCell className="font-medium text-neutral-900">
                               {item.empty_items?.name || 'Unknown'}
                             </TableCell>
-                            <TableCell>{item.quantity_available} units</TableCell>
-                            <TableCell>
+                            <TableCell className="text-emerald-600 font-semibold">{item.quantity_available} units</TableCell>
+                            <TableCell className="text-neutral-900">
                               {formatCurrency(item.empty_items?.deposit_value || 0)}
                             </TableCell>
-                            <TableCell className="font-semibold">
+                            <TableCell className="font-semibold text-emerald-600">
                               {formatCurrency(
                                 item.quantity_available * (item.empty_items?.deposit_value || 0)
                               )}
@@ -495,55 +499,61 @@ export default function ManufacturerSupplyPage() {
       </Tabs>
 
       {/* Recent Transactions History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Manufacturer Transactions</CardTitle>
+      <Card className="border-2 border-neutral-200 shadow-lg">
+        <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-emerald-50 to-white">
+          <CardTitle className="text-neutral-900">Recent Manufacturer Transactions</CardTitle>
           <CardDescription>History of empties received from and returned to manufacturer</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {dataLoading ? (
-            <div className="text-center py-8">Loading...</div>
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+              <p className="text-neutral-600">Loading...</p>
+            </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Empty Item</TableHead>
-                  <TableHead>Quantity</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Notes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentMovements.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
-                      No transactions yet
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-neutral-50">
+                    <TableHead className="font-semibold">Type</TableHead>
+                    <TableHead className="font-semibold">Empty Item</TableHead>
+                    <TableHead className="font-semibold">Quantity</TableHead>
+                    <TableHead className="font-semibold">Date</TableHead>
+                    <TableHead className="font-semibold">Notes</TableHead>
                   </TableRow>
-                ) : (
-                  recentMovements.map((movement) => (
-                    <TableRow key={movement.id}>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMovementTypeColor(movement.type)}`}>
-                          {getMovementTypeLabel(movement.type)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {movement.empty_items?.name || 'Unknown'}
-                      </TableCell>
-                      <TableCell>{movement.quantity} units</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(movement.created_at)}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {movement.notes || '-'}
+                </TableHeader>
+                <TableBody>
+                  {recentMovements.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-neutral-600 py-12">
+                        <Package className="h-12 w-12 mx-auto mb-4 text-neutral-400" />
+                        <p className="font-medium">No transactions yet</p>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    recentMovements.map((movement) => (
+                      <TableRow key={movement.id} className="hover:bg-emerald-50 transition-colors duration-150">
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMovementTypeColor(movement.type)}`}>
+                            {getMovementTypeLabel(movement.type)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-medium text-neutral-900">
+                          {movement.empty_items?.name || 'Unknown'}
+                        </TableCell>
+                        <TableCell className="text-emerald-600 font-semibold">{movement.quantity} units</TableCell>
+                        <TableCell className="text-sm text-neutral-600">
+                          {formatDate(movement.created_at)}
+                        </TableCell>
+                        <TableCell className="text-sm text-neutral-600">
+                          {movement.notes || '-'}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -604,10 +614,10 @@ export default function ManufacturerSupplyPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowReceiveDialog(false)}>
+            <Button variant="outline" onClick={() => setShowReceiveDialog(false)} className="border-2">
               Cancel
             </Button>
-            <Button onClick={handleReceiveSubmit} disabled={loading}>
+            <Button onClick={handleReceiveSubmit} disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white">
               {loading ? 'Recording...' : 'Receive Empties'}
             </Button>
           </DialogFooter>
@@ -689,10 +699,10 @@ export default function ManufacturerSupplyPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowReturnDialog(false)}>
+            <Button variant="outline" onClick={() => setShowReturnDialog(false)} className="border-2">
               Cancel
             </Button>
-            <Button onClick={handleReturnSubmit} disabled={loading}>
+            <Button onClick={handleReturnSubmit} disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white">
               {loading ? 'Recording...' : 'Return Empties'}
             </Button>
           </DialogFooter>
