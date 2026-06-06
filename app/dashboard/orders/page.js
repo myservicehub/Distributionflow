@@ -13,8 +13,123 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { toast } from 'sonner'
-import { Plus, Eye, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Eye, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, ShoppingCart, User, Calendar, DollarSign } from 'lucide-react'
 import BottleExchangeSection from '@/components/BottleExchangeSection'
+
+// Mobile Card Component for Orders
+function OrderMobileCard({ order, onExpand, isExpanded, canApprove, onApprove, onReject, getPaymentStatusColor, getStatusColor }) {
+  return (
+    <Card className="border-2 border-neutral-200 hover:border-primary-200 transition-all">
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <ShoppingCart className="h-4 w-4 text-primary-600 flex-shrink-0" />
+                <h3 className="font-mono text-sm text-neutral-600">#{order.id.slice(0, 8)}</h3>
+              </div>
+              <p className="font-bold text-neutral-900 truncate">{order.retailers?.shop_name || 'Unknown Retailer'}</p>
+            </div>
+            <Badge variant={getStatusColor(order.status)} className="font-medium flex-shrink-0">
+              {order.status}
+            </Badge>
+          </div>
+
+          {/* Amount and Payment Status */}
+          <div className="flex items-center justify-between py-2 border-y border-neutral-200">
+            <div>
+              <p className="text-xs text-neutral-500">Total Amount</p>
+              <p className="font-bold text-neutral-900">₦{parseFloat(order.total_amount).toLocaleString()}</p>
+            </div>
+            <Badge variant={getPaymentStatusColor(order.payment_status)} className="font-medium">
+              {order.payment_status}
+            </Badge>
+          </div>
+
+          {/* Expandable Details */}
+          {isExpanded && (
+            <div className="space-y-3 pt-2 animate-slide-down">
+              <div className="flex items-center gap-2 text-sm">
+                <User className="h-4 w-4 text-neutral-500" />
+                <span className="text-neutral-600">Sales Rep:</span>
+                <span className="font-medium text-neutral-900">{order.sales_rep?.name || 'Unassigned'}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="h-4 w-4 text-neutral-500" />
+                <span className="text-neutral-600">Date:</span>
+                <span className="font-medium text-neutral-900">{new Date(order.created_at).toLocaleDateString()}</span>
+              </div>
+
+              {/* Order Items */}
+              {order.order_items && order.order_items.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-neutral-200">
+                  <p className="text-sm font-semibold text-neutral-900 mb-2">Order Items:</p>
+                  <div className="space-y-2">
+                    {order.order_items.map((item, idx) => (
+                      <div key={idx} className="text-sm bg-neutral-50 rounded-lg p-2">
+                        <div className="flex justify-between">
+                          <span className="font-medium text-neutral-900">{item.product?.name || 'Unknown'}</span>
+                          <span className="text-neutral-600">x{item.quantity}</span>
+                        </div>
+                        <div className="text-xs text-neutral-500 mt-1">
+                          ₦{parseFloat(item.unit_price).toLocaleString()} × {item.quantity} = ₦{parseFloat(item.total_price).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Approval Actions */}
+              {canApprove && order.status === 'pending' && (
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    size="sm"
+                    className="flex-1 bg-success-500 hover:bg-success-600 text-white"
+                    onClick={() => onApprove(order.id)}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => onReject(order.id)}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Reject
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* View More Button */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onExpand(order.id)}
+            className="w-full hover:bg-primary-50"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronUp className="h-4 w-4 mr-1" />
+                Show Less
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-4 w-4 mr-1" />
+                View More
+              </>
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function OrdersPage() {
   const { userProfile } = useAuth()
@@ -497,7 +612,8 @@ export default function OrdersPage() {
           <CardTitle className="text-2xl font-bold text-neutral-900">All Orders ({orders.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-neutral-50">
@@ -655,6 +771,35 @@ export default function OrdersPage() {
                 </div>
                 <p className="text-neutral-600 text-lg font-medium">No orders yet</p>
                 <p className="text-neutral-500 text-sm mt-1">Click "New Order" to create your first order</p>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden">
+            {orders.length === 0 ? (
+              <div className="text-center py-16 px-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                  <Plus className="h-8 w-8 text-neutral-400" />
+                </div>
+                <p className="text-neutral-600 text-lg font-medium">No orders yet</p>
+                <p className="text-neutral-500 text-sm mt-1">Click "New Order" to create your first order</p>
+              </div>
+            ) : (
+              <div className="p-4 space-y-4">
+                {orders.map((order) => (
+                  <OrderMobileCard
+                    key={order.id}
+                    order={order}
+                    onExpand={toggleOrderExpand}
+                    isExpanded={expandedOrders[order.id]}
+                    canApprove={canApproveOrders()}
+                    onApprove={handleApproveOrder}
+                    onReject={handleRejectOrder}
+                    getPaymentStatusColor={getPaymentStatusColor}
+                    getStatusColor={getStatusColor}
+                  />
+                ))}
               </div>
             )}
           </div>
