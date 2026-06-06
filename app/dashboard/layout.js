@@ -75,7 +75,7 @@ export default function DashboardLayout({ children }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1">
+        <main className="flex-1 p-4 md:p-6 lg:p-8">
           {children}
         </main>
       </div>
