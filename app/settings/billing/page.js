@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, CreditCard, Users, Calendar, AlertTriangle, Check, TrendingUp, ArrowLeft, Home, LayoutDashboard } from 'lucide-react'
+import { Loader2, CreditCard, Users, Calendar, AlertTriangle, Check, TrendingUp } from 'lucide-react'
+import DynamicSidebar from '@/components/layout/DynamicSidebar'
 
 export default function BillingPage() {
   const [loading, setLoading] = useState(true)
@@ -126,27 +127,18 @@ export default function BillingPage() {
   const usagePercentage = (activeUsers / includedUsers) * 100
 
   return (
-    <div className="container mx-auto p-4 md:p-6 max-w-7xl">
-      {/* Navigation Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push('/dashboard')}
-          className="gap-2 border-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Dashboard
-        </Button>
-      </div>
-
-      {/* Header */}
-      <div className="mb-8 animate-slide-down">
-        <h1 className="text-4xl font-bold text-neutral-900 tracking-tight">Billing & Subscription</h1>
-        <p className="text-neutral-600 mt-2">
-          Manage your subscription plan and billing details
-        </p>
-      </div>
+    <div className="flex h-screen overflow-hidden bg-neutral-50">
+      <DynamicSidebar />
+      
+      <div className="flex-1 overflow-auto">
+        <div className="container mx-auto p-4 md:p-6 max-w-7xl">
+          {/* Header */}
+          <div className="mb-8 animate-slide-down">
+            <h1 className="text-4xl font-bold text-neutral-900 tracking-tight">Billing & Subscription</h1>
+            <p className="text-neutral-600 mt-2">
+              Manage your subscription plan and billing details
+            </p>
+          </div>
 
       {/* Trial Warning */}
       {isOnTrial && daysUntilTrialEnd <= 7 && (
@@ -402,6 +394,8 @@ export default function BillingPage() {
           )}
         </CardContent>
       </Card>
+        </div>
+      </div>
     </div>
   )
 }
