@@ -369,52 +369,56 @@ export default function ManufacturerSupplyPage() {
 
         {/* Receive Tab */}
         <TabsContent value="receive" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Receive Empties from Manufacturer</CardTitle>
-                  <CardDescription>
-                    Record empties received when manufacturer delivers full drinks
-                  </CardDescription>
-                </div>
-                <Button onClick={() => setShowReceiveDialog(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Receive Empties
-                </Button>
-              </div>
+          <Card className="border-2 border-neutral-200 shadow-sm">
+            <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-emerald-50 to-white">
+              <CardTitle className="text-neutral-900">Receive Empties from Manufacturer</CardTitle>
+              <CardDescription>
+                Record empties received when manufacturer delivers full drinks
+              </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
+              <Button 
+                onClick={() => setShowReceiveDialog(true)} 
+                size="lg"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg w-full sm:w-auto mb-6"
+              >
+                <Plus className="mr-2 h-5 w-5" />
+                Receive Empties
+              </Button>
+              
               {dataLoading ? (
-                <div className="text-center py-8">Loading...</div>
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+                  <p className="text-neutral-600">Loading...</p>
+                </div>
               ) : (
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Empty Item</TableHead>
-                      <TableHead>Current Stock</TableHead>
-                      <TableHead>Deposit Value</TableHead>
-                      <TableHead>Total Value</TableHead>
+                    <TableRow className="bg-neutral-50">
+                      <TableHead className="font-semibold">Empty Item</TableHead>
+                      <TableHead className="font-semibold">Current Stock</TableHead>
+                      <TableHead className="font-semibold">Deposit Value</TableHead>
+                      <TableHead className="font-semibold">Total Value</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {warehouseInventory.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground">
+                        <TableCell colSpan={4} className="text-center text-neutral-600 py-8">
                           No inventory yet
                         </TableCell>
                       </TableRow>
                     ) : (
                       warehouseInventory.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">
+                        <TableRow key={item.id} className="hover:bg-emerald-50 transition-colors duration-150">
+                          <TableCell className="font-medium text-neutral-900">
                             {item.empty_items?.name || 'Unknown'}
                           </TableCell>
-                          <TableCell>{item.quantity_available} units</TableCell>
-                          <TableCell>
+                          <TableCell className="text-emerald-600 font-semibold">{item.quantity_available} units</TableCell>
+                          <TableCell className="text-neutral-900">
                             {formatCurrency(item.empty_items?.deposit_value || 0)}
                           </TableCell>
-                          <TableCell className="font-semibold">
+                          <TableCell className="font-semibold text-emerald-600">
                             {formatCurrency(
                               item.quantity_available * (item.empty_items?.deposit_value || 0)
                             )}
