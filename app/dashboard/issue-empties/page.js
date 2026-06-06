@@ -196,8 +196,8 @@ export default function IssueEmptiesPage() {
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+            <p className="text-neutral-600">Loading...</p>
           </div>
         </div>
       </div>
@@ -218,103 +218,107 @@ export default function IssueEmptiesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="animate-slide-down space-y-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Issue Empties to Retailers</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-4xl font-bold tracking-tight text-neutral-900">Issue Empties to Retailers</h1>
+          <p className="text-neutral-600 mt-2">
             Record when retailers take empty bottles from your warehouse
           </p>
         </div>
-        <Button onClick={() => setShowDialog(true)} size="lg">
-          <Send className="h-4 w-4 mr-2" />
+        <Button 
+          onClick={() => setShowDialog(true)} 
+          size="lg"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg w-full sm:w-auto"
+        >
+          <Send className="h-5 w-5 mr-2" />
           Issue Empties
         </Button>
       </div>
 
       {/* Info Alert */}
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
+      <Alert className="border-2 border-emerald-200 bg-emerald-50">
+        <AlertCircle className="h-5 w-5 text-emerald-600" />
+        <AlertDescription className="text-emerald-900">
           <strong>When to use this:</strong> When you deliver products to retailers and they take empty bottles 
           with them. This will increase their balance (they owe you empties) and decrease your warehouse inventory.
         </AlertDescription>
       </Alert>
 
       {/* Workflow Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+        <Card className="border-2 border-neutral-200 hover:border-emerald-200 transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Retailers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-5 w-5 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{retailers.length}</div>
-            <p className="text-xs text-muted-foreground">Active retailers</p>
+            <div className="text-3xl font-bold text-emerald-600">{retailers.length}</div>
+            <p className="text-xs text-neutral-500 mt-1">Active retailers</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2 border-neutral-200 hover:border-emerald-200 transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Empty Items</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <Package className="h-5 w-5 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{emptyItems.length}</div>
-            <p className="text-xs text-muted-foreground">Types available</p>
+            <div className="text-3xl font-bold text-emerald-600">{emptyItems.length}</div>
+            <p className="text-xs text-neutral-500 mt-1">Types available</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2 border-neutral-200 hover:border-emerald-200 transition-all sm:col-span-2 md:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total in Warehouse</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+            <Package className="h-5 w-5 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-3xl font-bold text-emerald-600">
               {warehouseInventory.reduce((sum, inv) => sum + (inv.quantity_available || 0), 0)}
             </div>
-            <p className="text-xs text-muted-foreground">Units available</p>
+            <p className="text-xs text-neutral-500 mt-1">Units available</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Workflow Guide */}
-      <Card>
-        <CardHeader>
-          <CardTitle>How It Works</CardTitle>
+      <Card className="border-2 border-neutral-200 shadow-sm">
+        <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-emerald-50 to-white">
+          <CardTitle className="text-neutral-900">How It Works</CardTitle>
           <CardDescription>The empty bottle workflow when retailers take empties</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
+        <CardContent className="pt-6">
+          <div className="space-y-4">
             <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold shadow-lg">
                 1
               </div>
               <div>
-                <p className="font-medium">Select Retailer & Empty Item</p>
-                <p className="text-sm text-muted-foreground">Choose which retailer is taking empties and what type</p>
+                <p className="font-semibold text-neutral-900">Select Retailer & Empty Item</p>
+                <p className="text-sm text-neutral-600">Choose which retailer is taking empties and what type</p>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold shadow-lg">
                 2
               </div>
               <div>
-                <p className="font-medium">Enter Quantity</p>
-                <p className="text-sm text-muted-foreground">How many empty bottles are they taking?</p>
+                <p className="font-semibold text-neutral-900">Enter Quantity</p>
+                <p className="text-sm text-neutral-600">How many empty bottles are they taking?</p>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold shadow-lg">
                 3
               </div>
               <div>
-                <p className="font-medium">System Updates Automatically</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="font-semibold text-neutral-900">System Updates Automatically</p>
+                <p className="text-sm text-neutral-600">
                   ✓ Warehouse inventory decreases<br/>
                   ✓ Retailer balance increases (they owe you)<br/>
                   ✓ Movement is logged for tracking
@@ -326,65 +330,71 @@ export default function IssueEmptiesPage() {
       </Card>
 
       {/* Warehouse Inventory */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Warehouse Empty Inventory</CardTitle>
+      <Card className="border-2 border-neutral-200 shadow-lg">
+        <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-emerald-50 to-white">
+          <CardTitle className="text-neutral-900">Warehouse Empty Inventory</CardTitle>
           <CardDescription>Current stock and movement history</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Empty Item</TableHead>
-                <TableHead className="text-right">Available Quantity</TableHead>
-                <TableHead className="text-right">Deposit Value</TableHead>
-                <TableHead className="text-right">Total Value</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {warehouseInventory.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    No empties in warehouse
-                  </TableCell>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-neutral-50">
+                  <TableHead className="font-semibold">Empty Item</TableHead>
+                  <TableHead className="text-right font-semibold">Available Quantity</TableHead>
+                  <TableHead className="text-right font-semibold">Deposit Value</TableHead>
+                  <TableHead className="text-right font-semibold">Total Value</TableHead>
+                  <TableHead className="text-right font-semibold">Actions</TableHead>
                 </TableRow>
-              ) : (
-                warehouseInventory.map((inv) => {
-                  const emptyItem = emptyItems.find(e => e.id === inv.empty_item_id)
-                  return (
-                    <TableRow key={inv.id}>
-                      <TableCell className="font-medium">
-                        {emptyItem?.name || 'Unknown'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className="text-2xl font-bold text-blue-600">
-                          {inv.quantity_available}
-                        </span>
-                        <span className="text-sm text-muted-foreground ml-1">units</span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        ₦{parseFloat(emptyItem?.deposit_value || 0).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        ₦{parseFloat(inv.quantity_available * (emptyItem?.deposit_value || 0)).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => loadMovements(inv.empty_item_id)}
-                        >
-                          <History className="h-3 w-3 mr-1" />
-                          View History
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {warehouseInventory.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-neutral-600 py-12">
+                      <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
+                        <Package className="h-8 w-8 text-neutral-400" />
+                      </div>
+                      <p className="font-medium">No empties in warehouse</p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  warehouseInventory.map((inv) => {
+                    const emptyItem = emptyItems.find(e => e.id === inv.empty_item_id)
+                    return (
+                      <TableRow key={inv.id} className="hover:bg-emerald-50 transition-colors duration-150">
+                        <TableCell className="font-medium text-neutral-900">
+                          {emptyItem?.name || 'Unknown'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span className="text-2xl font-bold text-emerald-600">
+                            {inv.quantity_available}
+                          </span>
+                          <span className="text-sm text-neutral-600 ml-1">units</span>
+                        </TableCell>
+                        <TableCell className="text-right text-neutral-900">
+                          ₦{parseFloat(emptyItem?.deposit_value || 0).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold text-emerald-600">
+                          ₦{parseFloat(inv.quantity_available * (emptyItem?.deposit_value || 0)).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => loadMovements(inv.empty_item_id)}
+                            className="border-2 hover:border-emerald-500 hover:text-emerald-600"
+                          >
+                            <History className="h-3 w-3 mr-1" />
+                            View History
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -474,13 +484,13 @@ export default function IssueEmptiesPage() {
 
             {/* Summary */}
             {formData.retailer_id && formData.empty_item_id && formData.quantity && (
-              <div className="bg-primary/10 p-3 rounded-lg space-y-1">
-                <p className="text-sm font-medium">Summary:</p>
-                <p className="text-sm">
+              <div className="bg-emerald-50 border-2 border-emerald-200 p-4 rounded-lg space-y-2">
+                <p className="text-sm font-semibold text-emerald-900">Summary:</p>
+                <p className="text-sm text-emerald-900">
                   Issue <strong>{formData.quantity}</strong> × {selectedEmptyItem?.name} to{' '}
                   <strong>{selectedRetailer?.shop_name}</strong>
                 </p>
-                <p className="text-xs text-muted-foreground mt-2">
+                <p className="text-xs text-emerald-700 mt-2">
                   ✓ Warehouse: {selectedInventory?.quantity_available || 0} → {(selectedInventory?.quantity_available || 0) - parseInt(formData.quantity || 0)}<br/>
                   ✓ Retailer will owe: +{formData.quantity} units
                 </p>
