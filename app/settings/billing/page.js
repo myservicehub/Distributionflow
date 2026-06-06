@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, CreditCard, Users, Calendar, AlertTriangle, Check, TrendingUp } from 'lucide-react'
+import { Loader2, CreditCard, Users, Calendar, AlertTriangle, Check, TrendingUp, Menu } from 'lucide-react'
 import DynamicSidebar from '@/components/layout/DynamicSidebar'
 
 export default function BillingPage() {
@@ -132,6 +132,16 @@ export default function BillingPage() {
       
       <div className="flex-1 overflow-auto">
         <div className="container mx-auto p-4 md:p-6 max-w-7xl">
+          {/* Mobile Menu Button */}
+          <Button
+            variant="outline"
+            size="icon"
+            className="lg:hidden mb-4 border-2"
+            onClick={() => document.dispatchEvent(new Event('toggle-mobile-sidebar'))}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+
           {/* Header */}
           <div className="mb-8 animate-slide-down">
             <h1 className="text-4xl font-bold text-neutral-900 tracking-tight">Billing & Subscription</h1>
