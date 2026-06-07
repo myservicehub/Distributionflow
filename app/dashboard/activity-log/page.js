@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button'
 import { RefreshCw, ChevronDown, ChevronUp, Calendar, User, Activity } from 'lucide-react'
 
 // Mobile Card Component for Activity Logs
-function ActivityLogMobileCard({ log, formatDate, formatAction, getActionBadgeColor }) {
+function ActivityLogMobileCard({ log, formatDate, formatAction, getActionBadgeColor, getDetailedDescription }) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   return (
@@ -28,62 +28,35 @@ function ActivityLogMobileCard({ log, formatDate, formatAction, getActionBadgeCo
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <User className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                <h3 className="font-bold text-neutral-900 truncate">{log.users?.name || 'System'}</h3>
+                <h3 className="font-bold text-neutral-900 text-sm">{log.users?.name || 'System'}</h3>
               </div>
-              <p className="text-xs text-neutral-500 flex items-center gap-1 truncate">
+              <p className="text-xs text-neutral-500 flex items-center gap-1">
                 <Calendar className="h-3 w-3 flex-shrink-0" />
                 {formatDate(log.created_at)}
               </p>
             </div>
-            <Badge className={`${getActionBadgeColor(log.action)} border font-medium text-xs`}>
-              {formatAction(log.action)}
+            <Badge className={`${getActionBadgeColor(log.action)} border font-medium text-xs flex-shrink-0`}>
+              {formatAction(log.action, log.entity_type, log.details)}
             </Badge>
           </div>
 
-          <div className="flex items-center justify-between py-2 px-3 bg-emerald-50 rounded-lg">
-            <span className="text-sm text-neutral-600">Resource:</span>
-            <span className="font-medium text-neutral-900 capitalize">{log.resource_type}</span>
+          <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+            <p className="text-sm text-neutral-900 font-medium">{getDetailedDescription(log)}</p>
           </div>
 
           {isExpanded && (
             <div className="space-y-2 pt-2 animate-slide-down border-t border-neutral-200">
               {log.users?.email && (
                 <div className="bg-neutral-50 rounded-lg p-2">
-                  <p className="text-xs text-neutral-500 mb-1">Email:</p>
+                  <p className="text-xs text-neutral-500 mb-1">Performed by:</p>
                   <p className="text-sm text-neutral-900 break-all">{log.users.email}</p>
                 </div>
               )}
               
-              {log.details && (
-                <div className="bg-neutral-50 rounded-lg p-3">
-                  <p className="text-xs text-neutral-500 mb-2 font-medium">Details:</p>
-                  {log.details.staff_name && (
-                    <div className="text-sm text-neutral-700 mb-1">
-                      <span className="font-medium">Name:</span> {log.details.staff_name}
-                    </div>
-                  )}
-                  {log.details.staff_email && (
-                    <div className="text-sm text-neutral-700 mb-1">
-                      <span className="font-medium">Email:</span> {log.details.staff_email}
-                    </div>
-                  )}
-                  {log.details.staff_role && (
-                    <div className="text-sm text-neutral-700 mb-1">
-                      <span className="font-medium">Role:</span> {log.details.staff_role}
-                    </div>
-                  )}
-                  {log.details.changes && Object.keys(log.details.changes).length > 0 && (
-                    <div className="text-xs mt-2 text-neutral-600">
-                      <p className="font-medium mb-1">Changes:</p>
-                      {Object.entries(log.details.changes).map(([key, value]) => (
-                        <div key={key} className="mb-1">
-                          {key}: {value.old} → {value.new}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="bg-neutral-50 rounded-lg p-2">
+                <p className="text-xs text-neutral-500 mb-1">Resource Type:</p>
+                <p className="text-sm text-neutral-900 capitalize">{log.entity_type}</p>
+              </div>
             </div>
           )}
 
@@ -146,8 +119,134 @@ export default function ActivityLogPage() {
     return 'bg-neutral-100 text-neutral-800 border-neutral-200'
   }
 
-  const formatAction = (action) => {
+  const formatAction = (action, entityType, details) => {
+    // Parse details if it's a string
+    const detailsObj = typeof details === 'string' ? JSON.parse(details) : details || {}
+    
+    // Create user-friendly action descriptions
+    const actionMap = {
+      // Order actions
+      'create_order': 'New Order Created',
+      'create': {
+        'order': 'New Order Created',
+        'product': 'New Product Added',
+        'retailer': 'New Retailer Onboarded',
+        'payment': 'Payment Recorded',
+        'user': 'New Staff Member Added',
+        'staff': 'New Staff Member Added',
+      },
+      'update': {
+        'order': detailsObj.action === 'approve' ? 'Order Approved' :
+                 detailsObj.action === 'reject' ? 'Order Rejected' :
+                 detailsObj.action === 'pack' ? 'Order Packed' :
+                 detailsObj.action === 'dispatch' ? 'Order Dispatched' :
+                 detailsObj.action === 'deliver' ? 'Order Delivered' :
+                 detailsObj.action === 'fail_delivery' ? 'Delivery Failed' :
+                 'Order Updated',
+        'product': 'Product Updated',
+        'retailer': detailsObj.field_changed === 'credit_limit' ? 'Credit Limit Changed' : 'Retailer Information Updated',
+        'payment': 'Payment Modified',
+        'user': 'Staff Details Updated',
+        'staff': 'Staff Details Updated',
+      },
+      'delete': {
+        'order': 'Order Deleted',
+        'product': 'Product Removed',
+        'retailer': 'Retailer Removed',
+        'payment': 'Payment Deleted',
+        'user': 'Staff Removed',
+        'staff': 'Staff Removed',
+      },
+      // Staff specific actions
+      'staff_created': 'New Staff Member Added',
+      'staff_updated': 'Staff Details Updated',
+      'staff_deactivated': 'Staff Account Deactivated',
+      'staff_reactivated': 'Staff Account Reactivated',
+      // Legacy actions
+      'CREATE_RETAILER': 'New Retailer Onboarded',
+      'UPDATE_CREDIT_LIMIT': 'Credit Limit Changed',
+    }
+
+    // Check if it's a compound action (action + entity_type)
+    if (actionMap[action] && typeof actionMap[action] === 'object') {
+      return actionMap[action][entityType] || `${action.replace(/_/g, ' ')} ${entityType}`.replace(/\b\w/g, l => l.toUpperCase())
+    }
+    
+    // Check if it's a direct action
+    if (actionMap[action]) {
+      return actionMap[action]
+    }
+    
+    // Fallback: capitalize and format
     return action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+  }
+
+  const getDetailedDescription = (log) => {
+    const detailsObj = typeof log.details === 'string' ? JSON.parse(log.details) : log.details || {}
+    const action = log.action
+    const entityType = log.entity_type
+
+    // Generate detailed descriptions for different actions
+    switch (action) {
+      case 'create':
+        if (entityType === 'order') {
+          return `Order created for ${detailsObj.retailer_name || 'retailer'} - Amount: ₦${parseFloat(detailsObj.total_amount || 0).toLocaleString()}`
+        }
+        if (entityType === 'product') {
+          return `Added "${detailsObj.name}" - Price: ₦${parseFloat(detailsObj.selling_price || 0).toLocaleString()}`
+        }
+        if (entityType === 'retailer') {
+          return `Onboarded ${detailsObj.shop_name || 'new retailer'}`
+        }
+        if (entityType === 'payment') {
+          return `Recorded payment of ₦${parseFloat(detailsObj.amount || 0).toLocaleString()} via ${detailsObj.payment_method || 'unknown method'}`
+        }
+        break
+
+      case 'update':
+        if (entityType === 'order') {
+          if (detailsObj.action === 'approve') return `Approved order and moved to preparing status`
+          if (detailsObj.action === 'reject') return `Rejected and cancelled order`
+          if (detailsObj.action === 'pack') return `Marked order as packed and ready`
+          if (detailsObj.action === 'dispatch') return `Dispatched order${detailsObj.driver_name ? ` with driver ${detailsObj.driver_name}` : ''}`
+          if (detailsObj.action === 'deliver') return `Confirmed order delivery to retailer`
+          return `Updated order status`
+        }
+        if (entityType === 'product') {
+          return `Updated "${detailsObj.name}" details`
+        }
+        if (entityType === 'retailer') {
+          if (detailsObj.field_changed === 'credit_limit') {
+            return `Changed credit limit to ₦${parseFloat(detailsObj.credit_limit || 0).toLocaleString()}`
+          }
+          return `Updated ${detailsObj.shop_name || 'retailer'} information`
+        }
+        break
+
+      case 'delete':
+        if (entityType === 'retailer') {
+          return `Removed ${detailsObj.shop_name || 'retailer'} from system`
+        }
+        if (entityType === 'product') {
+          return `Removed "${detailsObj.name || 'product'}" from inventory`
+        }
+        break
+
+      case 'staff_created':
+        return `Added ${detailsObj.staff_name || 'new staff'} as ${detailsObj.staff_role || 'staff member'}`
+      
+      case 'staff_updated':
+        return `Updated ${detailsObj.staff_name || 'staff'} details`
+      
+      case 'staff_deactivated':
+        return `Deactivated ${detailsObj.staff_name || 'staff'} account`
+      
+      case 'staff_reactivated':
+        return `Reactivated ${detailsObj.staff_name || 'staff'} account`
+    }
+
+    // Fallback to basic entity type
+    return `Modified ${entityType || 'record'}`
   }
 
   const formatDate = (dateString) => {
@@ -229,6 +328,7 @@ export default function ActivityLogPage() {
                 formatDate={formatDate}
                 formatAction={formatAction}
                 getActionBadgeColor={getActionBadgeColor}
+                getDetailedDescription={getDetailedDescription}
               />
             ))}
           </>
@@ -282,30 +382,13 @@ export default function ActivityLogPage() {
                   </TableCell>
                   <TableCell>
                     <Badge className={`${getActionBadgeColor(log.action)} border font-medium`}>
-                      {formatAction(log.action)}
+                      {formatAction(log.action, log.entity_type, log.details)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="capitalize text-neutral-700">{log.resource_type}</TableCell>
+                  <TableCell className="capitalize text-neutral-700">{log.entity_type}</TableCell>
                   <TableCell>
-                    <div className="text-sm max-w-md text-neutral-700">
-                      {log.details?.staff_name && (
-                        <div><span className="font-medium text-neutral-900">Name:</span> {log.details.staff_name}</div>
-                      )}
-                      {log.details?.staff_email && (
-                        <div><span className="font-medium text-neutral-900">Email:</span> {log.details.staff_email}</div>
-                      )}
-                      {log.details?.staff_role && (
-                        <div><span className="font-medium text-neutral-900">Role:</span> {log.details.staff_role}</div>
-                      )}
-                      {log.details?.changes && Object.keys(log.details.changes).length > 0 && (
-                        <div className="text-xs mt-1 text-neutral-600">
-                          {Object.entries(log.details.changes).map(([key, value]) => (
-                            <div key={key}>
-                              {key}: {value.old} → {value.new}
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                    <div className="text-sm max-w-md text-neutral-900 font-medium">
+                      {getDetailedDescription(log)}
                     </div>
                   </TableCell>
                 </TableRow>
