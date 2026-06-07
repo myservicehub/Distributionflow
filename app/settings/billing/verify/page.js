@@ -54,7 +54,7 @@ export default function VerifyPaymentPage() {
   }
 
   const goToBilling = () => {
-    router.push('/settings/billing')
+    router.push('/settings/billing?refresh=true')
   }
 
   return (

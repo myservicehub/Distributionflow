@@ -1,15 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, CreditCard, Users, Calendar, AlertTriangle, Check, TrendingUp, Menu } from 'lucide-react'
+import { Loader2, CreditCard, Users, Calendar, AlertTriangle, Check, TrendingUp, Menu, RefreshCw } from 'lucide-react'
 import DynamicSidebar from '@/components/layout/DynamicSidebar'
+import { toast } from 'sonner'
 
 export default function BillingPage() {
   const [loading, setLoading] = useState(true)
@@ -19,12 +20,33 @@ export default function BillingPage() {
   const [processingUpgrade, setProcessingUpgrade] = useState(false)
   const router = useRouter()
   const supabase = createClient()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     fetchBillingData()
     fetchPlans()
     fetchInvoices()
-  }, [])
+    
+    // Auto-refresh if coming from payment success
+    const refreshParam = searchParams?.get('refresh')
+    if (refreshParam === 'true') {
+      setTimeout(() => {
+        fetchBillingData()
+        fetchInvoices()
+      }, 1000)
+    }
+  }, [searchParams])
+
+  const refreshAll = async () => {
+    setLoading(true)
+    await Promise.all([
+      fetchBillingData(),
+      fetchPlans(),
+      fetchInvoices()
+    ])
+    setLoading(false)
+    toast.success('Data refreshed successfully')
+  }
 
   const fetchBillingData = async () => {
     try {
@@ -148,11 +170,22 @@ export default function BillingPage() {
           </Button>
 
           {/* Header */}
-          <div className="mb-8 animate-slide-down">
-            <h1 className="text-4xl font-bold text-neutral-900 tracking-tight">Billing & Subscription</h1>
-            <p className="text-neutral-600 mt-2">
-              Manage your subscription plan and billing details
-            </p>
+          <div className="mb-8 animate-slide-down flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-4xl font-bold text-neutral-900 tracking-tight">Billing & Subscription</h1>
+              <p className="text-neutral-600 mt-2">
+                Manage your subscription plan and billing details
+              </p>
+            </div>
+            <Button
+              onClick={refreshAll}
+              variant="outline"
+              className="border-2 hover:bg-emerald-50 hover:border-emerald-300 flex-shrink-0"
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
 
       {/* Trial Warning */}
