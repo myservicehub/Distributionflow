@@ -392,42 +392,60 @@ export default function ManufacturerSupplyPage() {
                   <p className="text-neutral-600">Loading...</p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-neutral-50">
-                      <TableHead className="font-semibold">Empty Item</TableHead>
-                      <TableHead className="font-semibold">Current Stock</TableHead>
-                      <TableHead className="font-semibold">Deposit Value</TableHead>
-                      <TableHead className="font-semibold">Total Value</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Desktop Table */}
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-neutral-50">
+                          <TableHead className="font-semibold">Empty Item</TableHead>
+                          <TableHead className="font-semibold">Current Stock</TableHead>
+                          <TableHead className="font-semibold">Deposit Value</TableHead>
+                          <TableHead className="font-semibold">Total Value</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {warehouseInventory.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center text-neutral-600 py-8">
+                              No inventory yet
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          warehouseInventory.map((item) => (
+                            <TableRow key={item.id} className="hover:bg-emerald-50 transition-colors duration-150">
+                              <TableCell className="font-medium text-neutral-900">
+                                {item.empty_items?.name || 'Unknown'}
+                              </TableCell>
+                              <TableCell className="text-emerald-600 font-semibold">{item.quantity_available} units</TableCell>
+                              <TableCell className="text-neutral-900">
+                                {formatCurrency(item.empty_items?.deposit_value || 0)}
+                              </TableCell>
+                              <TableCell className="font-semibold text-emerald-600">
+                                {formatCurrency(
+                                  item.quantity_available * (item.empty_items?.deposit_value || 0)
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Mobile Cards */}
+                  <div className="md:hidden space-y-4 p-4">
                     {warehouseInventory.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center text-neutral-600 py-8">
-                          No inventory yet
-                        </TableCell>
-                      </TableRow>
+                      <div className="text-center text-neutral-600 py-8">
+                        No inventory yet
+                      </div>
                     ) : (
                       warehouseInventory.map((item) => (
-                        <TableRow key={item.id} className="hover:bg-emerald-50 transition-colors duration-150">
-                          <TableCell className="font-medium text-neutral-900">
-                            {item.empty_items?.name || 'Unknown'}
-                          </TableCell>
-                          <TableCell className="text-emerald-600 font-semibold">{item.quantity_available} units</TableCell>
-                          <TableCell className="text-neutral-900">
-                            {formatCurrency(item.empty_items?.deposit_value || 0)}
-                          </TableCell>
-                          <TableCell className="font-semibold text-emerald-600">
-                            {formatCurrency(
-                              item.quantity_available * (item.empty_items?.deposit_value || 0)
-                            )}
-                          </TableCell>
-                        </TableRow>
+                        <WarehouseInventoryMobileCard key={item.id} item={item} />
                       ))
                     )}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -458,44 +476,64 @@ export default function ManufacturerSupplyPage() {
                   <p className="text-neutral-600">Loading...</p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-neutral-50">
-                      <TableHead className="font-semibold">Empty Item</TableHead>
-                      <TableHead className="font-semibold">Available to Return</TableHead>
-                      <TableHead className="font-semibold">Deposit Value</TableHead>
-                      <TableHead className="font-semibold">Total Value</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {warehouseInventory.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center text-neutral-600 py-8">
-                          No empties available to return
-                        </TableCell>
-                      </TableRow>
+                <>
+                  {/* Desktop Table */}
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-neutral-50">
+                          <TableHead className="font-semibold">Empty Item</TableHead>
+                          <TableHead className="font-semibold">Available to Return</TableHead>
+                          <TableHead className="font-semibold">Deposit Value</TableHead>
+                          <TableHead className="font-semibold">Total Value</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {warehouseInventory.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center text-neutral-600 py-8">
+                              No empties available to return
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          warehouseInventory
+                            .filter((item) => item.quantity_available > 0)
+                            .map((item) => (
+                              <TableRow key={item.id} className="hover:bg-emerald-50 transition-colors duration-150">
+                                <TableCell className="font-medium text-neutral-900">
+                                  {item.empty_items?.name || 'Unknown'}
+                                </TableCell>
+                                <TableCell className="text-emerald-600 font-semibold">{item.quantity_available} units</TableCell>
+                                <TableCell className="text-neutral-900">
+                                  {formatCurrency(item.empty_items?.deposit_value || 0)}
+                                </TableCell>
+                                <TableCell className="font-semibold text-emerald-600">
+                                  {formatCurrency(
+                                    item.quantity_available * (item.empty_items?.deposit_value || 0)
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Mobile Cards */}
+                  <div className="md:hidden space-y-4 p-4">
+                    {warehouseInventory.length === 0 || warehouseInventory.filter((item) => item.quantity_available > 0).length === 0 ? (
+                      <div className="text-center text-neutral-600 py-8">
+                        No empties available to return
+                      </div>
                     ) : (
                       warehouseInventory
                         .filter((item) => item.quantity_available > 0)
                         .map((item) => (
-                          <TableRow key={item.id} className="hover:bg-emerald-50 transition-colors duration-150">
-                            <TableCell className="font-medium text-neutral-900">
-                              {item.empty_items?.name || 'Unknown'}
-                            </TableCell>
-                            <TableCell className="text-emerald-600 font-semibold">{item.quantity_available} units</TableCell>
-                            <TableCell className="text-neutral-900">
-                              {formatCurrency(item.empty_items?.deposit_value || 0)}
-                            </TableCell>
-                            <TableCell className="font-semibold text-emerald-600">
-                              {formatCurrency(
-                                item.quantity_available * (item.empty_items?.deposit_value || 0)
-                              )}
-                            </TableCell>
-                          </TableRow>
+                          <WarehouseInventoryMobileCard key={item.id} item={item} />
                         ))
                     )}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -515,49 +553,66 @@ export default function ManufacturerSupplyPage() {
               <p className="text-neutral-600">Loading...</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-neutral-50">
-                    <TableHead className="font-semibold">Type</TableHead>
-                    <TableHead className="font-semibold">Empty Item</TableHead>
-                    <TableHead className="font-semibold">Quantity</TableHead>
-                    <TableHead className="font-semibold">Date</TableHead>
-                    <TableHead className="font-semibold">Notes</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentMovements.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-neutral-600 py-12">
-                        <Package className="h-12 w-12 mx-auto mb-4 text-neutral-400" />
-                        <p className="font-medium">No transactions yet</p>
-                      </TableCell>
+            <>
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-neutral-50">
+                      <TableHead className="font-semibold">Type</TableHead>
+                      <TableHead className="font-semibold">Empty Item</TableHead>
+                      <TableHead className="font-semibold">Quantity</TableHead>
+                      <TableHead className="font-semibold">Date</TableHead>
+                      <TableHead className="font-semibold">Notes</TableHead>
                     </TableRow>
-                  ) : (
-                    recentMovements.map((movement) => (
-                      <TableRow key={movement.id} className="hover:bg-emerald-50 transition-colors duration-150">
-                        <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMovementTypeColor(movement.type)}`}>
-                            {getMovementTypeLabel(movement.type)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="font-medium text-neutral-900">
-                          {movement.empty_items?.name || 'Unknown'}
-                        </TableCell>
-                        <TableCell className="text-emerald-600 font-semibold">{movement.quantity} units</TableCell>
-                        <TableCell className="text-sm text-neutral-600">
-                          {formatDate(movement.created_at)}
-                        </TableCell>
-                        <TableCell className="text-sm text-neutral-600">
-                          {movement.notes || '-'}
+                  </TableHeader>
+                  <TableBody>
+                    {recentMovements.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-neutral-600 py-12">
+                          <Package className="h-12 w-12 mx-auto mb-4 text-neutral-400" />
+                          <p className="font-medium">No transactions yet</p>
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                    ) : (
+                      recentMovements.map((movement) => (
+                        <TableRow key={movement.id} className="hover:bg-emerald-50 transition-colors duration-150">
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMovementTypeColor(movement.type)}`}>
+                              {getMovementTypeLabel(movement.type)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="font-medium text-neutral-900">
+                            {movement.empty_items?.name || 'Unknown'}
+                          </TableCell>
+                          <TableCell className="text-emerald-600 font-semibold">{movement.quantity} units</TableCell>
+                          <TableCell className="text-sm text-neutral-600">
+                            {formatDate(movement.created_at)}
+                          </TableCell>
+                          <TableCell className="text-sm text-neutral-600">
+                            {movement.notes || '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="md:hidden space-y-4 p-4">
+                {recentMovements.length === 0 ? (
+                  <div className="text-center text-neutral-600 py-12">
+                    <Package className="h-12 w-12 mx-auto mb-4 text-neutral-400" />
+                    <p className="font-medium">No transactions yet</p>
+                  </div>
+                ) : (
+                  recentMovements.map((movement) => (
+                    <MovementMobileCard key={movement.id} movement={movement} />
+                  ))
+                )}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

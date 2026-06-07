@@ -450,6 +450,26 @@ async function handleRoute(request, { params }) {
       }
 
       const body = await request.json()
+      
+      // DUPLICATE CHECK: Check for existing retailer with same shop_name or phone
+      const { data: existingRetailer } = await supabase
+        .from('retailers')
+        .select('id, shop_name, phone')
+        .eq('business_id', userContext.businessId)
+        .or(`shop_name.ilike.${body.shop_name},phone.eq.${body.phone}`)
+        .maybeSingle()
+
+      if (existingRetailer) {
+        const duplicateField = existingRetailer.shop_name.toLowerCase() === body.shop_name.toLowerCase() 
+          ? 'shop name' 
+          : 'phone number'
+        return handleCORS(NextResponse.json({
+          error: 'Duplicate retailer',
+          message: `A retailer with this ${duplicateField} already exists.`,
+          code: 'DUPLICATE_ENTRY'
+        }, { status: 409 }))
+      }
+
       const { data, error } = await supabase
         .from('retailers')
         .insert({
