@@ -94,28 +94,28 @@ export default function AdminDashboard() {
 
     return (
       <Card className={`${colorScheme.bg} border-2 border-neutral-200 shadow-md hover:shadow-lg transition-all duration-300`}>
-        <CardContent className="p-4">
+        <CardContent className="p-5">
           {loading ? (
             <div className="space-y-3">
-              <div className="h-4 bg-neutral-200 rounded animate-shimmer w-24"></div>
-              <div className="h-8 bg-neutral-200 rounded animate-shimmer w-32"></div>
+              <div className="h-5 bg-neutral-200 rounded animate-shimmer w-28"></div>
+              <div className="h-10 bg-neutral-200 rounded animate-shimmer w-36"></div>
             </div>
           ) : (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-neutral-600">{title}</p>
-                <div className={`p-2.5 rounded-full ${colorScheme.icon}`}>
-                  <Icon className={`h-5 w-5 ${colorScheme.iconColor}`} />
+                <p className="text-base font-semibold text-neutral-600">{title}</p>
+                <div className={`p-3 rounded-full ${colorScheme.icon}`}>
+                  <Icon className={`h-6 w-6 ${colorScheme.iconColor}`} />
                 </div>
               </div>
               
               <div className="space-y-1">
-                <p className="text-2xl sm:text-3xl font-bold text-neutral-900 break-all">{value}</p>
+                <p className="text-3xl sm:text-4xl font-bold text-neutral-900 break-all">{value}</p>
                 {trend && trendValue && (
-                  <div className={`flex items-center gap-1 text-xs font-medium ${
+                  <div className={`flex items-center gap-1 text-sm font-medium ${
                     trend === 'up' ? 'text-success-600' : 'text-red-600'
                   }`}>
-                    {trend === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {trend === 'up' ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                     <span>{trendValue}</span>
                   </div>
                 )}
@@ -132,12 +132,12 @@ export default function AdminDashboard() {
     <Link href={href}>
       <Button 
         variant={variant}
-        className="w-full h-auto py-3 px-4 justify-start gap-3 hover:bg-emerald-50 hover:border-emerald-300 border-2 transition-all"
+        className="w-full h-auto py-4 px-4 justify-start gap-3 hover:bg-emerald-50 hover:border-emerald-300 border-2 transition-all"
       >
-        <div className="p-2 rounded-lg bg-emerald-100">
-          <Icon className="h-4 w-4 text-emerald-600" />
+        <div className="p-2.5 rounded-lg bg-emerald-100">
+          <Icon className="h-5 w-5 text-emerald-600" />
         </div>
-        <span className="font-medium text-sm">{label}</span>
+        <span className="font-semibold text-base">{label}</span>
       </Button>
     </Link>
   )
@@ -148,14 +148,14 @@ export default function AdminDashboard() {
         
         {/* Modern Header */}
         <div className="animate-slide-down">
-          <div className="flex items-center gap-2 text-emerald-600 text-xs sm:text-sm font-medium mb-2">
-            <Activity className="h-4 w-4" />
+          <div className="flex items-center gap-2 text-emerald-600 text-sm font-medium mb-2">
+            <Activity className="h-5 w-5" />
             <span>DASHBOARD OVERVIEW</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-neutral-900 tracking-tight">
+          <h1 className="text-4xl sm:text-5xl font-bold text-neutral-900 tracking-tight">
             Welcome back
           </h1>
-          <p className="text-neutral-600 mt-2 text-base sm:text-lg">
+          <p className="text-neutral-600 mt-2 text-lg sm:text-xl">
             Here's what's happening with your business today
           </p>
         </div>
@@ -194,10 +194,10 @@ export default function AdminDashboard() {
 
         {/* Quick Actions */}
         <Card className="border-2 border-neutral-200 shadow-md animate-scale-in">
-          <CardContent className="p-4 sm:p-6">
-            <div className="mb-4 sm:mb-6">
-              <h2 className="text-xl sm:text-2xl font-bold text-neutral-900">Quick Actions</h2>
-              <p className="text-neutral-600 text-xs sm:text-sm mt-1">Frequently used tasks</p>
+          <CardContent className="p-5 sm:p-6">
+            <div className="mb-5 sm:mb-6">
+              <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900">Quick Actions</h2>
+              <p className="text-neutral-600 text-base sm:text-lg mt-1">Frequently used tasks</p>
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -230,18 +230,18 @@ export default function AdminDashboard() {
           
           {/* Overdue Retailers */}
           <Card className="border-2 border-neutral-200 shadow-md animate-slide-up">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
+            <CardContent className="p-5 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 sm:mb-6 gap-2">
                 <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-neutral-900">Overdue Payments</h3>
-                  <p className="text-neutral-600 text-xs sm:text-sm mt-1">
+                  <h3 className="text-xl sm:text-2xl font-bold text-neutral-900">Overdue Payments</h3>
+                  <p className="text-neutral-600 text-base sm:text-lg mt-1">
                     {metrics?.overdueRetailers?.length || 0} retailers need attention
                   </p>
                 </div>
                 <Link href="/dashboard/retailers?filter=overdue">
-                  <Button variant="ghost" size="sm" className="gap-2 text-xs sm:text-sm">
+                  <Button variant="ghost" size="sm" className="gap-2 text-sm sm:text-base">
                     View All
-                    <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
               </div>
@@ -249,30 +249,30 @@ export default function AdminDashboard() {
               <div className="space-y-3">
                 {loading ? (
                   [1, 2, 3].map(i => (
-                    <div key={i} className="h-16 bg-neutral-100 rounded-xl animate-shimmer" />
+                    <div key={i} className="h-20 bg-neutral-100 rounded-xl animate-shimmer" />
                   ))
                 ) : metrics?.overdueRetailers?.length > 0 ? (
                   metrics.overdueRetailers.slice(0, 5).map((retailer) => (
-                    <div key={retailer.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-red-50 border-2 border-red-200 rounded-xl hover:shadow-md transition-all duration-200 gap-2">
+                    <div key={retailer.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 bg-red-50 border-2 border-red-200 rounded-xl hover:shadow-md transition-all duration-200 gap-3">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
-                          <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <div className="p-2.5 bg-red-100 rounded-lg flex-shrink-0">
+                          <AlertTriangle className="h-5 w-5 text-red-600" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-neutral-900 text-sm truncate">{retailer.shop_name}</p>
-                          <p className="text-xs text-neutral-600 truncate">{retailer.owner_name}</p>
+                          <p className="font-bold text-neutral-900 text-base truncate">{retailer.shop_name}</p>
+                          <p className="text-sm text-neutral-600 truncate">{retailer.owner_name}</p>
                         </div>
                       </div>
-                      <div className="text-left sm:text-right pl-10 sm:pl-0">
-                        <p className="font-bold text-red-600 text-sm sm:text-base">{formatCurrency(retailer.current_balance)}</p>
-                        <p className="text-xs text-neutral-500">Overdue</p>
+                      <div className="text-left sm:text-right pl-11 sm:pl-0">
+                        <p className="font-bold text-red-600 text-lg">{formatCurrency(retailer.current_balance)}</p>
+                        <p className="text-sm text-neutral-500">Overdue</p>
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="text-center py-12">
                     <CheckCircle2 className="h-12 w-12 text-success-500 mx-auto mb-3" />
-                    <p className="text-neutral-600">No overdue payments</p>
+                    <p className="text-neutral-600 text-base">No overdue payments</p>
                   </div>
                 )}
               </div>
@@ -281,18 +281,18 @@ export default function AdminDashboard() {
 
           {/* Low Stock Products */}
           <Card className="border-2 border-neutral-200 shadow-md animate-slide-up">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
+            <CardContent className="p-5 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 sm:mb-6 gap-2">
                 <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-neutral-900">Low Stock Alert</h3>
-                  <p className="text-neutral-600 text-xs sm:text-sm mt-1">
+                  <h3 className="text-xl sm:text-2xl font-bold text-neutral-900">Low Stock Alert</h3>
+                  <p className="text-neutral-600 text-base sm:text-lg mt-1">
                     {metrics?.lowStockProducts?.length || 0} products need restocking
                   </p>
                 </div>
                 <Link href="/dashboard/products?filter=low-stock">
-                  <Button variant="ghost" size="sm" className="gap-2 text-xs sm:text-sm">
+                  <Button variant="ghost" size="sm" className="gap-2 text-sm sm:text-base">
                     View All
-                    <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
               </div>
@@ -300,30 +300,30 @@ export default function AdminDashboard() {
               <div className="space-y-3">
                 {loading ? (
                   [1, 2, 3].map(i => (
-                    <div key={i} className="h-16 bg-neutral-100 rounded-xl animate-shimmer" />
+                    <div key={i} className="h-20 bg-neutral-100 rounded-xl animate-shimmer" />
                   ))
                 ) : metrics?.lowStockProducts?.length > 0 ? (
                   metrics.lowStockProducts.slice(0, 5).map((product) => (
-                    <div key={product.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-orange-50 border-2 border-orange-200 rounded-xl hover:shadow-md transition-all duration-200 gap-2">
+                    <div key={product.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 bg-orange-50 border-2 border-orange-200 rounded-xl hover:shadow-md transition-all duration-200 gap-3">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0">
-                          <Package className="h-4 w-4 text-orange-600" />
+                        <div className="p-2.5 bg-orange-100 rounded-lg flex-shrink-0">
+                          <Package className="h-5 w-5 text-orange-600" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-neutral-900 text-sm truncate">{product.name}</p>
-                          <p className="text-xs text-neutral-600">SKU: {product.sku || 'N/A'}</p>
+                          <p className="font-bold text-neutral-900 text-base truncate">{product.name}</p>
+                          <p className="text-sm text-neutral-600">SKU: {product.sku || 'N/A'}</p>
                         </div>
                       </div>
-                      <div className="text-left sm:text-right pl-10 sm:pl-0">
-                        <p className="font-bold text-orange-600 text-sm sm:text-base">{product.stock_quantity} left</p>
-                        <p className="text-xs text-neutral-500">Restock soon</p>
+                      <div className="text-left sm:text-right pl-11 sm:pl-0">
+                        <p className="font-bold text-orange-600 text-lg">{product.stock_quantity} left</p>
+                        <p className="text-sm text-neutral-500">Restock soon</p>
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="text-center py-12">
                     <CheckCircle2 className="h-12 w-12 text-success-500 mx-auto mb-3" />
-                    <p className="text-neutral-600">All products well stocked</p>
+                    <p className="text-neutral-600 text-base">All products well stocked</p>
                   </div>
                 )}
               </div>
@@ -333,16 +333,16 @@ export default function AdminDashboard() {
 
         {/* Recent Activity */}
         <Card className="border-2 border-neutral-200 shadow-md animate-fade-in">
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
+          <CardContent className="p-5 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 sm:mb-6 gap-2">
               <div>
-                <h3 className="text-lg sm:text-xl font-bold text-neutral-900">Recent Activity</h3>
-                <p className="text-neutral-600 text-xs sm:text-sm mt-1">Latest updates from your business</p>
+                <h3 className="text-xl sm:text-2xl font-bold text-neutral-900">Recent Activity</h3>
+                <p className="text-neutral-600 text-base sm:text-lg mt-1">Latest updates from your business</p>
               </div>
               <Link href="/dashboard/activity-log">
-                <Button variant="ghost" size="sm" className="gap-2 text-xs sm:text-sm">
+                <Button variant="ghost" size="sm" className="gap-2 text-sm sm:text-base">
                   View All
-                  <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             </div>
@@ -469,15 +469,15 @@ function ActivityItem({ icon, title, description, time, color = "blue" }) {
 
   return (
     <div className="flex items-start gap-4 p-4 rounded-xl hover:bg-neutral-50 transition-colors duration-200">
-      <div className={`p-2 rounded-lg ${colors[color]} flex-shrink-0`}>
+      <div className={`p-2.5 rounded-lg ${colors[color]} flex-shrink-0`}>
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-neutral-900">{title}</p>
-        <p className="text-sm text-neutral-600 truncate">{description}</p>
+        <p className="font-bold text-neutral-900 text-base">{title}</p>
+        <p className="text-base text-neutral-600 truncate mt-0.5">{description}</p>
       </div>
-      <div className="flex items-center gap-1 text-neutral-500 text-xs flex-shrink-0">
-        <Clock className="h-3 w-3" />
+      <div className="flex items-center gap-1 text-neutral-500 text-sm flex-shrink-0">
+        <Clock className="h-4 w-4" />
         {time}
       </div>
     </div>
