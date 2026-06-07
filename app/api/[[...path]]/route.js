@@ -527,8 +527,26 @@ async function handleRoute(request, { params }) {
         await logAuditEvent(
           supabase,
           userContext,
-          'UPDATE_CREDIT_LIMIT',
-          `Updated credit limit for ${body.shop_name} to ${body.credit_limit}`,
+          'update',
+          {
+            shop_name: body.shop_name,
+            credit_limit: body.credit_limit,
+            field_changed: 'credit_limit'
+          },
+          'retailer',
+          retailerId
+        )
+      } else {
+        // Log general retailer update
+        await logAuditEvent(
+          supabase,
+          userContext,
+          'update',
+          {
+            shop_name: body.shop_name,
+            owner_name: body.owner_name,
+            status: body.status
+          },
           'retailer',
           retailerId
         )
@@ -544,6 +562,15 @@ async function handleRoute(request, { params }) {
       }
 
       const retailerId = route.split('/')[2]
+      
+      // Get retailer details before deleting
+      const { data: retailer } = await supabase
+        .from('retailers')
+        .select('shop_name, owner_name')
+        .eq('id', retailerId)
+        .eq('business_id', userContext.businessId)
+        .single()
+      
       const { error } = await supabase
         .from('retailers')
         .delete()
@@ -551,6 +578,20 @@ async function handleRoute(request, { params }) {
         .eq('business_id', userContext.businessId)
 
       if (error) throw error
+      
+      // Log audit event
+      await logAuditEvent(
+        supabase,
+        userContext,
+        'delete',
+        {
+          shop_name: retailer?.shop_name || 'Unknown',
+          owner_name: retailer?.owner_name
+        },
+        'retailer',
+        retailerId
+      )
+      
       return handleCORS(NextResponse.json({ success: true }))
     }
 
@@ -626,6 +667,22 @@ async function handleRoute(request, { params }) {
         .single()
 
       if (error) throw error
+      
+      // Log audit event
+      await logAuditEvent(
+        supabase,
+        userContext,
+        'create',
+        {
+          name: body.name,
+          sku: body.sku,
+          selling_price: body.selling_price,
+          stock_quantity: body.stock_quantity
+        },
+        'product',
+        data.id
+      )
+      
       return handleCORS(NextResponse.json(data))
     }
 
@@ -654,6 +711,22 @@ async function handleRoute(request, { params }) {
         .single()
 
       if (error) throw error
+      
+      // Log audit event
+      await logAuditEvent(
+        supabase,
+        userContext,
+        'update',
+        {
+          name: body.name,
+          sku: body.sku,
+          selling_price: body.selling_price,
+          stock_quantity: body.stock_quantity
+        },
+        'product',
+        productId
+      )
+      
       return handleCORS(NextResponse.json(data))
     }
 
@@ -1142,6 +1215,23 @@ async function handleRoute(request, { params }) {
       sendLargeOrderAlert(userContext.businessId, order, retailer, body.items, 100000).catch(err => {
         console.error('Failed to send large order alert:', err)
       })
+
+      // Log audit event
+      await logAuditEvent(
+        supabase,
+        userContext,
+        'create',
+        {
+          order_id: order.id,
+          retailer_name: retailer.shop_name,
+          total_amount: body.total_amount,
+          payment_status: body.payment_status,
+          order_status: orderStatus,
+          requires_approval: requiresCreditApproval
+        },
+        'order',
+        order.id
+      )
 
       return handleCORS(NextResponse.json({
         ...order,
@@ -1805,6 +1895,23 @@ async function handleRoute(request, { params }) {
         }
       }
 
+      // Log audit event for order status change
+      await logAuditEvent(
+        supabase,
+        userContext,
+        'update',
+        {
+          order_id: orderId,
+          action: body.action,
+          new_status: updateData.order_status || order.order_status,
+          new_delivery_status: updateData.delivery_status || order.delivery_status,
+          driver_name: body.driver_name,
+          vehicle_number: body.vehicle_number
+        },
+        'order',
+        orderId
+      )
+
       return handleCORS(NextResponse.json({
         ...updatedOrder,
         message: notificationTitle || 'Order updated successfully'
@@ -2008,6 +2115,21 @@ async function handleRoute(request, { params }) {
       } catch (notifError) {
         console.error('Failed to send payment notification:', notifError)
       }
+
+      // Log audit event
+      await logAuditEvent(
+        supabase,
+        userContext,
+        'create',
+        {
+          retailer_id: body.retailer_id,
+          amount: body.amount_paid,
+          payment_method: body.payment_method,
+          new_balance: finalBalance
+        },
+        'payment',
+        payment.id
+      )
 
       return handleCORS(NextResponse.json(payment))
     }
