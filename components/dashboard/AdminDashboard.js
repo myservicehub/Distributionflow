@@ -61,60 +61,64 @@ export default function AdminDashboard() {
     return past.toLocaleDateString()
   }
 
-  // Modern KPI Card Component - Dark Theme
+  // Modern KPI Card Component - Mobile Optimized
   const ModernKPICard = ({ title, value, icon: Icon, trend, trendValue, color = "blue", loading }) => {
     const colorClasses = {
       blue: {
-        bg: "bg-emerald-900/40",
-        border: "border-emerald-700/50",
-        icon: "bg-emerald-500/20",
-        iconColor: "text-emerald-400",
-        text: "text-emerald-400"
+        bg: "bg-emerald-50",
+        icon: "bg-emerald-100",
+        iconColor: "text-emerald-600",
+        text: "text-emerald-700"
       },
       green: {
-        bg: "bg-success-900/40",
-        border: "border-success-700/50",
-        icon: "bg-success-500/20",
-        iconColor: "text-success-400",
-        text: "text-success-400"
+        bg: "bg-success-50",
+        icon: "bg-success-100",
+        iconColor: "text-success-600",
+        text: "text-success-700"
       },
       orange: {
-        bg: "bg-orange-900/40",
-        border: "border-orange-700/50",
-        icon: "bg-orange-500/20",
-        iconColor: "text-orange-400",
-        text: "text-orange-400"
+        bg: "bg-orange-50",
+        icon: "bg-orange-100",
+        iconColor: "text-orange-600",
+        text: "text-orange-700"
       },
       purple: {
-        bg: "bg-purple-900/40",
-        border: "border-purple-700/50",
-        icon: "bg-purple-500/20",
-        iconColor: "text-purple-400",
-        text: "text-purple-400"
+        bg: "bg-purple-50",
+        icon: "bg-purple-100",
+        iconColor: "text-purple-600",
+        text: "text-purple-700"
       }
     }
 
     const colorScheme = colorClasses[color]
 
     return (
-      <Card className={`${colorScheme.bg} border-2 ${colorScheme.border} shadow-md hover:shadow-lg transition-all duration-300`}>
+      <Card className={`${colorScheme.bg} border-2 border-neutral-200 shadow-md hover:shadow-lg transition-all duration-300`}>
         <CardContent className="p-4">
           {loading ? (
             <div className="space-y-3">
-              <div className="h-5 bg-neutral-700 rounded animate-shimmer w-28"></div>
-              <div className="h-10 bg-neutral-700 rounded animate-shimmer w-36"></div>
+              <div className="h-4 bg-neutral-200 rounded animate-shimmer w-24"></div>
+              <div className="h-8 bg-neutral-200 rounded animate-shimmer w-32"></div>
             </div>
           ) : (
-            <div className="space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-medium text-neutral-400 capitalize">{title}</p>
-                <div className={`p-2 rounded-lg ${colorScheme.icon} flex-shrink-0`}>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-neutral-600">{title}</p>
+                <div className={`p-2.5 rounded-full ${colorScheme.icon}`}>
                   <Icon className={`h-5 w-5 ${colorScheme.iconColor}`} />
                 </div>
               </div>
               
-              <div>
-                <p className="text-2xl sm:text-3xl font-bold text-white break-all">{value}</p>
+              <div className="space-y-1">
+                <p className="text-2xl sm:text-3xl font-bold text-neutral-900 break-all">{value}</p>
+                {trend && trendValue && (
+                  <div className={`flex items-center gap-1 text-xs font-medium ${
+                    trend === 'up' ? 'text-success-600' : 'text-red-600'
+                  }`}>
+                    {trend === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    <span>{trendValue}</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -123,64 +127,64 @@ export default function AdminDashboard() {
     )
   }
 
-  // Quick Action Button - Dark Theme
+  // Quick Action Button - Mobile Optimized
   const QuickActionBtn = ({ href, icon: Icon, label, variant = "outline" }) => (
     <Link href={href}>
       <Button 
         variant={variant}
-        className="w-full h-auto py-4 px-4 justify-start gap-3 bg-neutral-700/50 hover:bg-neutral-700 border-2 border-neutral-600 text-white transition-all"
+        className="w-full h-auto py-3 px-4 justify-start gap-3 hover:bg-emerald-50 hover:border-emerald-300 border-2 transition-all"
       >
-        <div className="p-2 rounded-lg bg-emerald-500/20 flex-shrink-0">
-          <Icon className="h-5 w-5 text-emerald-400" />
+        <div className="p-2 rounded-lg bg-emerald-100">
+          <Icon className="h-4 w-4 text-emerald-600" />
         </div>
-        <span className="font-medium text-base">{label}</span>
+        <span className="font-medium text-sm">{label}</span>
       </Button>
     </Link>
   )
 
   return (
-    <div className="min-h-screen bg-neutral-900 overflow-x-hidden">
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         
         {/* Modern Header */}
-        <div className="animate-slide-down w-full">
-          <div className="flex items-center gap-2 text-emerald-500 text-sm font-medium mb-2">
-            <Activity className="h-5 w-5 flex-shrink-0" />
-            <span className="truncate">DASHBOARD OVERVIEW</span>
+        <div className="animate-slide-down">
+          <div className="flex items-center gap-2 text-emerald-600 text-xs sm:text-sm font-medium mb-2">
+            <Activity className="h-4 w-4" />
+            <span>DASHBOARD OVERVIEW</span>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight break-words">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-neutral-900 tracking-tight">
             Welcome back
           </h1>
-          <p className="text-neutral-400 mt-2 text-lg sm:text-xl break-words">
+          <p className="text-neutral-600 mt-2 text-base sm:text-lg">
             Here's what's happening with your business today
           </p>
         </div>
 
-        {/* KPI Grid - 2x2 on Mobile, 4 columns on Desktop */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 animate-slide-up w-full">
+        {/* KPI Grid - Responsive */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-slide-up">
           <ModernKPICard
-            title="Today's sales"
+            title="Today's Sales"
             value={formatCurrency(metrics?.totalSalesToday)}
             icon={DollarSign}
             color="blue"
             loading={loading}
           />
           <ModernKPICard
-            title="Monthly revenue"
+            title="Monthly Revenue"
             value={formatCurrency(metrics?.totalSalesMonth)}
             icon={TrendingUp}
             color="green"
             loading={loading}
           />
           <ModernKPICard
-            title="Outstanding debt"
+            title="Outstanding Debt"
             value={formatCurrency(metrics?.totalDebt)}
             icon={AlertTriangle}
             color="orange"
             loading={loading}
           />
           <ModernKPICard
-            title="Low stock items"
+            title="Low Stock Items"
             value={metrics?.lowStockProducts?.length || 0}
             icon={Package}
             color="purple"
@@ -189,81 +193,86 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <Card className="bg-neutral-800 border-2 border-neutral-700 shadow-md animate-scale-in w-full overflow-hidden">
-          <CardContent className="p-5 sm:p-6">
-            <div className="mb-5 sm:mb-6">
-              <h2 className="text-2xl sm:text-3xl font-bold text-white break-words">Quick actions</h2>
-              <p className="text-neutral-400 text-base sm:text-lg mt-1 break-words">Frequently used tasks</p>
+        <Card className="border-2 border-neutral-200 shadow-md animate-scale-in">
+          <CardContent className="p-4 sm:p-6">
+            <div className="mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-neutral-900">Quick Actions</h2>
+              <p className="text-neutral-600 text-xs sm:text-sm mt-1">Frequently used tasks</p>
             </div>
             
-            <div className="grid grid-cols-1 gap-3 w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <QuickActionBtn 
                 href="/dashboard/retailers" 
                 icon={Users} 
-                label="Add retailer" 
+                label="Add Retailer" 
               />
               <QuickActionBtn 
                 href="/dashboard/products" 
                 icon={Package} 
-                label="Add product"
+                label="Add Product"
               />
               <QuickActionBtn 
                 href="/dashboard/orders" 
                 icon={ShoppingCart} 
-                label="Create order"
+                label="Create Order"
               />
               <QuickActionBtn 
                 href="/dashboard/inventory" 
                 icon={Warehouse} 
-                label="Stock management"
+                label="Stock Management"
               />
             </div>
           </CardContent>
         </Card>
 
-        {/* Data Grid - Single Column on Mobile */}
-        <div className="grid grid-cols-1 gap-4 sm:gap-6 w-full">
+        {/* Data Grid - Two Columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           
           {/* Overdue Retailers */}
-          <Card className="bg-neutral-800 border-2 border-neutral-700 shadow-md animate-slide-up w-full overflow-hidden">
-            <CardContent className="p-5 sm:p-6">
-              <div className="flex flex-col gap-2 mb-5">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl sm:text-2xl font-bold text-white">Overdue payments</h3>
-                  <Link href="/dashboard/retailers?filter=overdue" className="flex-shrink-0">
-                    <Button variant="ghost" size="sm" className="gap-2 text-sm text-emerald-400 hover:text-emerald-300 hover:bg-neutral-700">
-                      View all →
-                    </Button>
-                  </Link>
+          <Card className="border-2 border-neutral-200 shadow-md animate-slide-up">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
+                <div>
+                  <h3 className="text-lg sm:text-xl font-bold text-neutral-900">Overdue Payments</h3>
+                  <p className="text-neutral-600 text-xs sm:text-sm mt-1">
+                    {metrics?.overdueRetailers?.length || 0} retailers need attention
+                  </p>
                 </div>
-                <p className="text-neutral-400 text-sm">
-                  {metrics?.overdueRetailers?.length || 0} retailers need attention
-                </p>
+                <Link href="/dashboard/retailers?filter=overdue">
+                  <Button variant="ghost" size="sm" className="gap-2 text-xs sm:text-sm">
+                    View All
+                    <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                  </Button>
+                </Link>
               </div>
 
-              <div className="w-full">
+              <div className="space-y-3">
                 {loading ? (
                   [1, 2, 3].map(i => (
-                    <div key={i} className="h-20 bg-neutral-700 rounded-xl animate-shimmer" />
+                    <div key={i} className="h-16 bg-neutral-100 rounded-xl animate-shimmer" />
                   ))
                 ) : metrics?.overdueRetailers?.length > 0 ? (
                   metrics.overdueRetailers.slice(0, 5).map((retailer) => (
-                    <div key={retailer.id} className="flex items-center justify-between p-4 bg-neutral-700/50 border border-neutral-600 rounded-xl hover:bg-neutral-700 transition-all duration-200 w-full">
+                    <div key={retailer.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-red-50 border-2 border-red-200 rounded-xl hover:shadow-md transition-all duration-200 gap-2">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="p-2 bg-emerald-500/20 rounded-lg flex-shrink-0">
-                          <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                        <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
+                          <AlertTriangle className="h-4 w-4 text-red-600" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-white text-base truncate">{retailer.shop_name}</p>
-                          <p className="text-sm text-neutral-400 truncate">{retailer.owner_name}</p>
+                          <p className="font-bold text-neutral-900 text-sm truncate">{retailer.shop_name}</p>
+                          <p className="text-xs text-neutral-600 truncate">{retailer.owner_name}</p>
                         </div>
+                      </div>
+                      <div className="text-left sm:text-right pl-10 sm:pl-0">
+                        <p className="font-bold text-red-600 text-sm sm:text-base">{formatCurrency(retailer.current_balance)}</p>
+                        <p className="text-xs text-neutral-500">Overdue</p>
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="text-center py-12">
-                    <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
-                    <p className="text-neutral-400 text-base">No overdue payments</p>
+                    <CheckCircle2 className="h-12 w-12 text-success-500 mx-auto mb-3" />
+                    <p className="text-neutral-600">No overdue payments</p>
                   </div>
                 )}
               </div>
@@ -271,44 +280,50 @@ export default function AdminDashboard() {
           </Card>
 
           {/* Low Stock Products */}
-          <Card className="bg-neutral-800 border-2 border-neutral-700 shadow-md animate-slide-up w-full overflow-hidden">
-            <CardContent className="p-5 sm:p-6">
-              <div className="flex flex-col gap-2 mb-5">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl sm:text-2xl font-bold text-white">Low stock alert</h3>
-                  <Link href="/dashboard/products?filter=low-stock" className="flex-shrink-0">
-                    <Button variant="ghost" size="sm" className="gap-2 text-sm text-emerald-400 hover:text-emerald-300 hover:bg-neutral-700">
-                      View all →
-                    </Button>
-                  </Link>
+          <Card className="border-2 border-neutral-200 shadow-md animate-slide-up">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
+                <div>
+                  <h3 className="text-lg sm:text-xl font-bold text-neutral-900">Low Stock Alert</h3>
+                  <p className="text-neutral-600 text-xs sm:text-sm mt-1">
+                    {metrics?.lowStockProducts?.length || 0} products need restocking
+                  </p>
                 </div>
-                <p className="text-neutral-400 text-sm">
-                  {metrics?.lowStockProducts?.length || 0} products need restocking
-                </p>
+                <Link href="/dashboard/products?filter=low-stock">
+                  <Button variant="ghost" size="sm" className="gap-2 text-xs sm:text-sm">
+                    View All
+                    <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                  </Button>
+                </Link>
               </div>
 
-              <div className="w-full">
+              <div className="space-y-3">
                 {loading ? (
                   [1, 2, 3].map(i => (
-                    <div key={i} className="h-20 bg-neutral-700 rounded-xl animate-shimmer" />
+                    <div key={i} className="h-16 bg-neutral-100 rounded-xl animate-shimmer" />
                   ))
                 ) : metrics?.lowStockProducts?.length > 0 ? (
                   metrics.lowStockProducts.slice(0, 5).map((product) => (
-                    <div key={product.id} className="flex items-center justify-between p-4 bg-neutral-700/50 border border-neutral-600 rounded-xl hover:bg-neutral-700 transition-all duration-200 w-full">
+                    <div key={product.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-orange-50 border-2 border-orange-200 rounded-xl hover:shadow-md transition-all duration-200 gap-2">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="p-2 bg-emerald-500/20 rounded-lg flex-shrink-0">
-                          <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                        <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0">
+                          <Package className="h-4 w-4 text-orange-600" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-bold text-white text-base truncate">{product.name}</p>
+                          <p className="font-bold text-neutral-900 text-sm truncate">{product.name}</p>
+                          <p className="text-xs text-neutral-600">SKU: {product.sku || 'N/A'}</p>
                         </div>
+                      </div>
+                      <div className="text-left sm:text-right pl-10 sm:pl-0">
+                        <p className="font-bold text-orange-600 text-sm sm:text-base">{product.stock_quantity} left</p>
+                        <p className="text-xs text-neutral-500">Restock soon</p>
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="text-center py-12">
-                    <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
-                    <p className="text-neutral-400 text-base">All products well stocked</p>
+                    <CheckCircle2 className="h-12 w-12 text-success-500 mx-auto mb-3" />
+                    <p className="text-neutral-600">All products well stocked</p>
                   </div>
                 )}
               </div>
@@ -317,18 +332,19 @@ export default function AdminDashboard() {
         </div>
 
         {/* Recent Activity */}
-        <Card className="bg-neutral-800 border-2 border-neutral-700 shadow-md animate-fade-in w-full overflow-hidden">
-          <CardContent className="p-5 sm:p-6">
-            <div className="flex flex-col gap-2 mb-5">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl sm:text-2xl font-bold text-white">Recent activity</h3>
-                <Link href="/dashboard/activity-log" className="flex-shrink-0">
-                  <Button variant="ghost" size="sm" className="gap-2 text-sm text-emerald-400 hover:text-emerald-300 hover:bg-neutral-700">
-                    View all →
-                  </Button>
-                </Link>
+        <Card className="border-2 border-neutral-200 shadow-md animate-fade-in">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
+              <div>
+                <h3 className="text-lg sm:text-xl font-bold text-neutral-900">Recent Activity</h3>
+                <p className="text-neutral-600 text-xs sm:text-sm mt-1">Latest updates from your business</p>
               </div>
-              <p className="text-neutral-400 text-sm">Latest updates from your business</p>
+              <Link href="/dashboard/activity-log">
+                <Button variant="ghost" size="sm" className="gap-2 text-xs sm:text-sm">
+                  View All
+                  <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                </Button>
+              </Link>
             </div>
 
             <div className="space-y-4">
@@ -429,8 +445,8 @@ export default function AdminDashboard() {
                 })
               ) : (
                 <div className="text-center py-12">
-                  <Activity className="h-12 w-12 text-neutral-600 mx-auto mb-3" />
-                  <p className="text-neutral-400">No recent activity</p>
+                  <Activity className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
+                  <p className="text-neutral-600">No recent activity</p>
                 </div>
               )}
             </div>
@@ -442,27 +458,27 @@ export default function AdminDashboard() {
   )
 }
 
-// Activity Item Component - Dark Theme
+// Activity Item Component
 function ActivityItem({ icon, title, description, time, color = "blue" }) {
   const colors = {
-    blue: "bg-emerald-500/20 text-emerald-400",
-    green: "bg-success-500/20 text-success-400",
-    purple: "bg-purple-500/20 text-purple-400",
-    orange: "bg-orange-500/20 text-orange-400"
+    blue: "bg-primary-100 text-primary-600",
+    green: "bg-success-100 text-success-600",
+    purple: "bg-purple-100 text-purple-600",
+    orange: "bg-orange-100 text-orange-600"
   }
 
   return (
-    <div className="flex items-start gap-3 p-4 rounded-xl bg-neutral-700/30 hover:bg-neutral-700/50 transition-colors duration-200 border border-neutral-700">
+    <div className="flex items-start gap-4 p-4 rounded-xl hover:bg-neutral-50 transition-colors duration-200">
       <div className={`p-2 rounded-lg ${colors[color]} flex-shrink-0`}>
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-bold text-white text-sm">{title}</p>
-        <p className="text-sm text-neutral-400 truncate mt-0.5">{description}</p>
+        <p className="font-semibold text-neutral-900">{title}</p>
+        <p className="text-sm text-neutral-600 truncate">{description}</p>
       </div>
       <div className="flex items-center gap-1 text-neutral-500 text-xs flex-shrink-0">
         <Clock className="h-3 w-3" />
-        <span className="text-xs">{time}</span>
+        {time}
       </div>
     </div>
   )
