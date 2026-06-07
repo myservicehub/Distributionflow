@@ -280,55 +280,91 @@ export async function POST(request) {
     if (route === 'verify-payment') {
       const { reference } = body
 
+      console.log('Verifying payment with reference:', reference)
+
       // Verify transaction with Paystack
       const transaction = await verifyTransaction(reference)
+
+      console.log('Transaction verification result:', transaction.status)
 
       if (transaction.status !== 'success') {
         return handleCORS(NextResponse.json({ 
           success: false, 
-          message: 'Payment verification failed' 
+          error: 'Payment verification failed',
+          message: 'Payment could not be verified with Paystack' 
         }, { status: 400 }))
       }
 
+      // Find subscription by business_id and status pending (most recent)
+      const { data: subscription, error: subError } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('business_id', userProfile.business_id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      console.log('Found subscription:', subscription?.id, 'Error:', subError)
+
+      if (!subscription) {
+        return handleCORS(NextResponse.json({ 
+          success: false, 
+          error: 'No pending subscription found',
+          message: 'Could not find a subscription to activate' 
+        }, { status: 404 }))
+      }
+
       // Update subscription to active
-      const { data: subscription } = await supabase
+      const { data: updatedSubscription, error: updateError } = await supabase
         .from('subscriptions')
         .update({
           status: 'active',
           payment_provider_reference: transaction.reference,
           next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
         })
-        .eq('payment_provider_reference', reference)
+        .eq('id', subscription.id)
         .select()
         .single()
+
+      if (updateError || !updatedSubscription) {
+        console.error('Error updating subscription:', updateError)
+        return handleCORS(NextResponse.json({ 
+          success: false, 
+          error: 'Failed to activate subscription',
+          message: updateError?.message || 'Database update failed' 
+        }, { status: 500 }))
+      }
+
+      console.log('Subscription updated successfully')
 
       // Update business subscription status
       await updateBusinessSubscription(userProfile.business_id, {
         subscription_status: 'active',
         subscription_start: new Date().toISOString(),
         subscription_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        plan_id: subscription.plan_id,
-        billing_cycle: subscription.billing_cycle
+        plan_id: updatedSubscription.plan_id,
+        billing_cycle: updatedSubscription.billing_cycle
       })
 
       // Log event
       await logSubscriptionEvent({
         business_id: userProfile.business_id,
-        subscription_id: subscription.id,
+        subscription_id: updatedSubscription.id,
         event_type: 'subscription_created',
         new_status: 'active',
-        new_plan_id: subscription.plan_id,
+        new_plan_id: updatedSubscription.plan_id,
         metadata: { transaction_reference: reference, amount: transaction.amount }
       })
 
       // Create invoice
       await createInvoice({
-        subscription_id: subscription.id,
+        subscription_id: updatedSubscription.id,
         business_id: userProfile.business_id,
-        amount: subscription.total_amount,
-        base_price: subscription.base_price,
-        extra_users_count: subscription.extra_users,
-        extra_users_cost: subscription.extra_users * subscription.price_per_extra_user,
+        amount: updatedSubscription.total_amount,
+        base_price: updatedSubscription.base_price,
+        extra_users_count: updatedSubscription.extra_users || 0,
+        extra_users_cost: (updatedSubscription.extra_users || 0) * (updatedSubscription.price_per_extra_user || 0),
         billing_period_start: new Date().toISOString(),
         billing_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         status: 'paid',
@@ -338,7 +374,12 @@ export async function POST(request) {
 
       return handleCORS(NextResponse.json({ 
         success: true, 
-        message: 'Subscription activated successfully' 
+        message: 'Subscription activated successfully',
+        subscription: {
+          id: updatedSubscription.id,
+          plan_name: updatedSubscription.plan_id,
+          status: updatedSubscription.status
+        }
       }))
     }
 
