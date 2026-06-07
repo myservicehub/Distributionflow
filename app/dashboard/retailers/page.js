@@ -126,6 +126,7 @@ export default function RetailersPage() {
     shop_name: '',
     owner_name: '',
     phone: '',
+    email: '',
     address: '',
     assigned_rep_id: '',
     credit_limit: '0',
@@ -203,6 +204,7 @@ export default function RetailersPage() {
       shop_name: retailer.shop_name,
       owner_name: retailer.owner_name || '',
       phone: retailer.phone || '',
+      email: retailer.email || '',
       address: retailer.address || '',
       assigned_rep_id: retailer.assigned_rep_id || '',
       credit_limit: retailer.credit_limit?.toString() || '0',
@@ -230,6 +232,7 @@ export default function RetailersPage() {
       shop_name: '',
       owner_name: '',
       phone: '',
+      email: '',
       address: '',
       assigned_rep_id: '',
       credit_limit: '0',
@@ -295,6 +298,17 @@ export default function RetailersPage() {
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 />
+              </div>
+              <div>
+                <Label htmlFor="email">Email (Optional)</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="retailer@example.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
+                <p className="text-xs text-neutral-500 mt-1">Used for sending invoices and receipts</p>
               </div>
               <div>
                 <Label htmlFor="address">Address</Label>

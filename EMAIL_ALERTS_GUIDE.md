@@ -164,36 +164,415 @@ Quick Stats:
 [View Full Dashboard Button]
 ```
 
-### Setup Instructions
+### 🚀 Production Setup Instructions (Step-by-Step)
 
-**Option 1: cron-job.org (Recommended - Free)**
-1. Go to https://cron-job.org
-2. Create account
-3. Add new cron job:
-   - Title: "DistributionFlow Daily Summary"
-   - URL: `https://your-netlify-url.com/api/alerts`
-   - Method: POST
-   - Request Body: `{"action":"send-daily-summary-all","cron_key":"YOUR_SECRET_KEY"}`
-   - Schedule: Daily at 19:00 UTC (8 PM WAT)
+---
 
-**Option 2: Netlify Functions (Advanced)**
-Create `/netlify/functions/daily-alerts.js`:
+#### **STEP 1: Generate Secure Cron Key**
+
+First, generate a strong secret key for cron authentication:
+
+```bash
+# Option 1: Using OpenSSL (recommended)
+openssl rand -hex 32
+
+# Option 2: Using Node.js
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# Example output: a7f3c8b9e2d4f1a6c3b8e9f2d1a7c4b9e8f3d2a1c7b6e4f9d3a8c2b7e1f4d6a9
+```
+
+**Save this key** - you'll need it for both your app and the cron service.
+
+---
+
+#### **STEP 2: Add Cron Key to Environment Variables**
+
+Add the generated key to your production environment:
+
+**For Netlify/Vercel:**
+1. Go to your project dashboard
+2. Navigate to **Site settings** → **Environment variables**
+3. Add new variable:
+   - Key: `CRON_SECRET_KEY`
+   - Value: `your-generated-key-from-step-1`
+4. Click **Save**
+5. **Redeploy** your site for changes to take effect
+
+**Verify it's working:**
+```bash
+# In your deployed app, the endpoint should now validate the cron_key
+curl -X POST https://your-domain.com/api/alerts \
+  -H "Content-Type: application/json" \
+  -d '{"action":"send-daily-summary-all","cron_key":"wrong-key"}'
+
+# Should return: {"error": "Unauthorized"}
+```
+
+---
+
+#### **STEP 3: Set Up Cron Jobs**
+
+Choose one of these options:
+
+---
+
+##### **Option 1: cron-job.org (FREE - Recommended for Most Users)**
+
+**Benefits:**
+- ✅ Completely free
+- ✅ No coding required
+- ✅ Reliable service
+- ✅ Email notifications on failures
+- ✅ Web dashboard to monitor jobs
+
+**Setup Instructions:**
+
+1. **Create Account**
+   - Go to https://cron-job.org
+   - Sign up for free account
+   - Verify your email
+
+2. **Add Daily Summary Job**
+   - Click **"Create Cronjob"**
+   - Fill in details:
+     - **Title:** `DistributionFlow - Daily Summary`
+     - **URL:** `https://your-actual-domain.com/api/alerts`
+     - **HTTP Method:** `POST`
+     - **Request Method:** Select `POST`
+   
+   - **Headers Section:**
+     ```
+     Content-Type: application/json
+     ```
+   
+   - **Request Body:**
+     ```json
+     {"action":"send-daily-summary-all","cron_key":"your-cron-key-from-step-1"}
+     ```
+   
+   - **Schedule:**
+     - **Every:** Day
+     - **At:** `19:00` (UTC) — This is 8 PM WAT (Nigeria time)
+     - **Time Zone:** UTC
+   
+   - **Notification Settings:**
+     - Enable "Notify me on failure"
+     - Add your email for alerts
+
+   - Click **Create**
+
+3. **Test Your Job**
+   - In your cron-job.org dashboard
+   - Find your job and click **"Execute now"**
+   - Check "History" tab for results
+   - Verify emails were sent by checking your inbox
+
+4. **Monitor**
+   - Check execution history weekly
+   - Set up failure notifications
+   - View logs in the dashboard
+
+**Screenshot Guide:**
+```
+[Dashboard] → [Cronjobs] → [Create Cronjob]
+Title: DistributionFlow - Daily Summary
+URL: https://your-domain.com/api/alerts
+Schedule: Every day at 19:00 (UTC)
+[Save]
+```
+
+---
+
+##### **Option 2: EasyCron.com (FREE Tier Available)**
+
+**Benefits:**
+- ✅ Free tier: 100 executions/month
+- ✅ Better execution logs
+- ✅ Webhook retry on failure
+
+**Setup:**
+1. Sign up at https://www.easycron.com
+2. Create new cron job:
+   - **Cron Expression:** `0 19 * * *` (Daily at 7 PM UTC)
+   - **URL:** `https://your-domain.com/api/alerts`
+   - **HTTP Method:** POST
+   - **POST Data:**
+     ```
+     action=send-daily-summary-all&cron_key=YOUR_CRON_KEY
+     ```
+3. Enable notifications
+4. Save and test
+
+---
+
+##### **Option 3: Netlify Scheduled Functions (Advanced)**
+
+**Benefits:**
+- ✅ Runs in same infrastructure as your app
+- ✅ No external dependencies
+- ✅ Free on Netlify
+
+**Setup:**
+
+1. **Create function file:**
+
+`/netlify/functions/scheduled-daily-alerts.js`
 ```javascript
-exports.handler = async () => {
-  const response = await fetch('https://your-domain.com/api/alerts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      action: 'send-daily-summary-all',
-      cron_key: process.env.CRON_SECRET_KEY
-    })
-  })
+// Netlify Scheduled Function
+// Triggers: Daily at 8 PM WAT (7 PM UTC)
+
+const fetch = require('node-fetch')
+
+exports.handler = async (event, context) => {
+  console.log('🕐 Running scheduled daily alerts...')
   
-  return { statusCode: 200, body: 'Sent' }
+  try {
+    const response = await fetch(`${process.env.URL}/api/alerts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'send-daily-summary-all',
+        cron_key: process.env.CRON_SECRET_KEY
+      })
+    })
+
+    const result = await response.json()
+    
+    console.log('✅ Daily alerts sent:', result)
+    
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: 'Daily alerts sent successfully',
+        result
+      })
+    }
+  } catch (error) {
+    console.error('❌ Error sending daily alerts:', error)
+    
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        error: 'Failed to send daily alerts',
+        details: error.message
+      })
+    }
+  }
 }
 ```
 
-Then set up Netlify scheduled function.
+2. **Configure schedule in netlify.toml:**
+
+Add to your `/netlify.toml` file:
+```toml
+[functions]
+  directory = "netlify/functions"
+
+[[functions.scheduled-daily-alerts]]
+  schedule = "0 19 * * *"  # Daily at 7 PM UTC (8 PM WAT)
+```
+
+3. **Deploy:**
+```bash
+git add netlify/functions/scheduled-daily-alerts.js netlify.toml
+git commit -m "Add scheduled daily email alerts"
+git push
+```
+
+4. **Verify in Netlify Dashboard:**
+   - Go to **Functions** tab
+   - You should see `scheduled-daily-alerts`
+   - Check execution logs
+
+---
+
+##### **Option 4: GitHub Actions (For GitHub-hosted projects)**
+
+**Setup:**
+
+Create `.github/workflows/daily-alerts.yml`:
+```yaml
+name: Send Daily Email Alerts
+
+on:
+  schedule:
+    # Runs at 7 PM UTC (8 PM WAT) every day
+    - cron: '0 19 * * *'
+  workflow_dispatch:  # Allows manual trigger for testing
+
+jobs:
+  send-alerts:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Trigger Daily Alerts
+        run: |
+          curl -X POST https://your-domain.com/api/alerts \
+            -H "Content-Type: application/json" \
+            -d '{"action":"send-daily-summary-all","cron_key":"${{ secrets.CRON_SECRET_KEY }}"}'
+      
+      - name: Check Status
+        run: echo "Daily alerts triggered successfully"
+```
+
+Add `CRON_SECRET_KEY` to your GitHub repository secrets:
+- Go to **Settings** → **Secrets and variables** → **Actions**
+- Add secret: `CRON_SECRET_KEY`
+
+---
+
+#### **STEP 4: Verify Setup**
+
+After setting up your cron job:
+
+1. **Trigger Manual Test:**
+   ```bash
+   # Direct API call to test
+   curl -X POST https://your-domain.com/api/alerts \
+     -H "Content-Type: application/json" \
+     -d '{"action":"send-daily-summary-all","cron_key":"your-actual-cron-key"}'
+   ```
+
+2. **Expected Response:**
+   ```json
+   {
+     "success": true,
+     "processed": 3,
+     "results": [
+       {
+         "businessId": "abc-123",
+         "businessName": "ABC Trading Store",
+         "success": true,
+         "sentTo": 2
+       }
+     ]
+   }
+   ```
+
+3. **Check Email Inbox:**
+   - Admins and managers should receive daily summary
+   - Check spam folder if not found
+
+4. **Monitor Logs:**
+   - Check your cron service dashboard
+   - View execution history
+   - Set up failure alerts
+
+---
+
+#### **STEP 5: Weekly & Monthly Alerts (Optional)**
+
+Set up additional cron jobs for weekly and monthly summaries:
+
+**Weekly Digest (Every Monday at 9 AM WAT = 8 AM UTC):**
+```json
+{
+  "action": "send-weekly-digest-all",
+  "cron_key": "your-cron-key"
+}
+```
+- **Cron Expression:** `0 8 * * 1` (Every Monday at 8 AM UTC)
+
+**Monthly Summary (1st of month at 9 AM WAT = 8 AM UTC):**
+```json
+{
+  "action": "send-monthly-summary-all",
+  "cron_key": "your-cron-key"
+}
+```
+- **Cron Expression:** `0 8 1 * *` (1st day of every month at 8 AM UTC)
+
+---
+
+#### **Production Checklist ✅**
+
+Before going live, ensure:
+
+- [ ] `CRON_SECRET_KEY` added to production environment
+- [ ] Site redeployed after adding env variable
+- [ ] Cron job created and tested
+- [ ] Manual test successful (check response)
+- [ ] Email received in inbox
+- [ ] Failure notifications configured
+- [ ] Execution logs monitored for first week
+
+---
+
+#### **Troubleshooting Production Issues**
+
+**Issue 1: "Unauthorized" Error**
+```json
+{"error": "Unauthorized"}
+```
+**Fix:** 
+- Verify `CRON_SECRET_KEY` matches in both:
+  - Your production environment variables
+  - Your cron job configuration
+- Redeploy your app after adding env variable
+
+---
+
+**Issue 2: No Emails Received**
+**Check:**
+1. Business has Business/Enterprise plan
+2. Users have active status
+3. Resend API key is valid
+4. Check application logs for errors
+
+**Debug:**
+```bash
+# Check logs (Netlify example)
+netlify logs --prod
+
+# Look for errors containing "email" or "alert"
+```
+
+---
+
+**Issue 3: Cron Job Not Executing**
+**Check:**
+1. Cron service dashboard shows "Success" status
+2. URL is correct (no trailing slash issues)
+3. Schedule is in correct timezone (UTC)
+4. Your production site is not sleeping (free tier limitations)
+
+---
+
+**Issue 4: Emails Going to Spam**
+**Fix:**
+1. Ask recipients to mark as "Not Spam"
+2. Verify Resend domain is properly configured
+3. Check Resend dashboard for delivery status
+
+---
+
+### 📊 Monitoring Your Alerts
+
+**Weekly Checklist:**
+- [ ] Check cron execution history
+- [ ] Verify email delivery rates
+- [ ] Review any failed jobs
+- [ ] Check user feedback
+
+**Monthly Review:**
+- [ ] Analyze alert engagement
+- [ ] Update alert thresholds if needed
+- [ ] Review and improve email templates
+
+---
+
+### 🎯 Recommended Schedule Summary
+
+| Alert Type | Frequency | Time (WAT) | Cron Expression |
+|-----------|-----------|------------|-----------------|
+| Daily Summary | Every day | 8:00 PM | `0 19 * * *` |
+| Weekly Digest | Every Monday | 9:00 AM | `0 8 * * 1` |
+| Monthly Summary | 1st of month | 9:00 AM | `0 8 1 * *` |
+
+**Note:** All times are in UTC. WAT = UTC + 1 hour.
 
 ---
 
