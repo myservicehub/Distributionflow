@@ -77,7 +77,7 @@ export default function BillingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          route: 'create-subscription-checkout',
+          route: 'initialize-payment',
           plan_id: planId,
           billing_cycle: 'monthly'
         })
@@ -85,11 +85,16 @@ export default function BillingPage() {
 
       const result = await response.json()
 
-      if (result.success && result.data.authorization_url) {
+      if (!response.ok) {
+        alert(result.error || 'Failed to create checkout session')
+        return
+      }
+
+      if (result.authorization_url) {
         // Redirect to Paystack checkout
-        window.location.href = result.data.authorization_url
+        window.location.href = result.authorization_url
       } else {
-        alert('Failed to create checkout session')
+        alert('No payment URL received. Please try again.')
       }
     } catch (error) {
       console.error('Error creating checkout:', error)

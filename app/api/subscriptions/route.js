@@ -192,10 +192,13 @@ export async function POST(request) {
   const body = await request.json()
   const route = body.route
 
+  console.log('POST /api/subscriptions - Route:', route, 'Body:', JSON.stringify(body))
+
   try {
     // Get authenticated user
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
+      console.log('POST /api/subscriptions - No user found')
       return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
     }
 
@@ -207,13 +210,17 @@ export async function POST(request) {
       .maybeSingle()
 
     if (!userProfile || !userProfile.business_id) {
+      console.log('POST /api/subscriptions - No user profile found')
       return handleCORS(NextResponse.json({ error: 'User profile not found' }, { status: 401 }))
     }
+
+    console.log('POST /api/subscriptions - User profile:', userProfile.role, userProfile.business_id)
 
     // ============================================
     // POST: Initialize Payment (Start Subscription)
     // ============================================
     if (route === 'initialize-payment') {
+      console.log('POST /api/subscriptions - Initialize payment route matched')
       // Only admins can manage subscriptions
       if (userProfile.role !== 'admin') {
         return handleCORS(NextResponse.json({ error: 'Only admins can manage subscriptions' }, { status: 403 }))
