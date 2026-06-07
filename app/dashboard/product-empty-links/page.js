@@ -296,14 +296,16 @@ export default function ProductEmptyLinksPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Product-Empty Links</h1>
-          <p className="text-muted-foreground mt-2">
-            Connect products to their corresponding empty bottles
-          </p>
-        </div>
-        <Button onClick={() => loadData()} variant="outline">
+      <div className="animate-slide-down">
+        <h1 className="text-3xl font-bold tracking-tight">Product-Empty Links</h1>
+        <p className="text-muted-foreground mt-2">
+          Connect products to their corresponding empty bottles
+        </p>
+        <Button 
+          onClick={() => loadData()} 
+          variant="outline" 
+          className="mt-4 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 border-2"
+        >
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
         </Button>
