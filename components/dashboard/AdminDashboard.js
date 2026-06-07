@@ -29,7 +29,7 @@ export default function AdminDashboard() {
 
   const fetchMetrics = async () => {
     try {
-      const response = await fetch('/api?route=/dashboard/metrics')
+      const response = await fetch('/api/dashboard/metrics')
       if (response.ok) {
         const data = await response.json()
         setMetrics(data)

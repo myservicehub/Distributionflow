@@ -260,47 +260,55 @@ async function handleRoute(request, { params }) {
       today.setHours(0, 0, 0, 0)
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
 
-      // Get total sales today (include both confirmed and completed orders)
+      // Get total sales today (include confirmed and completed orders)
       const { data: salesToday } = await supabase
         .from('orders')
         .select('total_amount')
         .eq('business_id', userContext.businessId)
         .gte('created_at', today.toISOString())
-        .in('status', ['confirmed', 'delivered'])
+        .in('order_status', ['confirmed', 'completed'])
 
       const totalSalesToday = salesToday?.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) || 0
 
-      // Get total sales this month (include both confirmed and completed orders)
+      // Get total sales this month (include confirmed and completed orders)
       const { data: salesMonth } = await supabase
         .from('orders')
         .select('total_amount')
         .eq('business_id', userContext.businessId)
         .gte('created_at', startOfMonth.toISOString())
-        .in('status', ['confirmed', 'delivered'])
+        .in('order_status', ['confirmed', 'completed'])
 
       const totalSalesMonth = salesMonth?.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) || 0
 
-      // Get total outstanding debt
+      // Get total outstanding debt (sum of all retailer balances)
       const { data: retailers } = await supabase
         .from('retailers')
         .select('current_balance')
         .eq('business_id', userContext.businessId)
+        .eq('status', 'active')
 
-      const totalDebt = retailers?.reduce((sum, retailer) => sum + parseFloat(retailer.current_balance), 0) || 0
+      const totalDebt = retailers?.reduce((sum, retailer) => sum + parseFloat(retailer.current_balance || 0), 0) || 0
 
       // Get overdue retailers (balance > credit limit)
-      const { data: overdueRetailers } = await supabase
+      const { data: allRetailers } = await supabase
         .from('retailers')
-        .select('id, shop_name, current_balance, credit_limit')
+        .select('id, shop_name, owner_name, current_balance, credit_limit')
         .eq('business_id', userContext.businessId)
-        .eq('status', 'blocked')
+        .eq('status', 'active')
 
-      // Get low stock products
-      const { data: lowStockProducts } = await supabase
+      const overdueRetailers = allRetailers?.filter(r => 
+        parseFloat(r.current_balance || 0) > parseFloat(r.credit_limit || 0)
+      ) || []
+
+      // Get low stock products (stock_quantity <= low_stock_threshold)
+      const { data: allProducts } = await supabase
         .from('products')
         .select('id, name, stock_quantity, low_stock_threshold')
         .eq('business_id', userContext.businessId)
-        .filter('stock_quantity', 'lte', 'low_stock_threshold')
+
+      const lowStockProducts = allProducts?.filter(p => 
+        (p.stock_quantity || 0) <= (p.low_stock_threshold || 10)
+      ) || []
 
       // Get sales by rep (TODAY only)
       const { data: salesByRep } = await supabase
@@ -308,7 +316,7 @@ async function handleRoute(request, { params }) {
         .select('sales_rep_id, total_amount, users(name)')
         .eq('business_id', userContext.businessId)
         .gte('created_at', today.toISOString())
-        .in('status', ['confirmed', 'delivered'])
+        .in('order_status', ['confirmed', 'completed'])
 
       const repSales = {}
       salesByRep?.forEach(order => {
