@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { 
   DollarSign, 
   AlertTriangle, 
@@ -61,39 +61,57 @@ export default function AdminDashboard() {
     return past.toLocaleDateString()
   }
 
-  // Modern KPI Card Component
+  // Modern KPI Card Component - Mobile Optimized
   const ModernKPICard = ({ title, value, icon: Icon, trend, trendValue, color = "blue", loading }) => {
-    const colors = {
-      blue: "from-primary-500 to-primary-600",
-      green: "from-success-500 to-success-600",
-      orange: "from-orange-500 to-orange-600",
-      purple: "from-purple-500 to-purple-600"
+    const colorClasses = {
+      blue: {
+        bg: "bg-emerald-50",
+        icon: "bg-emerald-100",
+        iconColor: "text-emerald-600",
+        text: "text-emerald-700"
+      },
+      green: {
+        bg: "bg-success-50",
+        icon: "bg-success-100",
+        iconColor: "text-success-600",
+        text: "text-success-700"
+      },
+      orange: {
+        bg: "bg-orange-50",
+        icon: "bg-orange-100",
+        iconColor: "text-orange-600",
+        text: "text-orange-700"
+      },
+      purple: {
+        bg: "bg-purple-50",
+        icon: "bg-purple-100",
+        iconColor: "text-purple-600",
+        text: "text-purple-700"
+      }
     }
 
+    const colorScheme = colorClasses[color]
+
     return (
-      <Card className="relative overflow-hidden border-0 shadow-soft hover:shadow-medium transition-all duration-300 animate-fade-in group">
-        <div className="absolute top-0 right-0 w-32 h-32 opacity-10">
-          <div className={`w-full h-full rounded-full bg-gradient-to-br ${colors[color]} blur-2xl group-hover:scale-110 transition-transform duration-500`}></div>
-        </div>
-        
-        <div className="relative p-6">
+      <Card className={`${colorScheme.bg} border-2 border-neutral-200 shadow-md hover:shadow-lg transition-all duration-300`}>
+        <CardContent className="p-4">
           {loading ? (
             <div className="space-y-3">
               <div className="h-4 bg-neutral-200 rounded animate-shimmer w-24"></div>
               <div className="h-8 bg-neutral-200 rounded animate-shimmer w-32"></div>
             </div>
           ) : (
-            <>
-              <div className="flex items-center justify-between mb-3">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-neutral-600">{title}</p>
-                <div className={`p-2 rounded-xl bg-gradient-to-br ${colors[color]} bg-opacity-10`}>
-                  <Icon className={`h-5 w-5 text-${color === 'blue' ? 'primary' : color === 'green' ? 'success' : color}-500`} />
+                <div className={`p-2.5 rounded-full ${colorScheme.icon}`}>
+                  <Icon className={`h-5 w-5 ${colorScheme.iconColor}`} />
                 </div>
               </div>
               
               <div className="space-y-1">
-                <p className="text-3xl font-bold text-neutral-900">{value}</p>
-                {trend && (
+                <p className="text-2xl sm:text-3xl font-bold text-neutral-900 break-all">{value}</p>
+                {trend && trendValue && (
                   <div className={`flex items-center gap-1 text-xs font-medium ${
                     trend === 'up' ? 'text-success-600' : 'text-red-600'
                   }`}>
@@ -102,56 +120,53 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
-            </>
+            </div>
           )}
-        </div>
+        </CardContent>
       </Card>
     )
   }
 
-  // Quick Action Button
-  const QuickActionBtn = ({ href, icon: Icon, label, variant = "default" }) => (
+  // Quick Action Button - Mobile Optimized
+  const QuickActionBtn = ({ href, icon: Icon, label, variant = "outline" }) => (
     <Link href={href}>
       <Button 
         variant={variant}
-        className="w-full h-auto py-4 px-4 justify-start gap-3 group hover:scale-[1.02] transition-all duration-200 shadow-soft hover:shadow-medium"
+        className="w-full h-auto py-3 px-4 justify-start gap-3 hover:bg-emerald-50 hover:border-emerald-300 border-2 transition-all"
       >
-        <div className="p-2 rounded-lg bg-primary-50 group-hover:bg-primary-100 transition-colors">
-          <Icon className="h-5 w-5 text-primary-600" />
+        <div className="p-2 rounded-lg bg-emerald-100">
+          <Icon className="h-4 w-4 text-emerald-600" />
         </div>
-        <span className="font-medium">{label}</span>
-        <ArrowRight className="h-4 w-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+        <span className="font-medium text-sm">{label}</span>
       </Button>
     </Link>
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-neutral-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         
         {/* Modern Header */}
         <div className="animate-slide-down">
-          <div className="flex items-center gap-2 text-primary-600 text-sm font-medium mb-2">
+          <div className="flex items-center gap-2 text-emerald-600 text-xs sm:text-sm font-medium mb-2">
             <Activity className="h-4 w-4" />
             <span>DASHBOARD OVERVIEW</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-neutral-900 tracking-tight">
             Welcome back
           </h1>
-          <p className="text-neutral-600 mt-2 text-lg">
+          <p className="text-neutral-600 mt-2 text-base sm:text-lg">
             Here's what's happening with your business today
           </p>
         </div>
 
         {/* KPI Grid - Responsive */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-slide-up">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-slide-up">
           <ModernKPICard
             title="Today's Sales"
             value={formatCurrency(metrics?.totalSalesToday)}
             icon={DollarSign}
             color="blue"
-            trend="up"
-            trendValue="+12.5% from yesterday"
             loading={loading}
           />
           <ModernKPICard
@@ -159,8 +174,6 @@ export default function AdminDashboard() {
             value={formatCurrency(metrics?.totalSalesMonth)}
             icon={TrendingUp}
             color="green"
-            trend="up"
-            trendValue="+8.2% from last month"
             loading={loading}
           />
           <ModernKPICard
@@ -180,16 +193,14 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <Card className="border-0 shadow-soft animate-scale-in">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-neutral-900">Quick Actions</h2>
-                <p className="text-neutral-600 text-sm mt-1">Frequently used tasks</p>
-              </div>
+        <Card className="border-2 border-neutral-200 shadow-md animate-scale-in">
+          <CardContent className="p-4 sm:p-6">
+            <div className="mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-neutral-900">Quick Actions</h2>
+              <p className="text-neutral-600 text-xs sm:text-sm mt-1">Frequently used tasks</p>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <QuickActionBtn 
                 href="/dashboard/retailers" 
                 icon={Users} 
@@ -199,41 +210,38 @@ export default function AdminDashboard() {
                 href="/dashboard/products" 
                 icon={Package} 
                 label="Add Product"
-                variant="outline"
               />
               <QuickActionBtn 
                 href="/dashboard/orders" 
                 icon={ShoppingCart} 
                 label="Create Order"
-                variant="outline"
               />
               <QuickActionBtn 
                 href="/dashboard/inventory" 
                 icon={Warehouse} 
                 label="Stock Management"
-                variant="outline"
               />
             </div>
-          </div>
+          </CardContent>
         </Card>
 
         {/* Data Grid - Two Columns */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           
           {/* Overdue Retailers */}
-          <Card className="border-0 shadow-soft animate-slide-up">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
+          <Card className="border-2 border-neutral-200 shadow-md animate-slide-up">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
                 <div>
-                  <h3 className="text-xl font-bold text-neutral-900">Overdue Payments</h3>
-                  <p className="text-neutral-600 text-sm mt-1">
+                  <h3 className="text-lg sm:text-xl font-bold text-neutral-900">Overdue Payments</h3>
+                  <p className="text-neutral-600 text-xs sm:text-sm mt-1">
                     {metrics?.overdueRetailers?.length || 0} retailers need attention
                   </p>
                 </div>
                 <Link href="/dashboard/retailers?filter=overdue">
-                  <Button variant="ghost" size="sm" className="gap-2">
+                  <Button variant="ghost" size="sm" className="gap-2 text-xs sm:text-sm">
                     View All
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                 </Link>
               </div>
@@ -245,18 +253,18 @@ export default function AdminDashboard() {
                   ))
                 ) : metrics?.overdueRetailers?.length > 0 ? (
                   metrics.overdueRetailers.slice(0, 5).map((retailer) => (
-                    <div key={retailer.id} className="flex items-center justify-between p-4 bg-red-50 border border-red-100 rounded-xl hover:shadow-soft transition-all duration-200">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-red-100 rounded-lg">
+                    <div key={retailer.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-red-50 border-2 border-red-200 rounded-xl hover:shadow-md transition-all duration-200 gap-2">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
                           <AlertTriangle className="h-4 w-4 text-red-600" />
                         </div>
-                        <div>
-                          <p className="font-semibold text-neutral-900">{retailer.shop_name}</p>
-                          <p className="text-sm text-neutral-600">{retailer.owner_name}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-neutral-900 text-sm truncate">{retailer.shop_name}</p>
+                          <p className="text-xs text-neutral-600 truncate">{retailer.owner_name}</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-red-600">{formatCurrency(retailer.current_balance)}</p>
+                      <div className="text-left sm:text-right pl-10 sm:pl-0">
+                        <p className="font-bold text-red-600 text-sm sm:text-base">{formatCurrency(retailer.current_balance)}</p>
                         <p className="text-xs text-neutral-500">Overdue</p>
                       </div>
                     </div>
@@ -268,23 +276,23 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
-            </div>
+            </CardContent>
           </Card>
 
           {/* Low Stock Products */}
-          <Card className="border-0 shadow-soft animate-slide-up">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
+          <Card className="border-2 border-neutral-200 shadow-md animate-slide-up">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
                 <div>
-                  <h3 className="text-xl font-bold text-neutral-900">Low Stock Alert</h3>
-                  <p className="text-neutral-600 text-sm mt-1">
+                  <h3 className="text-lg sm:text-xl font-bold text-neutral-900">Low Stock Alert</h3>
+                  <p className="text-neutral-600 text-xs sm:text-sm mt-1">
                     {metrics?.lowStockProducts?.length || 0} products need restocking
                   </p>
                 </div>
                 <Link href="/dashboard/products?filter=low-stock">
-                  <Button variant="ghost" size="sm" className="gap-2">
+                  <Button variant="ghost" size="sm" className="gap-2 text-xs sm:text-sm">
                     View All
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                 </Link>
               </div>
@@ -296,18 +304,18 @@ export default function AdminDashboard() {
                   ))
                 ) : metrics?.lowStockProducts?.length > 0 ? (
                   metrics.lowStockProducts.slice(0, 5).map((product) => (
-                    <div key={product.id} className="flex items-center justify-between p-4 bg-orange-50 border border-orange-100 rounded-xl hover:shadow-soft transition-all duration-200">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-orange-100 rounded-lg">
+                    <div key={product.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-orange-50 border-2 border-orange-200 rounded-xl hover:shadow-md transition-all duration-200 gap-2">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0">
                           <Package className="h-4 w-4 text-orange-600" />
                         </div>
-                        <div>
-                          <p className="font-semibold text-neutral-900">{product.name}</p>
-                          <p className="text-sm text-neutral-600">SKU: {product.sku || 'N/A'}</p>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-neutral-900 text-sm truncate">{product.name}</p>
+                          <p className="text-xs text-neutral-600">SKU: {product.sku || 'N/A'}</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-orange-600">{product.stock_quantity} left</p>
+                      <div className="text-left sm:text-right pl-10 sm:pl-0">
+                        <p className="font-bold text-orange-600 text-sm sm:text-base">{product.stock_quantity} left</p>
                         <p className="text-xs text-neutral-500">Restock soon</p>
                       </div>
                     </div>
@@ -319,22 +327,22 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
-            </div>
+            </CardContent>
           </Card>
         </div>
 
         {/* Recent Activity */}
-        <Card className="border-0 shadow-soft animate-fade-in">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
+        <Card className="border-2 border-neutral-200 shadow-md animate-fade-in">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
               <div>
-                <h3 className="text-xl font-bold text-neutral-900">Recent Activity</h3>
-                <p className="text-neutral-600 text-sm mt-1">Latest updates from your business</p>
+                <h3 className="text-lg sm:text-xl font-bold text-neutral-900">Recent Activity</h3>
+                <p className="text-neutral-600 text-xs sm:text-sm mt-1">Latest updates from your business</p>
               </div>
               <Link href="/dashboard/activity-log">
-                <Button variant="ghost" size="sm" className="gap-2">
+                <Button variant="ghost" size="sm" className="gap-2 text-xs sm:text-sm">
                   View All
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
                 </Button>
               </Link>
             </div>
@@ -442,7 +450,7 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
-          </div>
+          </CardContent>
         </Card>
 
       </div>
