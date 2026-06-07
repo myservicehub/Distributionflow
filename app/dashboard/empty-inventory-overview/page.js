@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Package, Warehouse, Users, DollarSign, TrendingUp, AlertCircle } from 'lucide-react'
+import { Package, Warehouse, Users, DollarSign, TrendingUp, AlertCircle, ChevronDown, ChevronUp, Eye } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -13,7 +13,87 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth-context'
+
+// Mobile Card Component for Empty Inventory Items
+function EmptyInventoryMobileCard({ item, formatCurrency, onViewDetails }) {
+  const totalQty = item.warehouse_qty + item.retailer_qty
+  const totalItemValue = totalQty * item.deposit_value
+  const warehousePercent = totalQty > 0 ? Math.round((item.warehouse_qty / totalQty) * 100) : 0
+
+  return (
+    <Card className="border-2 border-neutral-200 hover:border-emerald-200 transition-all shadow-sm">
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Package className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                <h3 className="font-bold text-neutral-900 truncate">{item.name}</h3>
+              </div>
+              <p className="text-xs text-neutral-500">Deposit: {formatCurrency(item.deposit_value)}/unit</p>
+            </div>
+            {item.warehouse_qty === 0 ? (
+              <Badge variant="destructive" className="font-medium flex-shrink-0">No Stock</Badge>
+            ) : item.warehouse_qty < 10 ? (
+              <Badge variant="secondary" className="font-medium flex-shrink-0">Low Stock</Badge>
+            ) : (
+              <Badge variant="default" className="bg-success-600 font-medium flex-shrink-0">In Stock</Badge>
+            )}
+          </div>
+
+          {/* Warehouse & Retailer Quantities */}
+          <div className="grid grid-cols-2 gap-3 py-2 border-y border-neutral-200">
+            <div className="bg-blue-50 rounded-lg p-2">
+              <div className="flex items-center gap-1 mb-1">
+                <Warehouse className="h-3 w-3 text-blue-600" />
+                <p className="text-xs text-blue-700 font-medium">Warehouse</p>
+              </div>
+              <p className="text-lg font-bold text-blue-600">{item.warehouse_qty.toLocaleString()}</p>
+              <p className="text-xs text-blue-600">{warehousePercent}% of total</p>
+            </div>
+            <div className="bg-orange-50 rounded-lg p-2">
+              <div className="flex items-center gap-1 mb-1">
+                <Users className="h-3 w-3 text-orange-600" />
+                <p className="text-xs text-orange-700 font-medium">Retailers</p>
+              </div>
+              <p className="text-lg font-bold text-orange-600">{item.retailer_qty.toLocaleString()}</p>
+              {item.retailer_count > 0 && (
+                <p className="text-xs text-orange-600">{item.retailer_count} retailer{item.retailer_count > 1 ? 's' : ''}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Total Summary */}
+          <div className="flex items-center justify-between bg-emerald-50 rounded-lg p-3">
+            <div>
+              <p className="text-xs text-neutral-600">Total Quantity</p>
+              <p className="text-xl font-bold text-neutral-900">{totalQty.toLocaleString()}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-neutral-600">Total Value</p>
+              <p className="text-lg font-bold text-emerald-600">{formatCurrency(totalItemValue)}</p>
+            </div>
+          </div>
+
+          {/* View Details Button */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onViewDetails(item)}
+            className="w-full hover:bg-emerald-50 hover:border-emerald-300 border-2 transition-all"
+          >
+            <Eye className="h-4 w-4 mr-1" />
+            View Details
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function EmptyInventoryOverviewPage() {
   const { userProfile } = useAuth()
@@ -22,6 +102,13 @@ export default function EmptyInventoryOverviewPage() {
   const [warehouseInventory, setWarehouseInventory] = useState([])
   const [retailerBalances, setRetailerBalances] = useState([])
   const [overview, setOverview] = useState([])
+  const [selectedItem, setSelectedItem] = useState(null)
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
+
+  const handleViewDetails = (item) => {
+    setSelectedItem(item)
+    setDetailsDialogOpen(true)
+  }
 
   useEffect(() => {
     loadData()
@@ -212,90 +299,188 @@ export default function EmptyInventoryOverviewPage() {
         </Alert>
       )}
 
-      {/* Detailed Inventory Table */}
+      {/* Detailed Inventory - Mobile View (Card Layout) */}
       {overview.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Inventory Breakdown by Empty Type</CardTitle>
-            <CardDescription>
-              Detailed view of each empty bottle type across all locations
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Empty Item</TableHead>
-                  <TableHead className="text-right">In Warehouse</TableHead>
-                  <TableHead className="text-right">With Retailers</TableHead>
-                  <TableHead className="text-right">Total Qty</TableHead>
-                  <TableHead className="text-right">Deposit/Unit</TableHead>
-                  <TableHead className="text-right">Total Value</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {overview.map((item) => {
-                  const totalQty = item.warehouse_qty + item.retailer_qty
-                  const totalItemValue = totalQty * item.deposit_value
-                  const warehousePercent = totalQty > 0 ? Math.round((item.warehouse_qty / totalQty) * 100) : 0
-                  
-                  return (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                          {item.name}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex flex-col items-end">
-                          <span className="font-medium text-blue-600">
-                            {item.warehouse_qty.toLocaleString()}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {warehousePercent}% of total
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex flex-col items-end">
-                          <span className="font-medium text-orange-600">
-                            {item.retailer_qty.toLocaleString()}
-                          </span>
-                          {item.retailer_count > 0 && (
-                            <span className="text-xs text-muted-foreground">
-                              {item.retailer_count} retailer{item.retailer_count > 1 ? 's' : ''}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {totalQty.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatCurrency(item.deposit_value)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(totalItemValue)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {item.warehouse_qty === 0 ? (
-                          <Badge variant="destructive">No Stock</Badge>
-                        ) : item.warehouse_qty < 10 ? (
-                          <Badge variant="secondary">Low Stock</Badge>
-                        ) : (
-                          <Badge variant="default" className="bg-green-600">In Stock</Badge>
-                        )}
-                      </TableCell>
+        <>
+          {/* Mobile Cards */}
+          <div className="block md:hidden space-y-4 animate-fade-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-emerald-100 rounded-lg">
+                <Package className="h-5 w-5 text-emerald-600" />
+              </div>
+              <h3 className="text-xl font-bold text-neutral-900">Inventory Breakdown ({overview.length})</h3>
+            </div>
+            {overview.map((item) => (
+              <EmptyInventoryMobileCard
+                key={item.id}
+                item={item}
+                formatCurrency={formatCurrency}
+                onViewDetails={handleViewDetails}
+              />
+            ))}
+          </div>
+
+          {/* Desktop Table */}
+          <Card className="hidden md:block border-2 border-neutral-200 shadow-lg animate-fade-in">
+            <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-emerald-50 to-white">
+              <CardTitle>Inventory Breakdown by Empty Type</CardTitle>
+              <CardDescription>
+                Detailed view of each empty bottle type across all locations
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-neutral-50">
+                      <TableHead className="font-semibold">Empty Item</TableHead>
+                      <TableHead className="text-right font-semibold">In Warehouse</TableHead>
+                      <TableHead className="text-right font-semibold">With Retailers</TableHead>
+                      <TableHead className="text-right font-semibold">Total Qty</TableHead>
+                      <TableHead className="text-right font-semibold">Deposit/Unit</TableHead>
+                      <TableHead className="text-right font-semibold">Total Value</TableHead>
+                      <TableHead className="text-center font-semibold">Status</TableHead>
                     </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {overview.map((item) => {
+                      const totalQty = item.warehouse_qty + item.retailer_qty
+                      const totalItemValue = totalQty * item.deposit_value
+                      const warehousePercent = totalQty > 0 ? Math.round((item.warehouse_qty / totalQty) * 100) : 0
+                      
+                      return (
+                        <TableRow key={item.id} className="hover:bg-emerald-50 transition-colors duration-150">
+                          <TableCell className="font-medium text-neutral-900">
+                            <div className="flex items-center gap-2">
+                              <Package className="h-4 w-4 text-muted-foreground" />
+                              {item.name}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex flex-col items-end">
+                              <span className="font-medium text-blue-600">
+                                {item.warehouse_qty.toLocaleString()}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {warehousePercent}% of total
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex flex-col items-end">
+                              <span className="font-medium text-orange-600">
+                                {item.retailer_qty.toLocaleString()}
+                              </span>
+                              {item.retailer_count > 0 && (
+                                <span className="text-xs text-muted-foreground">
+                                  {item.retailer_count} retailer{item.retailer_count > 1 ? 's' : ''}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-neutral-900">
+                            {totalQty.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right text-neutral-900">
+                            {formatCurrency(item.deposit_value)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-neutral-900">
+                            {formatCurrency(totalItemValue)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {item.warehouse_qty === 0 ? (
+                              <Badge variant="destructive" className="font-medium">No Stock</Badge>
+                            ) : item.warehouse_qty < 10 ? (
+                              <Badge variant="secondary" className="font-medium">Low Stock</Badge>
+                            ) : (
+                              <Badge variant="default" className="bg-success-600 font-medium">In Stock</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </>
       )}
+
+      {/* Details Dialog for Mobile */}
+      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-emerald-600" />
+              {selectedItem?.name}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedItem && (
+            <div className="space-y-4 py-4">
+              <div className="bg-neutral-50 rounded-lg p-4 space-y-3">
+                <div className="flex justify-between items-center pb-2 border-b border-neutral-200">
+                  <span className="text-sm text-neutral-600">Deposit Value/Unit:</span>
+                  <span className="font-bold text-lg text-neutral-900">{formatCurrency(selectedItem.deposit_value)}</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-blue-100 rounded-lg p-3">
+                    <div className="flex items-center gap-1 mb-2">
+                      <Warehouse className="h-4 w-4 text-blue-700" />
+                      <p className="text-xs font-medium text-blue-700">In Warehouse</p>
+                    </div>
+                    <p className="text-2xl font-bold text-blue-700">{selectedItem.warehouse_qty.toLocaleString()}</p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      {selectedItem.warehouse_qty + selectedItem.retailer_qty > 0 
+                        ? Math.round((selectedItem.warehouse_qty / (selectedItem.warehouse_qty + selectedItem.retailer_qty)) * 100)
+                        : 0}% of total
+                    </p>
+                  </div>
+
+                  <div className="bg-orange-100 rounded-lg p-3">
+                    <div className="flex items-center gap-1 mb-2">
+                      <Users className="h-4 w-4 text-orange-700" />
+                      <p className="text-xs font-medium text-orange-700">With Retailers</p>
+                    </div>
+                    <p className="text-2xl font-bold text-orange-700">{selectedItem.retailer_qty.toLocaleString()}</p>
+                    {selectedItem.retailer_count > 0 && (
+                      <p className="text-xs text-orange-600 mt-1">
+                        {selectedItem.retailer_count} retailer{selectedItem.retailer_count > 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-emerald-100 rounded-lg p-3 border-2 border-emerald-200">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-emerald-700">Total Quantity:</span>
+                    <span className="text-2xl font-bold text-emerald-800">
+                      {(selectedItem.warehouse_qty + selectedItem.retailer_qty).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-emerald-200">
+                    <span className="text-sm font-medium text-emerald-700">Total Value:</span>
+                    <span className="text-xl font-bold text-emerald-800">
+                      {formatCurrency((selectedItem.warehouse_qty + selectedItem.retailer_qty) * selectedItem.deposit_value)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-center pt-2">
+                  {selectedItem.warehouse_qty === 0 ? (
+                    <Badge variant="destructive" className="font-medium">No Stock in Warehouse</Badge>
+                  ) : selectedItem.warehouse_qty < 10 ? (
+                    <Badge variant="secondary" className="font-medium">Low Stock Warning</Badge>
+                  ) : (
+                    <Badge variant="default" className="bg-success-600 font-medium">In Stock</Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Quick Insights */}
       <div className="grid gap-4 md:grid-cols-2">

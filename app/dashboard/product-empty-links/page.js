@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Package, Link2, AlertCircle, CheckCircle, Plus, RefreshCw } from 'lucide-react'
+import { Package, Link2, AlertCircle, CheckCircle, Plus, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -33,6 +33,112 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/auth-context'
+
+// Mobile Card Component for Product-Empty Links
+function ProductEmptyLinkMobileCard({ product, emptyItems, linkedEmpty, onLinkProduct, onCreateEmpty, updating, formatCurrency }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  return (
+    <Card className="border-2 border-neutral-200 hover:border-emerald-200 transition-all shadow-sm">
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Package className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                <h3 className="font-bold text-neutral-900 truncate">{product.name}</h3>
+              </div>
+              {product.sku && (
+                <p className="text-xs text-neutral-500">SKU: {product.sku}</p>
+              )}
+            </div>
+            {product.empty_item_id ? (
+              <Badge variant="default" className="bg-success-600 font-medium flex-shrink-0">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Linked
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="font-medium flex-shrink-0">
+                <AlertCircle className="h-3 w-3 mr-1" />
+                Not Linked
+              </Badge>
+            )}
+          </div>
+
+          {/* Link Selection */}
+          <div className="space-y-2">
+            <Label className="text-xs text-neutral-600">Link to Empty Item:</Label>
+            <Select
+              value={product.empty_item_id || 'none'}
+              onValueChange={(value) => onLinkProduct(product.id, value === 'none' ? null : value)}
+              disabled={updating}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select empty item" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">
+                  <span className="text-muted-foreground">No empty linked</span>
+                </SelectItem>
+                {emptyItems.map((empty) => (
+                  <SelectItem key={empty.id} value={empty.id}>
+                    {empty.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Expandable Details */}
+          {isExpanded && linkedEmpty && (
+            <div className="space-y-2 pt-2 animate-slide-down border-t border-neutral-200">
+              <div className="bg-emerald-50 rounded-lg p-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-neutral-600">Deposit Value:</span>
+                  <span className="font-bold text-emerald-700">{formatCurrency(linkedEmpty.deposit_value)}</span>
+                </div>
+                <div className="flex items-center gap-1 mt-2">
+                  <Link2 className="h-3 w-3 text-emerald-600" />
+                  <span className="text-xs text-emerald-700">Linked to: {linkedEmpty.name}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 pt-2">
+            {!product.empty_item_id && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onCreateEmpty(product)}
+                className="flex-1 hover:bg-emerald-50 hover:border-emerald-300"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Create Empty
+              </Button>
+            )}
+            {linkedEmpty && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className={`${product.empty_item_id ? 'flex-1' : 'w-auto'} hover:bg-emerald-50 hover:border-emerald-300 border-2 transition-all`}
+              >
+                {isExpanded ? (
+                  <><ChevronUp className="h-4 w-4 mr-1" />Show Less</>
+                ) : (
+                  <><ChevronDown className="h-4 w-4 mr-1" />View Details</>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function ProductEmptyLinksPage() {
   const { userProfile } = useAuth()
@@ -250,97 +356,128 @@ export default function ProductEmptyLinksPage() {
         </Card>
       </div>
 
-      {/* Products Table */}
+      {/* Products - Mobile & Desktop Views */}
       {products.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Product-Empty Mapping</CardTitle>
-            <CardDescription>
-              Link each product to its corresponding empty bottle
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Linked Empty Item</TableHead>
-                  <TableHead className="text-right">Deposit Value</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {products.map((product) => {
-                  const linkedEmpty = emptyItems.find(e => e.id === product.empty_item_id)
-                  return (
-                    <TableRow key={product.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <Package className="h-4 w-4 text-muted-foreground" />
-                          {product.name}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {product.sku || '—'}
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={product.empty_item_id || 'none'}
-                          onValueChange={(value) => handleLinkProduct(product.id, value === 'none' ? null : value)}
-                          disabled={updating}
-                        >
-                          <SelectTrigger className="w-[250px]">
-                            <SelectValue placeholder="Select empty item" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">
-                              <span className="text-muted-foreground">No empty linked</span>
-                            </SelectItem>
-                            {emptyItems.map((empty) => (
-                              <SelectItem key={empty.id} value={empty.id}>
-                                {empty.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {linkedEmpty ? formatCurrency(linkedEmpty.deposit_value) : '—'}
-                      </TableCell>
-                      <TableCell>
-                        {product.empty_item_id ? (
-                          <Badge variant="default" className="bg-green-600">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Linked
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            Not Linked
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {!product.empty_item_id && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openCreateDialog(product)}
-                          >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Create Empty
-                          </Button>
-                        )}
-                      </TableCell>
+        <>
+          {/* Mobile Card View */}
+          <div className="block md:hidden space-y-4 animate-fade-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-emerald-100 rounded-lg">
+                <Link2 className="h-5 w-5 text-emerald-600" />
+              </div>
+              <h3 className="text-xl font-bold text-neutral-900">Product Mapping ({products.length})</h3>
+            </div>
+            {products.map((product) => {
+              const linkedEmpty = emptyItems.find(e => e.id === product.empty_item_id)
+              return (
+                <ProductEmptyLinkMobileCard
+                  key={product.id}
+                  product={product}
+                  emptyItems={emptyItems}
+                  linkedEmpty={linkedEmpty}
+                  onLinkProduct={handleLinkProduct}
+                  onCreateEmpty={openCreateDialog}
+                  updating={updating}
+                  formatCurrency={formatCurrency}
+                />
+              )
+            })}
+          </div>
+
+          {/* Desktop Table View */}
+          <Card className="hidden md:block border-2 border-neutral-200 shadow-lg animate-fade-in">
+            <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-emerald-50 to-white">
+              <CardTitle>Product-Empty Mapping</CardTitle>
+              <CardDescription>
+                Link each product to its corresponding empty bottle
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-neutral-50">
+                      <TableHead className="font-semibold">Product</TableHead>
+                      <TableHead className="font-semibold">SKU</TableHead>
+                      <TableHead className="font-semibold">Linked Empty Item</TableHead>
+                      <TableHead className="text-right font-semibold">Deposit Value</TableHead>
+                      <TableHead className="font-semibold">Status</TableHead>
+                      <TableHead className="text-right font-semibold">Actions</TableHead>
                     </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {products.map((product) => {
+                      const linkedEmpty = emptyItems.find(e => e.id === product.empty_item_id)
+                      return (
+                        <TableRow key={product.id} className="hover:bg-emerald-50 transition-colors duration-150">
+                          <TableCell className="font-medium text-neutral-900">
+                            <div className="flex items-center gap-2">
+                              <Package className="h-4 w-4 text-muted-foreground" />
+                              {product.name}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {product.sku || '—'}
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              value={product.empty_item_id || 'none'}
+                              onValueChange={(value) => handleLinkProduct(product.id, value === 'none' ? null : value)}
+                              disabled={updating}
+                            >
+                              <SelectTrigger className="w-[250px]">
+                                <SelectValue placeholder="Select empty item" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">
+                                  <span className="text-muted-foreground">No empty linked</span>
+                                </SelectItem>
+                                {emptyItems.map((empty) => (
+                                  <SelectItem key={empty.id} value={empty.id}>
+                                    {empty.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="text-right text-neutral-900">
+                            {linkedEmpty ? formatCurrency(linkedEmpty.deposit_value) : '—'}
+                          </TableCell>
+                          <TableCell>
+                            {product.empty_item_id ? (
+                              <Badge variant="default" className="bg-success-600 font-medium">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Linked
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="font-medium">
+                                <AlertCircle className="h-3 w-3 mr-1" />
+                                Not Linked
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {!product.empty_item_id && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openCreateDialog(product)}
+                                className="hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 border-2"
+                              >
+                                <Plus className="h-4 w-4 mr-1" />
+                                Create Empty
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </>
       ) : (
         <Card>
           <CardContent className="py-10">
