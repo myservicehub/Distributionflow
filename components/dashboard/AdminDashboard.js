@@ -49,6 +49,18 @@ export default function AdminDashboard() {
     }).format(amount || 0)
   }
 
+  const getTimeAgo = (timestamp) => {
+    const now = new Date()
+    const past = new Date(timestamp)
+    const diffInSeconds = Math.floor((now - past) / 1000)
+
+    if (diffInSeconds < 60) return 'Just now'
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`
+    return past.toLocaleDateString()
+  }
+
   // Modern KPI Card Component
   const ModernKPICard = ({ title, value, icon: Icon, trend, trendValue, color = "blue", loading }) => {
     const colors = {
@@ -332,30 +344,102 @@ export default function AdminDashboard() {
                 [1, 2, 3].map(i => (
                   <div key={i} className="h-20 bg-neutral-100 rounded-xl animate-shimmer" />
                 ))
+              ) : metrics?.recentActivity?.length > 0 ? (
+                metrics.recentActivity.slice(0, 5).map((activity) => {
+                  // Map action to icon and color
+                  const getActivityDisplay = (action, entityType, details) => {
+                    const detailsObj = typeof details === 'string' ? JSON.parse(details) : details
+                    
+                    switch (action) {
+                      case 'create':
+                        if (entityType === 'order') return { 
+                          icon: <ShoppingCart className="h-4 w-4" />, 
+                          title: 'New order created',
+                          description: `Order #${detailsObj?.order_id || 'N/A'} from ${detailsObj?.retailer_name || 'retailer'}`,
+                          color: 'blue'
+                        }
+                        if (entityType === 'retailer') return { 
+                          icon: <Users className="h-4 w-4" />, 
+                          title: 'New retailer added',
+                          description: detailsObj?.shop_name || 'Retailer onboarded',
+                          color: 'green'
+                        }
+                        if (entityType === 'product') return { 
+                          icon: <Package className="h-4 w-4" />, 
+                          title: 'Product added',
+                          description: detailsObj?.name || 'New product created',
+                          color: 'purple'
+                        }
+                        if (entityType === 'payment') return { 
+                          icon: <DollarSign className="h-4 w-4" />, 
+                          title: 'Payment recorded',
+                          description: `${formatCurrency(detailsObj?.amount || 0)} from ${detailsObj?.retailer_name || 'retailer'}`,
+                          color: 'green'
+                        }
+                        break
+                      case 'update':
+                        if (entityType === 'order') return { 
+                          icon: <ShoppingCart className="h-4 w-4" />, 
+                          title: 'Order updated',
+                          description: `Order #${detailsObj?.order_id || 'N/A'} status: ${detailsObj?.new_status || 'updated'}`,
+                          color: 'blue'
+                        }
+                        if (entityType === 'inventory') return { 
+                          icon: <Package className="h-4 w-4" />, 
+                          title: 'Stock updated',
+                          description: `${detailsObj?.product_name || 'Product'}: ${detailsObj?.quantity_change || 0} units`,
+                          color: 'purple'
+                        }
+                        if (entityType === 'product') return { 
+                          icon: <Package className="h-4 w-4" />, 
+                          title: 'Product updated',
+                          description: detailsObj?.name || 'Product modified',
+                          color: 'purple'
+                        }
+                        break
+                      case 'delete':
+                        return { 
+                          icon: <AlertTriangle className="h-4 w-4" />, 
+                          title: `${entityType} deleted`,
+                          description: detailsObj?.name || `${entityType} removed`,
+                          color: 'orange'
+                        }
+                      default:
+                        return { 
+                          icon: <Activity className="h-4 w-4" />, 
+                          title: `${action} ${entityType}`,
+                          description: detailsObj?.name || 'Activity recorded',
+                          color: 'blue'
+                        }
+                    }
+                    
+                    return { 
+                      icon: <Activity className="h-4 w-4" />, 
+                      title: `${action} ${entityType}`,
+                      description: 'Activity recorded',
+                      color: 'blue'
+                    }
+                  }
+
+                  const display = getActivityDisplay(activity.action, activity.entity_type, activity.details)
+                  const timeAgo = getTimeAgo(activity.created_at)
+
+                  return (
+                    <ActivityItem 
+                      key={activity.id}
+                      icon={display.icon}
+                      title={display.title}
+                      description={display.description}
+                      time={timeAgo}
+                      color={display.color}
+                    />
+                  )
+                })
               ) : (
-                <>
-                  <ActivityItem 
-                    icon={<ShoppingCart className="h-4 w-4" />}
-                    title="New order created"
-                    description="Order #1234 from ABC Store"
-                    time="5 minutes ago"
-                    color="blue"
-                  />
-                  <ActivityItem 
-                    icon={<Users className="h-4 w-4" />}
-                    title="New retailer added"
-                    description="XYZ Mart onboarded"
-                    time="1 hour ago"
-                    color="green"
-                  />
-                  <ActivityItem 
-                    icon={<Package className="h-4 w-4" />}
-                    title="Stock updated"
-                    description="50 units of Coca-Cola added"
-                    time="3 hours ago"
-                    color="purple"
-                  />
-                </>
+                <div className="text-center py-12">
+                  <Activity className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
+                  <p className="text-neutral-600">No recent activity</p>
+                </div>
               )}
             </div>
           </div>

@@ -327,13 +327,22 @@ async function handleRoute(request, { params }) {
         repSales[repName] += parseFloat(order.total_amount)
       })
 
+      // Get recent activity from audit logs (last 10 activities)
+      const { data: recentActivity } = await supabase
+        .from('audit_logs')
+        .select('id, action, entity_type, details, created_at, users(name)')
+        .eq('business_id', userContext.businessId)
+        .order('created_at', { ascending: false })
+        .limit(10)
+
       return handleCORS(NextResponse.json({
         totalSalesToday,
         totalSalesMonth,
         totalDebt,
         overdueRetailers: overdueRetailers || [],
         lowStockProducts: lowStockProducts || [],
-        salesByRep: Object.entries(repSales).map(([name, total]) => ({ name, total }))
+        salesByRep: Object.entries(repSales).map(([name, total]) => ({ name, total })),
+        recentActivity: recentActivity || []
       }))
     }
 
