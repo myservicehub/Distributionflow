@@ -2653,6 +2653,80 @@ async function handleRoute(request, { params }) {
       return handleCORS(NextResponse.json(logs))
     }
 
+    // ==================== NOTIFICATIONS ====================
+    
+    if (route === '/notifications' && method === 'GET') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('business_id', userContext.businessId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      return handleCORS(NextResponse.json(data || []))
+    }
+
+    if (route.startsWith('/notifications/') && method === 'PUT') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const notificationId = route.split('/')[2]
+      const body = await request.json()
+
+      const { data, error } = await supabase
+        .from('notifications')
+        .update({ is_read: body.is_read })
+        .eq('id', notificationId)
+        .eq('business_id', userContext.businessId)
+        .select()
+        .single()
+
+      if (error) throw error
+      return handleCORS(NextResponse.json(data))
+    }
+
+    if (route.startsWith('/notifications/') && method === 'DELETE') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const notificationId = route.split('/')[2]
+
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId)
+        .eq('business_id', userContext.businessId)
+
+      if (error) throw error
+      return handleCORS(NextResponse.json({ success: true }))
+    }
+
+    if (route === '/notifications/mark-all-read' && method === 'POST') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+      }
+
+      const { data, error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('business_id', userContext.businessId)
+        .eq('is_read', false)
+        .select()
+
+      if (error) throw error
+      return handleCORS(NextResponse.json({ success: true, updated: data?.length || 0 }))
+    }
+
     // Route not found
     return handleCORS(NextResponse.json(
       { error: `Route ${route} not found` }, 
