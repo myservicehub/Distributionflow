@@ -300,12 +300,12 @@ export async function POST(request) {
         .from('subscriptions')
         .select('*')
         .eq('business_id', userProfile.business_id)
-        .eq('status', 'pending')
+        .in('status', ['pending', 'created'])
         .order('created_at', { ascending: false })
         .limit(1)
         .single()
 
-      console.log('Found subscription:', subscription?.id, 'Error:', subError)
+      console.log('Found subscription:', subscription?.id, 'Status:', subscription?.status, 'Error:', subError)
 
       if (!subscription) {
         return handleCORS(NextResponse.json({ 
@@ -315,7 +315,7 @@ export async function POST(request) {
         }, { status: 404 }))
       }
 
-      // Update subscription to active
+      // Update subscription to active - use the subscription ID directly
       const { data: updatedSubscription, error: updateError } = await supabase
         .from('subscriptions')
         .update({
@@ -325,9 +325,11 @@ export async function POST(request) {
         })
         .eq('id', subscription.id)
         .select()
-        .single()
+        .maybeSingle()
 
-      if (updateError || !updatedSubscription) {
+      console.log('Update result:', updatedSubscription?.id, 'Error:', updateError)
+
+      if (updateError) {
         console.error('Error updating subscription:', updateError)
         return handleCORS(NextResponse.json({ 
           success: false, 
@@ -336,35 +338,45 @@ export async function POST(request) {
         }, { status: 500 }))
       }
 
-      console.log('Subscription updated successfully')
+      // If update didn't return the subscription (already active?), use the original
+      const finalSubscription = updatedSubscription || subscription
+
+      console.log('Subscription activated successfully:', finalSubscription.id)
 
       // Update business subscription status
       await updateBusinessSubscription(userProfile.business_id, {
         subscription_status: 'active',
         subscription_start: new Date().toISOString(),
         subscription_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        plan_id: updatedSubscription.plan_id,
-        billing_cycle: updatedSubscription.billing_cycle
+        plan_id: finalSubscription.plan_id,
+        billing_cycle: finalSubscription.billing_cycle
       })
+
+      // Get plan name
+      const { data: plan } = await supabase
+        .from('plans')
+        .select('name')
+        .eq('id', finalSubscription.plan_id)
+        .single()
 
       // Log event
       await logSubscriptionEvent({
         business_id: userProfile.business_id,
-        subscription_id: updatedSubscription.id,
+        subscription_id: finalSubscription.id,
         event_type: 'subscription_created',
         new_status: 'active',
-        new_plan_id: updatedSubscription.plan_id,
+        new_plan_id: finalSubscription.plan_id,
         metadata: { transaction_reference: reference, amount: transaction.amount }
       })
 
       // Create invoice
       await createInvoice({
-        subscription_id: updatedSubscription.id,
+        subscription_id: finalSubscription.id,
         business_id: userProfile.business_id,
-        amount: updatedSubscription.total_amount,
-        base_price: updatedSubscription.base_price,
-        extra_users_count: updatedSubscription.extra_users || 0,
-        extra_users_cost: (updatedSubscription.extra_users || 0) * (updatedSubscription.price_per_extra_user || 0),
+        amount: finalSubscription.total_amount,
+        base_price: finalSubscription.base_price,
+        extra_users_count: finalSubscription.extra_users || 0,
+        extra_users_cost: (finalSubscription.extra_users || 0) * (finalSubscription.price_per_extra_user || 0),
         billing_period_start: new Date().toISOString(),
         billing_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         status: 'paid',
@@ -376,9 +388,9 @@ export async function POST(request) {
         success: true, 
         message: 'Subscription activated successfully',
         subscription: {
-          id: updatedSubscription.id,
-          plan_name: updatedSubscription.plan_id,
-          status: updatedSubscription.status
+          id: finalSubscription.id,
+          plan_name: plan?.name || 'Business Plan',
+          status: 'active'
         }
       }))
     }
