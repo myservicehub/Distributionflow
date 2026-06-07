@@ -143,25 +143,25 @@ export default function AdminDashboard() {
   )
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="min-h-screen bg-white overflow-x-hidden">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         
         {/* Modern Header */}
-        <div className="animate-slide-down">
+        <div className="animate-slide-down w-full">
           <div className="flex items-center gap-2 text-emerald-600 text-sm font-medium mb-2">
-            <Activity className="h-5 w-5" />
-            <span>DASHBOARD OVERVIEW</span>
+            <Activity className="h-5 w-5 flex-shrink-0" />
+            <span className="truncate">DASHBOARD OVERVIEW</span>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold text-neutral-900 tracking-tight">
+          <h1 className="text-4xl sm:text-5xl font-bold text-neutral-900 tracking-tight break-words">
             Welcome back
           </h1>
-          <p className="text-neutral-600 mt-2 text-lg sm:text-xl">
+          <p className="text-neutral-600 mt-2 text-lg sm:text-xl break-words">
             Here's what's happening with your business today
           </p>
         </div>
 
         {/* KPI Grid - Responsive */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-slide-up">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-slide-up w-full">
           <ModernKPICard
             title="Today's Sales"
             value={formatCurrency(metrics?.totalSalesToday)}
@@ -193,14 +193,14 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <Card className="border-2 border-neutral-200 shadow-md animate-scale-in">
+        <Card className="border-2 border-neutral-200 shadow-md animate-scale-in w-full overflow-hidden">
           <CardContent className="p-5 sm:p-6">
             <div className="mb-5 sm:mb-6">
-              <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900">Quick Actions</h2>
-              <p className="text-neutral-600 text-base sm:text-lg mt-1">Frequently used tasks</p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 break-words">Quick Actions</h2>
+              <p className="text-neutral-600 text-base sm:text-lg mt-1 break-words">Frequently used tasks</p>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
               <QuickActionBtn 
                 href="/dashboard/retailers" 
                 icon={Users} 
@@ -226,34 +226,34 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Data Grid - Two Columns */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 w-full">
           
           {/* Overdue Retailers */}
-          <Card className="border-2 border-neutral-200 shadow-md animate-slide-up">
+          <Card className="border-2 border-neutral-200 shadow-md animate-slide-up w-full overflow-hidden">
             <CardContent className="p-5 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 sm:mb-6 gap-2">
-                <div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-neutral-900">Overdue Payments</h3>
-                  <p className="text-neutral-600 text-base sm:text-lg mt-1">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-xl sm:text-2xl font-bold text-neutral-900 truncate">Overdue Payments</h3>
+                  <p className="text-neutral-600 text-base sm:text-lg mt-1 truncate">
                     {metrics?.overdueRetailers?.length || 0} retailers need attention
                   </p>
                 </div>
-                <Link href="/dashboard/retailers?filter=overdue">
-                  <Button variant="ghost" size="sm" className="gap-2 text-sm sm:text-base">
+                <Link href="/dashboard/retailers?filter=overdue" className="flex-shrink-0">
+                  <Button variant="ghost" size="sm" className="gap-2 text-sm sm:text-base whitespace-nowrap">
                     View All
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 w-full">
                 {loading ? (
                   [1, 2, 3].map(i => (
                     <div key={i} className="h-20 bg-neutral-100 rounded-xl animate-shimmer" />
                   ))
                 ) : metrics?.overdueRetailers?.length > 0 ? (
                   metrics.overdueRetailers.slice(0, 5).map((retailer) => (
-                    <div key={retailer.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 bg-red-50 border-2 border-red-200 rounded-xl hover:shadow-md transition-all duration-200 gap-3">
+                    <div key={retailer.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 bg-red-50 border-2 border-red-200 rounded-xl hover:shadow-md transition-all duration-200 gap-3 w-full">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div className="p-2.5 bg-red-100 rounded-lg flex-shrink-0">
                           <AlertTriangle className="h-5 w-5 text-red-600" />
@@ -263,8 +263,8 @@ export default function AdminDashboard() {
                           <p className="text-sm text-neutral-600 truncate">{retailer.owner_name}</p>
                         </div>
                       </div>
-                      <div className="text-left sm:text-right pl-11 sm:pl-0">
-                        <p className="font-bold text-red-600 text-lg">{formatCurrency(retailer.current_balance)}</p>
+                      <div className="text-left sm:text-right flex-shrink-0">
+                        <p className="font-bold text-red-600 text-lg whitespace-nowrap">{formatCurrency(retailer.current_balance)}</p>
                         <p className="text-sm text-neutral-500">Overdue</p>
                       </div>
                     </div>
@@ -280,42 +280,42 @@ export default function AdminDashboard() {
           </Card>
 
           {/* Low Stock Products */}
-          <Card className="border-2 border-neutral-200 shadow-md animate-slide-up">
+          <Card className="border-2 border-neutral-200 shadow-md animate-slide-up w-full overflow-hidden">
             <CardContent className="p-5 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 sm:mb-6 gap-2">
-                <div>
-                  <h3 className="text-xl sm:text-2xl font-bold text-neutral-900">Low Stock Alert</h3>
-                  <p className="text-neutral-600 text-base sm:text-lg mt-1">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-xl sm:text-2xl font-bold text-neutral-900 truncate">Low Stock Alert</h3>
+                  <p className="text-neutral-600 text-base sm:text-lg mt-1 truncate">
                     {metrics?.lowStockProducts?.length || 0} products need restocking
                   </p>
                 </div>
-                <Link href="/dashboard/products?filter=low-stock">
-                  <Button variant="ghost" size="sm" className="gap-2 text-sm sm:text-base">
+                <Link href="/dashboard/products?filter=low-stock" className="flex-shrink-0">
+                  <Button variant="ghost" size="sm" className="gap-2 text-sm sm:text-base whitespace-nowrap">
                     View All
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 w-full">
                 {loading ? (
                   [1, 2, 3].map(i => (
                     <div key={i} className="h-20 bg-neutral-100 rounded-xl animate-shimmer" />
                   ))
                 ) : metrics?.lowStockProducts?.length > 0 ? (
                   metrics.lowStockProducts.slice(0, 5).map((product) => (
-                    <div key={product.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 bg-orange-50 border-2 border-orange-200 rounded-xl hover:shadow-md transition-all duration-200 gap-3">
+                    <div key={product.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 bg-orange-50 border-2 border-orange-200 rounded-xl hover:shadow-md transition-all duration-200 gap-3 w-full">
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div className="p-2.5 bg-orange-100 rounded-lg flex-shrink-0">
                           <Package className="h-5 w-5 text-orange-600" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="font-bold text-neutral-900 text-base truncate">{product.name}</p>
-                          <p className="text-sm text-neutral-600">SKU: {product.sku || 'N/A'}</p>
+                          <p className="text-sm text-neutral-600 truncate">SKU: {product.sku || 'N/A'}</p>
                         </div>
                       </div>
-                      <div className="text-left sm:text-right pl-11 sm:pl-0">
-                        <p className="font-bold text-orange-600 text-lg">{product.stock_quantity} left</p>
+                      <div className="text-left sm:text-right flex-shrink-0">
+                        <p className="font-bold text-orange-600 text-lg whitespace-nowrap">{product.stock_quantity} left</p>
                         <p className="text-sm text-neutral-500">Restock soon</p>
                       </div>
                     </div>
@@ -332,15 +332,15 @@ export default function AdminDashboard() {
         </div>
 
         {/* Recent Activity */}
-        <Card className="border-2 border-neutral-200 shadow-md animate-fade-in">
+        <Card className="border-2 border-neutral-200 shadow-md animate-fade-in w-full overflow-hidden">
           <CardContent className="p-5 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 sm:mb-6 gap-2">
-              <div>
-                <h3 className="text-xl sm:text-2xl font-bold text-neutral-900">Recent Activity</h3>
-                <p className="text-neutral-600 text-base sm:text-lg mt-1">Latest updates from your business</p>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-xl sm:text-2xl font-bold text-neutral-900 truncate">Recent Activity</h3>
+                <p className="text-neutral-600 text-base sm:text-lg mt-1 truncate">Latest updates from your business</p>
               </div>
-              <Link href="/dashboard/activity-log">
-                <Button variant="ghost" size="sm" className="gap-2 text-sm sm:text-base">
+              <Link href="/dashboard/activity-log" className="flex-shrink-0">
+                <Button variant="ghost" size="sm" className="gap-2 text-sm sm:text-base whitespace-nowrap">
                   View All
                   <ArrowRight className="h-4 w-4" />
                 </Button>
