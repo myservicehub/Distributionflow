@@ -1,0 +1,230 @@
+import { NextResponse } from 'next/server'
+import { createSupabaseClient, getUserBusinessId, handleCORS, getPaginationParams, buildPaginationResponse, errorResponse, successResponse } from '@/lib/api/helpers'
+import { enforceSubscription } from '@/lib/api/subscription'
+import { CreateProductSchema, UpdateProductSchema, parseBody } from '@/lib/api/validation'
+import { logAudit, AUDIT_ACTIONS, RESOURCE_TYPES } from '@/lib/audit-logger'
+import { sendLowStockAlert } from '@/lib/email-alerts'
+
+/**
+ * GET /api/products
+ * List all products with pagination
+ */
+export async function GET(request) {
+  const supabase = createSupabaseClient()
+  
+  const userContext = await getUserBusinessId(supabase)
+  if (!userContext) {
+    return errorResponse('Unauthorized', 401)
+  }
+
+  try {
+    const { page, pageSize, from, to } = getPaginationParams(request)
+
+    const { data: products, error, count } = await supabase
+      .from('products')
+      .select('*', { count: 'exact' })
+      .eq('business_id', userContext.businessId)
+      .order('created_at', { ascending: false })
+      .range(from, to)
+
+    if (error) throw error
+
+    const response = buildPaginationResponse(products || [], count, { page, pageSize })
+    return successResponse(response)
+  } catch (error) {
+    console.error('Error fetching products:', error)
+    return errorResponse('Failed to fetch products', 500)
+  }
+}
+
+/**
+ * POST /api/products
+ * Create a new product
+ */
+export async function POST(request) {
+  const supabase = createSupabaseClient()
+  
+  const userContext = await getUserBusinessId(supabase)
+  if (!userContext) {
+    return errorResponse('Unauthorized', 401)
+  }
+
+  // Subscription check
+  const subscriptionError = await enforceSubscription(userContext.businessId)
+  if (subscriptionError) {
+    return errorResponse(subscriptionError.message, 402)
+  }
+
+  // Permission check
+  if (!['admin', 'manager'].includes(userContext.role)) {
+    return errorResponse('Forbidden: Only admins and managers can create products', 403)
+  }
+
+  try {
+    const body = await request.json()
+    const { error: validationError, data: validatedData } = parseBody(CreateProductSchema, body)
+    
+    if (validationError) {
+      return validationError
+    }
+
+    // Create product
+    const { data: product, error: createError } = await supabase
+      .from('products')
+      .insert([{
+        ...validatedData,
+        business_id: userContext.businessId,
+        stock_quantity: validatedData.quantity || 0,
+        status: 'active'
+      }])
+      .select()
+      .single()
+
+    if (createError) throw createError
+
+    // Audit log
+    await logAudit(
+      supabase,
+      userContext.userId,
+      userContext.businessId,
+      AUDIT_ACTIONS.CREATE,
+      RESOURCE_TYPES.PRODUCT,
+      product.id,
+      { product_name: product.name }
+    )
+
+    // Check for low stock and send alert
+    if (product.stock_quantity <= product.low_stock_threshold) {
+      await sendLowStockAlert(
+        userContext.businessId,
+        product.name,
+        product.stock_quantity,
+        product.low_stock_threshold
+      )
+    }
+
+    return successResponse({ success: true, data: product }, 201)
+  } catch (error) {
+    console.error('Error creating product:', error)
+    return errorResponse('Failed to create product', 500)
+  }
+}
+
+/**
+ * PUT /api/products
+ * Update a product (expects product_id in body)
+ */
+export async function PUT(request) {
+  const supabase = createSupabaseClient()
+  
+  const userContext = await getUserBusinessId(supabase)
+  if (!userContext) {
+    return errorResponse('Unauthorized', 401)
+  }
+
+  // Permission check
+  if (!['admin', 'manager'].includes(userContext.role)) {
+    return errorResponse('Forbidden: Only admins and managers can update products', 403)
+  }
+
+  try {
+    const body = await request.json()
+    const { product_id, ...updateData } = body
+
+    if (!product_id) {
+      return errorResponse('Product ID is required', 400)
+    }
+
+    const { error: validationError, data: validatedData } = parseBody(UpdateProductSchema, updateData)
+    
+    if (validationError) {
+      return validationError
+    }
+
+    // Update product
+    const { data: product, error: updateError } = await supabase
+      .from('products')
+      .update(validatedData)
+      .eq('id', product_id)
+      .eq('business_id', userContext.businessId)
+      .select()
+      .single()
+
+    if (updateError) throw updateError
+
+    // Audit log
+    await logAudit(
+      supabase,
+      userContext.userId,
+      userContext.businessId,
+      AUDIT_ACTIONS.UPDATE,
+      RESOURCE_TYPES.PRODUCT,
+      product.id,
+      { product_name: product.name, changes: validatedData }
+    )
+
+    return successResponse({ success: true, data: product })
+  } catch (error) {
+    console.error('Error updating product:', error)
+    return errorResponse('Failed to update product', 500)
+  }
+}
+
+/**
+ * DELETE /api/products
+ * Delete a product (expects product_id in query params)
+ */
+export async function DELETE(request) {
+  const supabase = createSupabaseClient()
+  
+  const userContext = await getUserBusinessId(supabase)
+  if (!userContext) {
+    return errorResponse('Unauthorized', 401)
+  }
+
+  // Permission check
+  if (!['admin', 'manager'].includes(userContext.role)) {
+    return errorResponse('Forbidden: Only admins and managers can delete products', 403)
+  }
+
+  try {
+    const { searchParams } = new URL(request.url)
+    const product_id = searchParams.get('product_id')
+
+    if (!product_id) {
+      return errorResponse('Product ID is required', 400)
+    }
+
+    // Soft delete (set status to inactive)
+    const { data: product, error: deleteError } = await supabase
+      .from('products')
+      .update({ status: 'inactive' })
+      .eq('id', product_id)
+      .eq('business_id', userContext.businessId)
+      .select()
+      .single()
+
+    if (deleteError) throw deleteError
+
+    // Audit log
+    await logAudit(
+      supabase,
+      userContext.userId,
+      userContext.businessId,
+      AUDIT_ACTIONS.DELETE,
+      RESOURCE_TYPES.PRODUCT,
+      product.id,
+      { product_name: product.name }
+    )
+
+    return successResponse({ success: true, message: 'Product deleted successfully' })
+  } catch (error) {
+    console.error('Error deleting product:', error)
+    return errorResponse('Failed to delete product', 500)
+  }
+}
+
+// Handle OPTIONS for CORS
+export async function OPTIONS(request) {
+  return handleCORS(new NextResponse(null, { status: 200 }))
+}
