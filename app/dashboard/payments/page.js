@@ -194,6 +194,30 @@ export default function PaymentsPage() {
     setSelectedRetailer(null)
   }
 
+  // Filter payments based on search term
+  const filteredPayments = useMemo(() => {
+    if (!searchTerm) return payments
+
+    const lowerSearch = searchTerm.toLowerCase()
+    return payments.filter(payment =>
+      payment.retailers?.shop_name?.toLowerCase().includes(lowerSearch) ||
+      payment.payment_method?.toLowerCase().includes(lowerSearch) ||
+      payment.reference_number?.toLowerCase().includes(lowerSearch)
+    )
+  }, [payments, searchTerm])
+
+  // Pagination
+  const totalPages = Math.ceil(filteredPayments.length / pageSize)
+  const paginatedPayments = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return filteredPayments.slice(startIndex, startIndex + pageSize)
+  }, [filteredPayments, currentPage, pageSize])
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -309,17 +333,34 @@ export default function PaymentsPage() {
         </Dialog>
       </div>
 
+      {/* Search Bar */}
+      <div className="flex gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+          <Input
+            placeholder="Search by retailer name, payment method, or reference..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 h-12 border-2"
+          />
+        </div>
+      </div>
+
       {/* Mobile View - Card Layout */}
       <div className="block md:hidden space-y-4 animate-fade-in">
-        {payments.length === 0 ? (
+        {filteredPayments.length === 0 ? (
           <Card className="border-2 border-neutral-200">
             <CardContent className="p-0">
               <div className="text-center py-16 px-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
-                  <Plus className="h-8 w-8 text-neutral-400" />
+                  <DollarSign className="h-8 w-8 text-neutral-400" />
                 </div>
-                <p className="text-neutral-600 text-lg font-medium">No payments recorded yet</p>
-                <p className="text-neutral-500 text-sm mt-1">Start recording customer payments</p>
+                <p className="text-neutral-600 text-lg font-medium">
+                  {searchTerm ? 'No matching payments' : 'No payments recorded yet'}
+                </p>
+                <p className="text-neutral-500 text-sm mt-1">
+                  {searchTerm ? 'Try adjusting your search terms' : 'Start recording customer payments'}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -329,11 +370,22 @@ export default function PaymentsPage() {
               <div className="p-2 bg-emerald-100 rounded-lg">
                 <DollarSign className="h-5 w-5 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-neutral-900">Payment History ({payments.length})</h3>
+              <h3 className="text-xl font-bold text-neutral-900">Payment History ({filteredPayments.length})</h3>
             </div>
-            {payments.map((payment) => (
+            {paginatedPayments.map((payment) => (
               <PaymentMobileCard key={payment.id} payment={payment} />
             ))}
+            {totalPages > 1 && (
+              <div className="pt-4">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  totalItems={filteredPayments.length}
+                  pageSize={pageSize}
+                />
+              </div>
+            )}
           </>
         )}
       </div>
@@ -345,7 +397,7 @@ export default function PaymentsPage() {
             <div className="p-2 bg-emerald-100 rounded-lg">
               <DollarSign className="h-5 w-5 text-emerald-600" />
             </div>
-            <CardTitle className="text-2xl font-bold text-neutral-900">Payment History ({payments.length})</CardTitle>
+            <CardTitle className="text-2xl font-bold text-neutral-900">Payment History ({filteredPayments.length})</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -362,7 +414,7 @@ export default function PaymentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payments.map((payment) => (
+                {paginatedPayments.map((payment) => (
                   <TableRow key={payment.id} className="hover:bg-emerald-50 transition-colors duration-150">
                     <TableCell className="text-neutral-700">{new Date(payment.created_at).toLocaleString()}</TableCell>
                     <TableCell className="font-medium text-neutral-900">{payment.retailers?.shop_name || 'N/A'}</TableCell>
@@ -374,13 +426,28 @@ export default function PaymentsPage() {
                 ))}
               </TableBody>
             </Table>
-            {payments.length === 0 && (
+            {filteredPayments.length === 0 && (
               <div className="text-center py-16 px-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
-                  <Plus className="h-8 w-8 text-neutral-400" />
+                  <DollarSign className="h-8 w-8 text-neutral-400" />
                 </div>
-                <p className="text-neutral-600 text-lg font-medium">No payments recorded yet</p>
-                <p className="text-neutral-500 text-sm mt-1">Start recording customer payments</p>
+                <p className="text-neutral-600 text-lg font-medium">
+                  {searchTerm ? 'No matching payments' : 'No payments recorded yet'}
+                </p>
+                <p className="text-neutral-500 text-sm mt-1">
+                  {searchTerm ? 'Try adjusting your search terms' : 'Start recording customer payments'}
+                </p>
+              </div>
+            )}
+            {totalPages > 1 && (
+              <div className="p-4 border-t border-neutral-200">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  totalItems={filteredPayments.length}
+                  pageSize={pageSize}
+                />
               </div>
             )}
           </div>

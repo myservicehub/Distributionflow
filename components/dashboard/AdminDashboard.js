@@ -459,13 +459,13 @@ export default function AdminDashboard() {
                 </div>
               )}
             </>
-              ) : (
-                <div className="text-center py-12">
-                  <Activity className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
-                  <p className="text-neutral-600">No recent activity</p>
-                </div>
-              )}
+          ) : (
+            <div className="text-center py-12">
+              <Activity className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
+              <p className="text-neutral-600">No recent activity</p>
             </div>
+          )}
+          </div>
           </CardContent>
         </Card>
 
