@@ -1423,6 +1423,32 @@ async function handleRoute(request, { params }) {
       const { error: validationError, data } = parseBody(CreateOrderSchema, body)
       if (validationError) return handleCORS(validationError, request)
       
+      // Calculate total for double-submit check
+      const calculatedTotal = data.items.reduce((sum, item) => 
+        sum + (item.quantity * item.unit_price), 0
+      )
+      
+      // DOUBLE-SUBMIT GUARD: Check for identical order in the last 60 seconds
+      const sixtySecondsAgo = new Date(Date.now() - 60000).toISOString()
+      const { data: recentOrder } = await supabase
+        .from('orders')
+        .select('id, created_at')
+        .eq('business_id', userContext.businessId)
+        .eq('retailer_id', data.retailer_id)
+        .eq('sales_rep_id', userContext.userId)
+        .gte('total_amount', calculatedTotal - 0.01)  // Allow tiny rounding difference
+        .lte('total_amount', calculatedTotal + 0.01)
+        .gte('created_at', sixtySecondsAgo)
+        .maybeSingle()
+
+      if (recentOrder) {
+        return handleCORS(NextResponse.json({
+          error: 'Duplicate order',
+          message: 'An identical order was just created for this retailer. If this is intentional, please wait 60 seconds and try again.',
+          code: 'DUPLICATE_ORDER'
+        }, { status: 409 }))
+      }
+      
       // STEP 1: Validate stock availability for all items
       for (const item of data.items) {
         const { data: product } = await supabase
@@ -2369,6 +2395,26 @@ async function handleRoute(request, { params }) {
         }
       )
       
+      // DOUBLE-SUBMIT GUARD: Check for identical payment in the last 30 seconds
+      const thirtySecondsAgo = new Date(Date.now() - 30000).toISOString()
+      const { data: recentDuplicate } = await adminSupabase
+        .from('payments')
+        .select('id, created_at')
+        .eq('business_id', userContext.businessId)
+        .eq('retailer_id', data.retailer_id)
+        .eq('amount_paid', data.amount)
+        .eq('payment_method', data.payment_method)
+        .gte('created_at', thirtySecondsAgo)
+        .maybeSingle()
+
+      if (recentDuplicate) {
+        return handleCORS(NextResponse.json({
+          error: 'Duplicate payment',
+          message: 'An identical payment was just recorded for this retailer. If this is intentional, please wait 30 seconds and try again.',
+          code: 'DUPLICATE_PAYMENT'
+        }, { status: 409 }))
+      }
+      
       // Create payment record using validated data
       const { data: payment, error: paymentError } = await adminSupabase
         .from('payments')
@@ -2577,6 +2623,26 @@ async function handleRoute(request, { params }) {
         }
       )
 
+      // DUPLICATE CHECK: Check if email already exists in this business
+      const { data: existingUser } = await supabaseAdmin
+        .from('users')
+        .select('id, email, status')
+        .eq('business_id', userContext.businessId)
+        .eq('email', data.email.toLowerCase().trim())
+        .maybeSingle()
+
+      if (existingUser) {
+        const statusMsg = existingUser.status === 'inactive'
+          ? 'This email belongs to a deactivated staff member. Reactivate them from the staff list instead.'
+          : 'A staff member with this email already exists in your business.'
+        return handleCORS(NextResponse.json({
+          error: 'Duplicate email',
+          message: statusMsg,
+          code: 'DUPLICATE_ENTRY',
+          field: 'email'
+        }, { status: 409 }))
+      }
+
       // Get business name for email
       const { data: business } = await supabaseAdmin
         .from('businesses')
@@ -2589,12 +2655,12 @@ async function handleRoute(request, { params }) {
 
       // Create auth user with temporary password
       const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: body.email,
+        email: data.email,
         password: tempPassword,
         email_confirm: true, // Auto-confirm email
         user_metadata: {
-          name: body.name,
-          role: body.role,
+          name: data.name,
+          role: data.role,
           business_id: userContext.businessId,
           business_name: business?.name || 'DistributionFlow',
           needs_password_change: true // Force password change on first login
@@ -2602,6 +2668,17 @@ async function handleRoute(request, { params }) {
       })
 
       if (authError) {
+        // Supabase error when email already exists in auth system
+        if (authError.message?.includes('already been registered') ||
+            authError.message?.includes('already exists') ||
+            authError.code === 'email_exists') {
+          return handleCORS(NextResponse.json({
+            error: 'Email already registered',
+            message: 'This email address is already registered in the system. The user may belong to another business.',
+            code: 'DUPLICATE_ENTRY',
+            field: 'email'
+          }, { status: 409 }))
+        }
         console.error('Auth user invitation error:', authError)
         throw new Error(`Failed to invite user: ${authError.message}`)
       }
@@ -2612,9 +2689,9 @@ async function handleRoute(request, { params }) {
         .insert({
           auth_user_id: authUser.user.id,
           business_id: userContext.businessId,
-          email: body.email,
-          name: body.name,
-          role: body.role,
+          email: data.email,
+          name: data.name,
+          role: data.role,
           status: 'active'
         })
         .select()

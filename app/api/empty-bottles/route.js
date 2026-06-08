@@ -405,11 +405,29 @@ export async function POST(request) {
       const { name, deposit_value, initial_quantity } = body
       const initialQty = parseInt(initial_quantity) || 0
 
+      // DUPLICATE CHECK: Check for duplicate empty item name (case-insensitive) within business
+      const { data: existingItem } = await adminSupabase
+        .from('empty_items')
+        .select('id, name')
+        .eq('business_id', userProfile.business_id)
+        .ilike('name', name.trim())
+        .eq('is_active', true)
+        .maybeSingle()
+
+      if (existingItem) {
+        return handleCORS(NextResponse.json({
+          error: 'Duplicate empty item',
+          message: `An empty item named "${existingItem.name}" already exists.`,
+          code: 'DUPLICATE_ENTRY',
+          field: 'name'
+        }, { status: 409 }))
+      }
+
       const { data, error } = await adminSupabase
         .from('empty_items')
         .insert({
           business_id: userProfile.business_id,
-          name: name,
+          name: name.trim(),
           deposit_value: deposit_value
         })
         .select()
