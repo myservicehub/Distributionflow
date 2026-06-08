@@ -1,185 +1,128 @@
-import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { sendNotification } from '@/lib/notifications'
+import { createSupabaseClient, getUserBusinessId, handleCORS, getPaginationParams, buildPaginationResponse, errorResponse, successResponse } from '@/lib/api/helpers'
+import { enforceSubscription } from '@/lib/api/subscription'
+import { logAudit, AUDIT_ACTIONS, RESOURCE_TYPES } from '@/lib/audit-logger'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-// Helper to create authenticated Supabase client
-async function getSupabaseClient() {
-  const cookieStore = await cookies()
-  
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll()
-      },
-      setAll(cookiesToSet) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
-        } catch {
-          // Ignore
-        }
-      },
-    },
-  })
-}
-
-// Get current user's business ID
-async function getUserBusinessId(supabase) {
-  try {
-    const { data: { user } } = await supabase.auth.getUser()
-    console.log('Auth user:', user?.id, 'Error:', null)
-    
-    if (!user) return null
-
-    const { data: userProfile, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('auth_user_id', user.id)
-      .single()
-
-    console.log('User profile:', userProfile, 'Error:', error)
-
-    if (!userProfile) return null
-
-    return {
-      businessId: userProfile.business_id,
-      role: userProfile.role,
-      userId: userProfile.id
-    }
-  } catch (error) {
-    console.error('Error in getUserBusinessId:', error)
-    return null
-  }
-}
-
-function canManageInventory(role) {
-  return ['admin', 'manager', 'warehouse'].includes(role)
-}
-
-// Audit logging helper
-async function logAuditEvent(supabase, userContext, action, details, entityType, resourceId) {
-  try {
-    await supabase
-      .from('audit_logs')
-      .insert({
-        business_id: userContext.businessId,
-        user_id: userContext.userId,
-        action,
-        details,
-        entity_type: entityType,
-        resource_id: resourceId
-      })
-  } catch (error) {
-    console.error('Audit log error:', error)
-  }
-}
-
-// GET - List stock movements
+/**
+ * GET /api/stock-movements
+ * Get stock movements with pagination
+ */
 export async function GET(request) {
-  try {
-    const supabase = await getSupabaseClient()
-    const userContext = await getUserBusinessId(supabase)
-    
-    if (!userContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  const supabase = createSupabaseClient()
+  
+  const userContext = await getUserBusinessId(supabase)
+  if (!userContext) {
+    return errorResponse('Unauthorized', 401)
+  }
 
-    const { data, error } = await supabase
+  try {
+    const { page, pageSize, from, to } = getPaginationParams(request)
+
+    const { data: movements, error, count } = await supabase
       .from('stock_movements')
-      .select('*, product:products(name, sku)')
+      .select('*, products(name), users!stock_movements_user_id_fkey(name)', { count: 'exact' })
       .eq('business_id', userContext.businessId)
       .order('created_at', { ascending: false })
-      .limit(100)
+      .range(from, to)
 
-    if (error) {
-      console.error('Stock movements query error:', error)
-      throw error
-    }
+    if (error) throw error
 
-    return NextResponse.json(data || [])
+    // Format response
+    const formattedMovements = (movements || []).map(movement => ({
+      ...movement,
+      product_name: movement.products?.name || 'N/A',
+      user_name: movement.users?.name || 'System'
+    }))
+
+    const response = buildPaginationResponse(formattedMovements, count, { page, pageSize })
+    return successResponse(response)
   } catch (error) {
-    console.error('GET /api/stock-movements error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    )
+    console.error('Error fetching stock movements:', error)
+    return errorResponse('Failed to fetch stock movements', 500)
   }
 }
 
-// POST - Create stock movement
+/**
+ * POST /api/stock-movements
+ * Record a stock movement (in/out/adjustment)
+ */
 export async function POST(request) {
+  const supabase = createSupabaseClient()
+  
+  const userContext = await getUserBusinessId(supabase)
+  if (!userContext) {
+    return errorResponse('Unauthorized', 401)
+  }
+
+  // Subscription check
+  const subscriptionError = await enforceSubscription(userContext.businessId)
+  if (subscriptionError) {
+    return errorResponse(subscriptionError.message, 402)
+  }
+
+  // Permission check
+  if (!['admin', 'manager', 'warehouse'].includes(userContext.role)) {
+    return errorResponse('Forbidden: Only authorized staff can record stock movements', 403)
+  }
+
   try {
-    const supabase = await getSupabaseClient()
-    const userContext = await getUserBusinessId(supabase)
-    
-    if (!userContext) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Check permission
-    if (!canManageInventory(userContext.role)) {
-      return NextResponse.json(
-        { error: 'Forbidden: Insufficient permissions' },
-        { status: 403 }
-      )
-    }
-
     const body = await request.json()
     const { product_id, movement_type, quantity, notes } = body
 
-    // Validate inputs
     if (!product_id || !movement_type || !quantity) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+      return errorResponse('Product ID, movement type, and quantity are required', 400)
     }
 
-    if (!['in', 'out'].includes(movement_type)) {
-      return NextResponse.json(
-        { error: 'Invalid movement_type. Must be "in" or "out"' },
-        { status: 400 }
-      )
+    if (!['in', 'out', 'adjustment'].includes(movement_type)) {
+      return errorResponse('Invalid movement type. Must be in, out, or adjustment', 400)
     }
 
     const qty = parseInt(quantity)
     if (isNaN(qty) || qty <= 0) {
-      return NextResponse.json(
-        { error: 'Quantity must be a positive number' },
-        { status: 400 }
-      )
+      return errorResponse('Quantity must be a positive number', 400)
     }
 
     // Get current product stock
-    const { data: product, error: productError } = await supabase
+    const { data: product } = await supabase
       .from('products')
       .select('stock_quantity, name')
       .eq('id', product_id)
       .eq('business_id', userContext.businessId)
       .single()
 
-    if (productError || !product) {
-      return NextResponse.json(
-        { error: 'Product not found' },
-        { status: 404 }
-      )
+    if (!product) {
+      return errorResponse('Product not found', 404)
     }
 
-    // Calculate new stock quantity
     const currentStock = product.stock_quantity || 0
-    const newStock = movement_type === 'in' ? currentStock + qty : currentStock - qty
+    let newStock = currentStock
 
-    if (newStock < 0) {
-      return NextResponse.json(
-        { error: `Insufficient stock. Current: ${currentStock}, Requested: ${qty}` },
-        { status: 400 }
-      )
+    // Calculate new stock based on movement type
+    if (movement_type === 'in') {
+      newStock = currentStock + qty
+    } else if (movement_type === 'out') {
+      newStock = Math.max(0, currentStock - qty)
+    } else if (movement_type === 'adjustment') {
+      newStock = qty // Set to exact quantity
     }
+
+    // Create movement record
+    const { data: movement, error: createError } = await supabase
+      .from('stock_movements')
+      .insert([{
+        business_id: userContext.businessId,
+        product_id,
+        movement_type,
+        quantity: qty,
+        quantity_before: currentStock,
+        quantity_after: newStock,
+        notes: notes || null,
+        user_id: userContext.userId
+      }])
+      .select()
+      .single()
+
+    if (createError) throw createError
 
     // Update product stock
     const { error: updateError } = await supabase
@@ -188,108 +131,37 @@ export async function POST(request) {
       .eq('id', product_id)
       .eq('business_id', userContext.businessId)
 
-    if (updateError) {
-      console.error('Product update error:', updateError)
-      throw updateError
-    }
+    if (updateError) throw updateError
 
-    // Create stock movement record (using "type" column name)
-    const { data: movement, error: movementError } = await supabase
-      .from('stock_movements')
-      .insert({
-        business_id: userContext.businessId,
-        product_id,
-        type: movement_type, // Note: table uses "type" not "movement_type"
-        quantity: qty,
-        notes: notes || null,
-        created_by: userContext.userId // Add the user who created the movement
-      })
-      .select()
-      .single()
-
-    if (movementError) {
-      console.error('Stock movement insert error:', movementError)
-      throw movementError
-    }
-
-    // Log audit event
-    await logAuditEvent(
+    // Audit log
+    await logAudit(
       supabase,
-      userContext,
-      'STOCK_MOVEMENT',
-      `${movement_type === 'in' ? 'Added' : 'Removed'} ${qty} units of ${product.name}. New stock: ${newStock}`,
-      'stock_movement',
-      movement.id
+      userContext.userId,
+      userContext.businessId,
+      AUDIT_ACTIONS.UPDATE,
+      RESOURCE_TYPES.PRODUCT,
+      product_id,
+      {
+        product_name: product.name,
+        movement_type,
+        quantity: qty,
+        old_stock: currentStock,
+        new_stock: newStock
+      }
     )
 
-    // Send notification for large stock adjustments
-    try {
-      const {createClient: createAdminClient} = await import('@supabase/supabase-js')
-      const supabaseAdmin = createAdminClient(
-        supabaseUrl,
-        process.env.SUPABASE_SERVICE_ROLE_KEY
-      )
-      
-      // Get business settings for thresholds
-      const {data: businessSettings} = await supabaseAdmin
-        .from('business_settings')
-        .select('settings')
-        .eq('business_id', userContext.businessId)
-        .maybeSingle()
-      
-      const thresholds = businessSettings?.settings?.notifications || {
-        large_stock_deduction: 50,
-        large_stock_addition: 100,
-        low_stock_threshold: 10
-      }
-      
-      // Get user name
-      const {data: userData} = await supabaseAdmin
-        .from('users')
-        .select('name')
-        .eq('id', userContext.userId)
-        .single()
-      
-      // Notify for large stock deductions or additions based on configured thresholds
-      const isLargeDeduction = movement_type === 'out' && qty >= thresholds.large_stock_deduction
-      const isStockIn = movement_type === 'in' && qty >= thresholds.large_stock_addition
-      
-      if (isLargeDeduction || isStockIn) {
-        await sendNotification({
-          title: isLargeDeduction ? 'Large Stock Deduction' : 'Large Stock Addition',
-          message: `Stock ${movement_type === 'in' ? 'increased' : 'decreased'} by ${qty} units for ${product.name} by ${userData?.name || 'Unknown'}. New stock: ${newStock}`,
-          type: 'inventory',
-          targetRole: 'all',
-          businessId: userContext.businessId,
-          triggeredBy: userContext.userId,
-          relatedTable: 'stock_movements',
-          relatedRecordId: movement.id
-        })
-      }
-      
-      // Check for low stock based on configured threshold
-      if (newStock < thresholds.low_stock_threshold) {
-        await sendNotification({
-          title: 'Low Stock Alert',
-          message: `${product.name} is running low. Current stock: ${newStock} units (Threshold: ${thresholds.low_stock_threshold}).`,
-          type: 'inventory',
-          targetRole: 'all',
-          businessId: userContext.businessId,
-          triggeredBy: userContext.userId,
-          relatedTable: 'products',
-          relatedRecordId: product_id
-        })
-      }
-    } catch (notifError) {
-      console.error('Failed to send stock notification:', notifError)
-    }
-
-    return NextResponse.json(movement)
+    return successResponse({ 
+      success: true, 
+      data: movement,
+      new_stock: newStock 
+    }, 201)
   } catch (error) {
-    console.error('POST /api/stock-movements error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    )
+    console.error('Error creating stock movement:', error)
+    return errorResponse('Failed to create stock movement', 500)
   }
+}
+
+// Handle OPTIONS for CORS
+export async function OPTIONS(request) {
+  return handleCORS(new NextResponse(null, { status: 200 }))
 }
