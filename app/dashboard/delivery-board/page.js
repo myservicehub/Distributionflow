@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Package, Truck, CheckCircle, XCircle, Search, Calendar, User, CreditCard, Eye, FileText } from 'lucide-react'
 import BottleExchangeSection from '@/components/BottleExchangeSection'
+import { Pagination } from '@/components/ui/pagination'
 
 export default function DeliveryBoardPage() {
   const { userProfile } = useAuth()
@@ -19,6 +20,8 @@ export default function DeliveryBoardPage() {
   const [loading, setLoading] = useState(true)
   const [selectedTab, setSelectedTab] = useState('preparing')
   const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 9  // 3x3 grid on desktop
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [actionDialog, setActionDialog] = useState(null)
   const [driverName, setDriverName] = useState('')
@@ -133,7 +136,8 @@ export default function DeliveryBoardPage() {
     )
   }
 
-  const getTabOrders = () => {
+  // Filter orders by tab and search using useMemo
+  const filteredOrders = useMemo(() => {
     let filtered = []
     switch (selectedTab) {
       case 'preparing':
@@ -153,6 +157,22 @@ export default function DeliveryBoardPage() {
     }
     
     return searchFilteredOrders(filtered)
+  }, [orders, selectedTab, searchTerm])
+
+  // Pagination with useMemo
+  const totalPages = Math.ceil(filteredOrders.length / pageSize)
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return filteredOrders.slice(startIndex, startIndex + pageSize)
+  }, [filteredOrders, currentPage, pageSize])
+
+  // Reset to page 1 when tab or search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedTab, searchTerm])
+
+  const getTabOrders = () => {
+    return paginatedOrders
   }
 
   const handleAction = async (order, action) => {
@@ -459,11 +479,24 @@ export default function DeliveryBoardPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {getTabOrders().map(order => (
-            <OrderCard key={order.id} order={order} />
-          ))}
-        </div>
+        <>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {getTabOrders().map(order => (
+              <OrderCard key={order.id} order={order} />
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-center mt-6 animate-fade-in">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
+        </>
       )}
 
       {/* Dispatch Dialog */}
