@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
 
-export default function VerifyPaymentPage() {
+function VerifyPaymentContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [verifying, setVerifying] = useState(true)
@@ -138,5 +138,29 @@ export default function VerifyPaymentPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+// Wrap with Suspense for Next.js static generation
+export default function VerifyPaymentPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50 p-4">
+        <Card className="w-full max-w-md border-2 border-neutral-200 shadow-lg">
+          <CardContent className="p-8">
+            <div className="text-center space-y-4">
+              <div className="flex justify-center">
+                <Loader2 className="h-16 w-16 text-emerald-600 animate-spin" />
+              </div>
+              <h3 className="text-xl font-semibold text-neutral-900">
+                Loading...
+              </h3>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <VerifyPaymentContent />
+    </Suspense>
   )
 }

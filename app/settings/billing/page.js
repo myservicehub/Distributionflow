@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -12,7 +12,7 @@ import { Loader2, CreditCard, Users, Calendar, AlertTriangle, Check, TrendingUp,
 import DynamicSidebar from '@/components/layout/DynamicSidebar'
 import { toast } from 'sonner'
 
-export default function BillingPage() {
+function BillingPageContent() {
   const [loading, setLoading] = useState(true)
   const [billingData, setBillingData] = useState(null)
   const [plans, setPlans] = useState([])
@@ -445,5 +445,21 @@ export default function BillingPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// Wrap with Suspense for Next.js static generation
+export default function BillingPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-emerald-600 mx-auto mb-4" />
+          <p className="text-neutral-600">Loading billing information...</p>
+        </div>
+      </div>
+    }>
+      <BillingPageContent />
+    </Suspense>
   )
 }
