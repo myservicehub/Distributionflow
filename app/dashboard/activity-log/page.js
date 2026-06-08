@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,7 +14,9 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, ChevronDown, ChevronUp, Calendar, User, Activity } from 'lucide-react'
+import { RefreshCw, ChevronDown, ChevronUp, Calendar, User, Activity, Search } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Pagination } from '@/components/ui/pagination'
 
 // Mobile Card Component for Activity Logs
 function ActivityLogMobileCard({ log, formatDate, formatAction, getActionBadgeColor, getDetailedDescription }) {
@@ -83,6 +85,9 @@ export default function ActivityLogPage() {
   const router = useRouter()
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 15
 
   // Check if user is admin
   useEffect(() => {
@@ -260,6 +265,32 @@ export default function ActivityLogPage() {
     })
   }
 
+  // Client-side filtering
+  const filteredLogs = useMemo(() => {
+    if (!searchTerm) return logs
+
+    const lowerSearch = searchTerm.toLowerCase()
+    return logs.filter(log =>
+      log.users?.name?.toLowerCase().includes(lowerSearch) ||
+      log.users?.email?.toLowerCase().includes(lowerSearch) ||
+      log.action?.toLowerCase().includes(lowerSearch) ||
+      log.entity_type?.toLowerCase().includes(lowerSearch) ||
+      JSON.stringify(log.details || {}).toLowerCase().includes(lowerSearch)
+    )
+  }, [logs, searchTerm])
+
+  // Pagination
+  const totalPages = Math.ceil(filteredLogs.length / pageSize)
+  const paginatedLogs = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return filteredLogs.slice(startIndex, startIndex + pageSize)
+  }, [filteredLogs, currentPage, pageSize])
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -278,17 +309,6 @@ export default function ActivityLogPage() {
           <h2 className="text-4xl font-bold text-neutral-900 tracking-tight">Activity Log</h2>
           <p className="text-neutral-600 mt-2">Track all actions performed in your business</p>
         </div>
-        <Button onClick={fetchLogs} variant="outline" className="hover:bg-primary-50 hover:border-primary-300 hover:text-primary-700 h-12">
-          <RefreshCw className="h-5 w-5 mr-2" />
-          Refresh
-        </Button>
-      </div>
-
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <div className="animate-slide-down">
-          <h2 className="text-4xl font-bold text-neutral-900 tracking-tight">Activity Log</h2>
-          <p className="text-neutral-600 mt-2">Track all actions performed in your business</p>
-        </div>
         <Button 
           onClick={fetchLogs} 
           variant="outline" 
@@ -299,9 +319,21 @@ export default function ActivityLogPage() {
         </Button>
       </div>
 
+      {/* Search Bar */}
+      <div className="relative max-w-md animate-slide-down">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
+        <Input
+          type="text"
+          placeholder="Search by user, action, or entity..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10 border-2 border-neutral-200 focus:border-emerald-400 transition-colors"
+        />
+      </div>
+
       {/* Mobile View - Card Layout */}
       <div className="block md:hidden space-y-4 animate-fade-in">
-        {logs.length === 0 ? (
+        {paginatedLogs.length === 0 ? (
           <Card className="border-2 border-neutral-200">
             <CardContent className="p-8">
               <div className="text-center">
@@ -319,9 +351,9 @@ export default function ActivityLogPage() {
               <div className="p-2 bg-emerald-100 rounded-lg">
                 <Activity className="h-5 w-5 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-neutral-900">Recent Activity ({logs.length})</h3>
+              <h3 className="text-xl font-bold text-neutral-900">Recent Activity ({filteredLogs.length})</h3>
             </div>
-            {logs.map((log) => (
+            {paginatedLogs.map((log) => (
               <ActivityLogMobileCard
                 key={log.id}
                 log={log}
@@ -342,7 +374,7 @@ export default function ActivityLogPage() {
             <div className="p-2 bg-emerald-100 rounded-lg">
               <Activity className="h-5 w-5 text-emerald-600" />
             </div>
-            <CardTitle className="text-2xl font-bold text-neutral-900">Recent Activity ({logs.length})</CardTitle>
+            <CardTitle className="text-2xl font-bold text-neutral-900">Recent Activity ({filteredLogs.length})</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -358,18 +390,22 @@ export default function ActivityLogPage() {
                 </TableRow>
               </TableHeader>
           <TableBody>
-            {logs.length === 0 ? (
+            {paginatedLogs.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-16">
                   <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
                     <Activity className="h-8 w-8 text-neutral-400" />
                   </div>
-                  <p className="text-neutral-600 text-lg font-medium">No activity logs found</p>
-                  <p className="text-neutral-500 text-sm mt-1">Activity will appear here as actions are performed</p>
+                  <p className="text-neutral-600 text-lg font-medium">
+                    {searchTerm ? 'No logs found' : 'No activity logs yet'}
+                  </p>
+                  <p className="text-neutral-500 text-sm mt-1">
+                    {searchTerm ? 'Try adjusting your search' : 'Activity will appear here as actions are performed'}
+                  </p>
                 </TableCell>
               </TableRow>
             ) : (
-              logs.map((log) => (
+              paginatedLogs.map((log) => (
                 <TableRow key={log.id} className="hover:bg-emerald-50 transition-colors duration-150">
                   <TableCell className="text-sm text-neutral-700">
                     {formatDate(log.created_at)}
@@ -399,6 +435,17 @@ export default function ActivityLogPage() {
       </div>
     </CardContent>
   </Card>
+
+  {/* Pagination */}
+  {totalPages > 1 && (
+    <div className="flex justify-center mt-6 animate-fade-in">
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
+    </div>
+  )}
 </div>
 )
 }
