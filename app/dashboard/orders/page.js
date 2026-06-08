@@ -141,6 +141,9 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [expandedOrders, setExpandedOrders] = useState({})
+  const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
   const [orderItems, setOrderItems] = useState([{ product_id: '', quantity: 1, unit_price: 0, total_price: 0 }])
   const [bottleExchange, setBottleExchange] = useState({ enabled: false, empties: [] })
   const [formData, setFormData] = useState({
@@ -398,6 +401,30 @@ export default function OrdersPage() {
     }
   }
 
+  // Filter orders based on search term
+  const filteredOrders = useMemo(() => {
+    if (!searchTerm) return orders
+
+    const lowerSearch = searchTerm.toLowerCase()
+    return orders.filter(order =>
+      order.retailers?.shop_name?.toLowerCase().includes(lowerSearch) ||
+      order.sales_rep?.name?.toLowerCase().includes(lowerSearch) ||
+      order.id?.toLowerCase().includes(lowerSearch)
+    )
+  }, [orders, searchTerm])
+
+  // Pagination
+  const totalPages = Math.ceil(filteredOrders.length / pageSize)
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return filteredOrders.slice(startIndex, startIndex + pageSize)
+  }, [filteredOrders, currentPage, pageSize])
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
+
   const canApproveOrders = () => {
     return userProfile && ['admin', 'manager'].includes(userProfile.role)
   }
@@ -616,9 +643,22 @@ export default function OrdersPage() {
         </Dialog>
       </div>
 
+      {/* Search Bar */}
+      <div className="flex gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+          <Input
+            placeholder="Search by order ID, retailer name, or sales rep..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 h-12 border-2"
+          />
+        </div>
+      </div>
+
       <Card className="border-0 shadow-soft animate-fade-in">
         <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50">
-          <CardTitle className="text-2xl font-bold text-neutral-900">All Orders ({orders.length})</CardTitle>
+          <CardTitle className="text-2xl font-bold text-neutral-900">All Orders ({filteredOrders.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {/* Desktop Table View */}
@@ -638,7 +678,7 @@ export default function OrdersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orders.map((order) => (
+                {paginatedOrders.map((order) => (
                   <React.Fragment key={order.id}>
                     <TableRow className="cursor-pointer hover:bg-neutral-50 transition-colors duration-150">
                       <TableCell>
@@ -773,43 +813,75 @@ export default function OrdersPage() {
                 ))}
               </TableBody>
             </Table>
-            {orders.length === 0 && (
+            {filteredOrders.length === 0 && (
               <div className="text-center py-16 px-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
-                  <Plus className="h-8 w-8 text-neutral-400" />
+                  <ShoppingCart className="h-8 w-8 text-neutral-400" />
                 </div>
-                <p className="text-neutral-600 text-lg font-medium">No orders yet</p>
-                <p className="text-neutral-500 text-sm mt-1">Click "New Order" to create your first order</p>
+                <p className="text-neutral-600 text-lg font-medium">
+                  {searchTerm ? 'No matching orders' : 'No orders yet'}
+                </p>
+                <p className="text-neutral-500 text-sm mt-1">
+                  {searchTerm ? 'Try adjusting your search terms' : 'Click "New Order" to create your first order'}
+                </p>
+              </div>
+            )}
+            {totalPages > 1 && (
+              <div className="p-4 border-t border-neutral-200">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  totalItems={filteredOrders.length}
+                  pageSize={pageSize}
+                />
               </div>
             )}
           </div>
 
           {/* Mobile Card View */}
           <div className="md:hidden">
-            {orders.length === 0 ? (
+            {filteredOrders.length === 0 ? (
               <div className="text-center py-16 px-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
-                  <Plus className="h-8 w-8 text-neutral-400" />
+                  <ShoppingCart className="h-8 w-8 text-neutral-400" />
                 </div>
-                <p className="text-neutral-600 text-lg font-medium">No orders yet</p>
-                <p className="text-neutral-500 text-sm mt-1">Click "New Order" to create your first order</p>
+                <p className="text-neutral-600 text-lg font-medium">
+                  {searchTerm ? 'No matching orders' : 'No orders yet'}
+                </p>
+                <p className="text-neutral-500 text-sm mt-1">
+                  {searchTerm ? 'Try adjusting your search terms' : 'Click "New Order" to create your first order'}
+                </p>
               </div>
             ) : (
-              <div className="p-4 space-y-4">
-                {orders.map((order) => (
-                  <OrderMobileCard
-                    key={order.id}
-                    order={order}
-                    onExpand={toggleOrderExpand}
-                    isExpanded={expandedOrders[order.id]}
-                    canApprove={canApproveOrders()}
-                    onApprove={handleApproveOrder}
-                    onReject={handleRejectOrder}
-                    getPaymentStatusColor={getPaymentStatusColor}
-                    getStatusColor={getStatusColor}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="p-4 space-y-4">
+                  {paginatedOrders.map((order) => (
+                    <OrderMobileCard
+                      key={order.id}
+                      order={order}
+                      onExpand={toggleOrderExpand}
+                      isExpanded={expandedOrders[order.id]}
+                      canApprove={canApproveOrders()}
+                      onApprove={handleApproveOrder}
+                      onReject={handleRejectOrder}
+                      getPaymentStatusColor={getPaymentStatusColor}
+                      getStatusColor={getStatusColor}
+                    />
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <div className="p-4 border-t border-neutral-200">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                      totalItems={filteredOrders.length}
+                      pageSize={pageSize}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </CardContent>

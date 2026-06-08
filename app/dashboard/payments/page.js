@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Plus, DollarSign, ChevronDown, ChevronUp, Calendar, User, CreditCard, FileText, Store } from 'lucide-react'
+import { Plus, DollarSign, ChevronDown, ChevronUp, Calendar, User, CreditCard, FileText, Store, Search } from 'lucide-react'
+import { Pagination } from '@/components/ui/pagination'
 
 // Mobile Card Component for Payments
 function PaymentMobileCard({ payment }) {
@@ -111,6 +112,9 @@ export default function PaymentsPage() {
   const [selectedRetailer, setSelectedRetailer] = useState(null)
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
   const [formData, setFormData] = useState({
     retailer_id: '',
     amount_paid: '0',
