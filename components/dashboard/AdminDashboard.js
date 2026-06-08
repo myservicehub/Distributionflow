@@ -22,6 +22,7 @@ import Link from 'next/link'
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [showAllActivities, setShowAllActivities] = useState(false)
 
   useEffect(() => {
     fetchMetrics()
@@ -353,7 +354,12 @@ export default function AdminDashboard() {
                   <div key={i} className="h-20 bg-neutral-100 rounded-xl animate-shimmer" />
                 ))
               ) : metrics?.recentActivity?.length > 0 ? (
-                metrics.recentActivity.slice(0, 5).map((activity) => {
+                <>
+                  {/* Display activities with mobile limit */}
+                  {(showAllActivities 
+                    ? metrics.recentActivity.slice(0, 5)
+                    : metrics.recentActivity.slice(0, 3)
+                  ).map((activity) => {
                   // Map action to icon and color
                   const getActivityDisplay = (action, entityType, details) => {
                     const detailsObj = typeof details === 'string' ? JSON.parse(details) : details
@@ -443,6 +449,34 @@ export default function AdminDashboard() {
                     />
                   )
                 })
+              }
+              
+              {/* View More Button - Show if there are more than 3 activities */}
+              {!showAllActivities && metrics.recentActivity.length > 3 && (
+                <div className="pt-2">
+                  <Button
+                    onClick={() => setShowAllActivities(true)}
+                    variant="outline"
+                    className="w-full border-2 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300 text-emerald-700 font-semibold"
+                  >
+                    View More ({metrics.recentActivity.length - 3} more)
+                  </Button>
+                </div>
+              )}
+              
+              {/* Show Less Button */}
+              {showAllActivities && metrics.recentActivity.length > 3 && (
+                <div className="pt-2">
+                  <Button
+                    onClick={() => setShowAllActivities(false)}
+                    variant="outline"
+                    className="w-full border-2 border-neutral-200 hover:bg-neutral-50 text-neutral-700 font-semibold"
+                  >
+                    Show Less
+                  </Button>
+                </div>
+              )}
+            </>
               ) : (
                 <div className="text-center py-12">
                   <Activity className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
