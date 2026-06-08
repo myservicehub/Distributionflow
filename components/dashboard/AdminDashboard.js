@@ -42,7 +42,6 @@ export default function AdminDashboard() {
       setLoading(false)
     }
   }
-  }
 
   // Modern KPI Card Component - Mobile Optimized
   const ModernKPICard = ({ title, value, icon: Icon, trend, trendValue, color = "blue", loading }) => {
