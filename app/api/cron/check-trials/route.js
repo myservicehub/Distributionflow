@@ -1,19 +1,28 @@
 // Cron Job: Check and Expire Trials
 // Should be called daily via external cron service
-// Example: curl -X POST https://your-domain.com/api/cron/check-trials -H "Authorization: Bearer YOUR_CRON_SECRET"
+// Example: curl -X POST https://your-domain.com/api/cron/check-trials -H "x-cron-api-key: YOUR_CRON_API_KEY"
 
 import { NextResponse } from 'next/server'
 import { checkAndExpireTrials } from '@/lib/subscription'
 
-const CRON_SECRET = process.env.CRON_SECRET || 'change-this-secret-in-production'
-
 export async function POST(request) {
   try {
-    // Verify authorization (simple secret-based auth for cron)
-    const authHeader = request.headers.get('authorization')
-    const providedSecret = authHeader?.replace('Bearer ', '')
+    // Enforce API key authentication - fail closed, not open
+    const apiKey = request.headers.get('x-cron-api-key')
+    const expectedKey = process.env.CRON_API_KEY
 
-    if (providedSecret !== CRON_SECRET) {
+    // If CRON_API_KEY is not configured, reject request (fail closed)
+    if (!expectedKey) {
+      console.error('❌ CRON_API_KEY environment variable is not set')
+      return NextResponse.json(
+        { error: 'Server misconfiguration' },
+        { status: 500 }
+      )
+    }
+
+    // Verify API key matches
+    if (apiKey !== expectedKey) {
+      console.warn('⚠️ Unauthorized cron request attempt')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -35,6 +44,6 @@ export async function POST(request) {
 }
 
 export async function GET(request) {
-  // Allow GET for testing (remove in production or add better auth)
+  // Support GET for convenience, but use same auth
   return POST(request)
 }

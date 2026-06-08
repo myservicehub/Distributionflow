@@ -18,6 +18,7 @@ import {
   CheckCircle2
 } from 'lucide-react'
 import Link from 'next/link'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState(null)
@@ -41,25 +42,6 @@ export default function AdminDashboard() {
       setLoading(false)
     }
   }
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0
-    }).format(amount || 0)
-  }
-
-  const getTimeAgo = (timestamp) => {
-    const now = new Date()
-    const past = new Date(timestamp)
-    const diffInSeconds = Math.floor((now - past) / 1000)
-
-    if (diffInSeconds < 60) return 'Just now'
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`
-    return past.toLocaleDateString()
   }
 
   // Modern KPI Card Component - Mobile Optimized

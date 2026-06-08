@@ -9,12 +9,22 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request) {
   try {
-    // Optional: Add API key authentication for security
+    // Enforce API key authentication - fail closed, not open
     const apiKey = request.headers.get('x-cron-api-key')
     const expectedKey = process.env.CRON_API_KEY
     
-    // If CRON_API_KEY is set in env, enforce authentication
-    if (expectedKey && apiKey !== expectedKey) {
+    // If CRON_API_KEY is not configured, reject request (fail closed)
+    if (!expectedKey) {
+      console.error('❌ CRON_API_KEY environment variable is not set')
+      return NextResponse.json(
+        { error: 'Server misconfiguration' },
+        { status: 500 }
+      )
+    }
+    
+    // Verify API key matches
+    if (apiKey !== expectedKey) {
+      console.warn('⚠️ Unauthorized cron request attempt')
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
