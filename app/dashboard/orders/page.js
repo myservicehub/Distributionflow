@@ -156,48 +156,56 @@ export default function OrdersPage() {
   }
 
   useEffect(() => {
-    loadOrders()
-    loadRetailers()
-    loadProducts()
-    loadEmptyItems()
+    const controller = new AbortController()
+    
+    loadOrders(controller.signal)
+    loadRetailers(controller.signal)
+    loadProducts(controller.signal)
+    loadEmptyItems(controller.signal)
+    
+    return () => controller.abort()
   }, [])
 
-  const loadOrders = async () => {
+  const loadOrders = async (signal) => {
     try {
-      const response = await fetch('/api/orders')
+      const response = await fetch('/api/orders', { signal })
       if (!response.ok) throw new Error('Failed to load orders')
       const data = await response.json()
       setOrders(data)
     } catch (error) {
+      if (error.name === 'AbortError') return // Component unmounted - normal
+      console.error('Error loading orders:', error)
       toast.error('Failed to load orders')
     } finally {
       setLoading(false)
     }
   }
 
-  const loadRetailers = async () => {
+  const loadRetailers = async (signal) => {
     try {
-      const response = await fetch('/api/retailers')
+      const response = await fetch('/api/retailers', { signal })
       if (!response.ok) throw new Error('Failed to load retailers')
       const data = await response.json()
       setRetailers(data.filter(r => r.status === 'active'))
     } catch (error) {
-      console.error(error)
+      if (error.name === 'AbortError') return
+      console.error('Error loading retailers:', error)
     }
   }
 
-  const loadProducts = async () => {
+  const loadProducts = async (signal) => {
     try {
-      const response = await fetch('/api/products')
+      const response = await fetch('/api/products', { signal })
       if (!response.ok) throw new Error('Failed to load products')
       const data = await response.json()
       setProducts(data)
     } catch (error) {
-      console.error(error)
+      if (error.name === 'AbortError') return
+      console.error('Error loading products:', error)
     }
   }
 
-  const loadEmptyItems = async () => {
+  const loadEmptyItems = async (signal) => {
     try {
       const response = await fetch('/api/empty-bottles?route=empty-items')
       if (response.ok) {

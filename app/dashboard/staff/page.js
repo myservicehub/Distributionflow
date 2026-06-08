@@ -140,9 +140,9 @@ export default function StaffPage() {
     }
   }, [userProfile])
 
-  const fetchStaff = async () => {
+  const fetchStaff = async (signal) => {
     try {
-      const response = await fetch('/api/staff')
+      const response = await fetch('/api/staff', { signal })
       if (response.ok) {
         const data = await response.json()
         setStaff(data)

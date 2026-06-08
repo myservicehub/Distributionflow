@@ -135,13 +135,17 @@ export default function RetailersPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    loadRetailers()
-    loadStaff()
+    const controller = new AbortController()
+    
+    loadRetailers(controller.signal)
+    loadStaff(controller.signal)
+    
+    return () => controller.abort()
   }, [])
 
-  const loadRetailers = async () => {
+  const loadRetailers = async (signal) => {
     try {
-      const response = await fetch('/api/retailers')
+      const response = await fetch('/api/retailers', { signal })
       if (!response.ok) throw new Error('Failed to load retailers')
       const data = await response.json()
       setRetailers(data)
@@ -152,9 +156,9 @@ export default function RetailersPage() {
     }
   }
 
-  const loadStaff = async () => {
+  const loadStaff = async (signal) => {
     try {
-      const response = await fetch('/api/staff')
+      const response = await fetch('/api/staff', { signal })
       if (!response.ok) throw new Error('Failed to load staff')
       const data = await response.json()
       // Only show sales reps in the assignment dropdown

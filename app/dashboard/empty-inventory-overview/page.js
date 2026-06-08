@@ -119,16 +119,20 @@ export default function EmptyInventoryOverviewPage() {
   }
 
   useEffect(() => {
-    loadData()
+    const controller = new AbortController()
+    
+    loadData(controller.signal)
+    
+    return () => controller.abort()
   }, [])
 
-  const loadData = async () => {
+  const loadData = async (signal) => {
     try {
       // Load all data in parallel
       const [emptyRes, warehouseRes, balancesRes] = await Promise.all([
-        fetch('/api/empty-bottles?route=empty-items'),
-        fetch('/api/empty-bottles?route=warehouse-empty-inventory'),
-        fetch('/api/empty-bottles?route=retailer-empty-balances')
+        fetch('/api/empty-bottles?route=empty-items', { signal }),
+        fetch('/api/empty-bottles?route=warehouse-empty-inventory', { signal }),
+        fetch('/api/empty-bottles?route=retailer-empty-balances', { signal })
       ])
 
       const emptyData = emptyRes.ok ? await emptyRes.json() : []

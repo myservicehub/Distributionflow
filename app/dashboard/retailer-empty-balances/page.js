@@ -126,7 +126,11 @@ export default function RetailerEmptyBalancesPage() {
   const [processing, setProcessing] = useState(false)
 
   useEffect(() => {
-    loadBalances()
+    const controller = new AbortController()
+    
+    loadBalances(controller.signal)
+    
+    return () => controller.abort()
   }, [])
 
   useEffect(() => {
@@ -142,9 +146,9 @@ export default function RetailerEmptyBalancesPage() {
     }
   }, [searchTerm, balances])
 
-  const loadBalances = async () => {
+  const loadBalances = async (signal) => {
     try {
-      const response = await fetch('/api/empty-bottles?route=retailer-empty-balances')
+      const response = await fetch('/api/empty-bottles?route=retailer-empty-balances', { signal })
       if (!response.ok) {
         const error = await response.json()
         if (error.code === 'FEATURE_NOT_AVAILABLE') {

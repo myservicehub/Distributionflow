@@ -126,13 +126,17 @@ export default function IssueEmptiesPage() {
   })
 
   useEffect(() => {
-    loadData()
+    const controller = new AbortController()
+    
+    loadData(controller.signal)
+    
+    return () => controller.abort()
   }, [])
 
-  const loadData = async () => {
+  const loadData = async (signal) => {
     try {
       // Load retailers
-      const retailersRes = await fetch('/api/retailers')
+      const retailersRes = await fetch('/api/retailers', { signal })
       if (retailersRes.ok) {
         const retailersData = await retailersRes.json()
         setRetailers(retailersData)

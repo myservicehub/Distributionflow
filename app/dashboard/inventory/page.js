@@ -170,14 +170,18 @@ export default function InventoryPage() {
   })
 
   useEffect(() => {
-    loadData()
+    const controller = new AbortController()
+    
+    loadData(controller.signal)
+    
+    return () => controller.abort()
   }, [])
 
-  const loadData = async () => {
+  const loadData = async (signal) => {
     try {
       const [productsRes, movementsRes] = await Promise.all([
-        fetch('/api/products'),
-        fetch('/api/stock-movements')
+        fetch('/api/products', { signal }),
+        fetch('/api/stock-movements', { signal })
       ])
 
       if (!productsRes.ok) throw new Error('Failed to load products')

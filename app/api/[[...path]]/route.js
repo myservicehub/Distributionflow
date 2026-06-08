@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { randomBytes } from 'crypto'
+import { z } from 'zod'
 import { logAudit, AUDIT_ACTIONS, RESOURCE_TYPES } from '@/lib/audit-logger'
 import { sendStaffInvitation } from '@/lib/email'
 import { can } from '@/lib/permissions'
@@ -9,6 +10,135 @@ import { sendNotification } from '@/lib/notifications'
 import { sendDeliverySMS, formatNigerianPhone } from '@/lib/sms-notifications'
 import { isSubscriptionActive, hasFeature, FEATURES, canAddUser } from '@/lib/subscription'
 import { sendLowStockAlert, sendOverduePaymentAlert, sendLargeOrderAlert } from '@/lib/email-alerts'
+
+// =============================================================================
+// ZOD VALIDATION SCHEMAS
+// =============================================================================
+
+// Nigerian phone number validation
+const NigerianPhone = z.string().regex(
+  /^(\+234|0)[789][01]\d{8}$/,
+  'Invalid Nigerian phone number (format: 0801234567 or +2348012345678)'
+)
+
+// Retailer schemas
+const CreateRetailerSchema = z.object({
+  shop_name: z.string().min(1, 'Shop name is required').max(255, 'Shop name too long'),
+  owner_name: z.string().min(1, 'Owner name is required').max(255, 'Owner name too long'),
+  phone: NigerianPhone,
+  email: z.string().email('Invalid email address').optional().nullable().or(z.literal('')),
+  address: z.string().max(500, 'Address too long').optional().nullable(),
+  assigned_rep_id: z.string().uuid('Invalid rep ID').optional().nullable(),
+  credit_limit: z.number().min(0, 'Credit limit cannot be negative').default(0),
+})
+
+const UpdateRetailerSchema = CreateRetailerSchema.partial().extend({
+  status: z.enum(['active', 'inactive']).optional()
+})
+
+// Order schemas
+const CreateOrderSchema = z.object({
+  retailer_id: z.string().uuid('Invalid retailer ID'),
+  items: z.array(z.object({
+    product_id: z.string().uuid('Invalid product ID'),
+    quantity: z.number().int().min(1, 'Quantity must be at least 1'),
+    unit_price: z.number().min(0, 'Price cannot be negative'),
+  })).min(1, 'At least one item is required'),
+  payment_status: z.enum(['paid', 'unpaid', 'partial']).default('unpaid'),
+  notes: z.string().max(1000, 'Notes too long').optional(),
+})
+
+// Payment schemas  
+const CreatePaymentSchema = z.object({
+  retailer_id: z.string().uuid('Invalid retailer ID'),
+  amount: z.number().positive('Amount must be greater than 0'),
+  payment_method: z.enum(['cash', 'bank_transfer', 'cheque', 'pos'], {
+    errorMap: () => ({ message: 'Invalid payment method' })
+  }),
+  reference: z.string().max(255).optional(),
+  notes: z.string().max(1000).optional(),
+})
+
+// Staff schemas
+const CreateStaffSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(255),
+  email: z.string().email('Invalid email address'),
+  role: z.enum(['manager', 'sales_rep', 'warehouse'], {
+    errorMap: () => ({ message: 'Invalid role' })
+  }),
+  phone: NigerianPhone.optional().nullable(),
+})
+
+// Product schemas
+const CreateProductSchema = z.object({
+  name: z.string().min(1, 'Product name is required').max(255),
+  sku: z.string().max(100).optional(),
+  unit_price: z.number().min(0, 'Price cannot be negative'),
+  cost_price: z.number().min(0, 'Cost cannot be negative').optional(),
+  quantity: z.number().int().min(0, 'Quantity cannot be negative').default(0),
+  low_stock_threshold: z.number().int().min(0).default(10),
+  description: z.string().max(1000).optional(),
+})
+
+const UpdateProductSchema = CreateProductSchema.partial().extend({
+  status: z.enum(['active', 'inactive']).optional()
+})
+
+/**
+ * Parse and validate request body against a Zod schema
+ * Returns either validated data or an error response
+ */
+function parseBody(schema, body) {
+  const result = schema.safeParse(body)
+  if (!result.success) {
+    const errors = result.error.flatten().fieldErrors
+    return {
+      error: NextResponse.json({
+        error: 'Validation failed',
+        details: errors,
+        message: Object.entries(errors)
+          .map(([field, msgs]) => `${field}: ${msgs.join(', ')}`)
+          .join('; ')
+      }, { status: 400 }),
+      data: null
+    }
+  }
+  return { error: null, data: result.data }
+}
+
+/**
+ * Extract and validate pagination parameters from request URL
+ * Returns page, pageSize, from, and to for Supabase range queries
+ */
+function getPaginationParams(request) {
+  const { searchParams } = new URL(request.url)
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+  const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '50', 10)))
+  
+  return {
+    page,
+    pageSize,
+    from: (page - 1) * pageSize,
+    to: (page - 1) * pageSize + pageSize - 1
+  }
+}
+
+/**
+ * Build paginated response with metadata
+ */
+function buildPaginatedResponse(data, count, page, pageSize) {
+  return {
+    data,
+    pagination: {
+      page,
+      pageSize,
+      total: count,
+      totalPages: Math.ceil(count / pageSize),
+      hasMore: (page * pageSize) < count,
+      hasPrevious: page > 1
+    }
+  }
+}
 
 // Initialize Supabase client (server-side with service role for admin operations)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -370,20 +500,24 @@ async function handleRoute(request, { params }) {
     if (route === '/retailers' && method === 'GET') {
       const userContext = await getUserBusinessId(supabase)
       if (!userContext) {
-        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }), request)
       }
 
-      // Build query without the user join (will fetch separately)
+      // Get pagination parameters
+      const { page, pageSize, from, to } = getPaginationParams(request)
+
+      // Build query with pagination
       let query = supabase
         .from('retailers')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('business_id', userContext.businessId)
         .order('created_at', { ascending: false })
+        .range(from, to)
 
       // Apply sales rep filter - sales reps only see their assigned retailers
       query = applySalesRepFilter(query, userContext, 'assigned_rep_id')
 
-      const { data: retailers, error } = await query
+      const { data: retailers, error, count } = await query
 
       if (error) throw error
 
@@ -420,7 +554,8 @@ async function handleRoute(request, { params }) {
         })
       )
 
-      return handleCORS(NextResponse.json(retailersWithRep))
+      const response = buildPaginatedResponse(retailersWithRep, count, page, pageSize)
+      return handleCORS(NextResponse.json(response), request)
     }
 
     if (route === '/retailers' && method === 'POST') {
@@ -463,10 +598,14 @@ async function handleRoute(request, { params }) {
           message: `Your current plan allows ${maxRetailers} retailers. You have ${currentRetailers}. Please upgrade to add more.`,
           code: 'LIMIT_REACHED',
           upgradeUrl: '/settings/billing'
-        }, { status: 402 }))
+        }, { status: 402 }), request)
       }
 
       const body = await request.json()
+      
+      // Validate request body with Zod
+      const { error: validationError, data } = parseBody(CreateRetailerSchema, body)
+      if (validationError) return handleCORS(validationError, request)
       
       // DUPLICATE CHECK: Safe parameterized queries to prevent SQL injection
       // Check by shop name
@@ -474,7 +613,7 @@ async function handleRoute(request, { params }) {
         .from('retailers')
         .select('id, shop_name')
         .eq('business_id', userContext.businessId)
-        .ilike('shop_name', body.shop_name)
+        .ilike('shop_name', data.shop_name)
         .maybeSingle()
 
       // Check by phone
@@ -482,7 +621,7 @@ async function handleRoute(request, { params }) {
         .from('retailers')
         .select('id, phone')
         .eq('business_id', userContext.businessId)
-        .eq('phone', body.phone)
+        .eq('phone', data.phone)
         .maybeSingle()
 
       if (byName || byPhone) {
@@ -518,12 +657,12 @@ async function handleRoute(request, { params }) {
         supabase,
         userContext,
         'CREATE_RETAILER',
-        `Created retailer: ${body.shop_name}`,
+        `Created retailer: ${data.shop_name}`,
         'retailer',
-        data.id
+        newRetailer.id
       )
 
-      return handleCORS(NextResponse.json(data))
+      return handleCORS(NextResponse.json(newRetailer), request)
     }
 
     if (route.startsWith('/retailers/') && method === 'PUT') {

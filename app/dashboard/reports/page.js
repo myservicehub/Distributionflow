@@ -226,12 +226,16 @@ export default function ReportsPage() {
   }
 
   useEffect(() => {
-    loadReports()
+    const controller = new AbortController()
+    
+    loadReports(controller.signal)
+    
+    return () => controller.abort()
   }, [])
 
-  const loadReports = async () => {
+  const loadReports = async (signal) => {
     try {
-      const debtResponse = await fetch('/api/reports/debt-aging')
+      const debtResponse = await fetch('/api/reports/debt-aging', { signal })
       if (debtResponse.ok) {
         const debtData = await debtResponse.json()
         setDebtAging(debtData)

@@ -131,12 +131,16 @@ export default function ProductsPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    loadProducts()
+    const controller = new AbortController()
+    
+    loadProducts(controller.signal)
+    
+    return () => controller.abort()
   }, [])
 
-  const loadProducts = async () => {
+  const loadProducts = async (signal) => {
     try {
-      const response = await fetch('/api/products')
+      const response = await fetch('/api/products', { signal })
       if (!response.ok) throw new Error('Failed to load products')
       const data = await response.json()
       setProducts(data)

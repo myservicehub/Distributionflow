@@ -128,12 +128,16 @@ export default function EmptyItemsPage() {
   const [formData, setFormData] = useState({ name: '', deposit_value: '', initial_quantity: '0' })
 
   useEffect(() => {
-    loadEmptyItems()
+    const controller = new AbortController()
+    
+    loadEmptyItems(controller.signal)
+    
+    return () => controller.abort()
   }, [])
 
-  const loadEmptyItems = async () => {
+  const loadEmptyItems = async (signal) => {
     try {
-      const response = await fetch('/api/empty-bottles?route=empty-items')
+      const response = await fetch('/api/empty-bottles?route=empty-items', { signal })
       if (!response.ok) throw new Error('Failed to load empty items')
       const data = await response.json()
       setEmptyItems(data)

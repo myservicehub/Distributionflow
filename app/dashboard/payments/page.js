@@ -120,13 +120,17 @@ export default function PaymentsPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    loadPayments()
-    loadRetailers()
+    const controller = new AbortController()
+    
+    loadPayments(controller.signal)
+    loadRetailers(controller.signal)
+    
+    return () => controller.abort()
   }, [])
 
-  const loadPayments = async () => {
+  const loadPayments = async (signal) => {
     try {
-      const response = await fetch('/api/payments')
+      const response = await fetch('/api/payments', { signal })
       if (!response.ok) throw new Error('Failed to load payments')
       const data = await response.json()
       setPayments(data)
@@ -137,9 +141,9 @@ export default function PaymentsPage() {
     }
   }
 
-  const loadRetailers = async () => {
+  const loadRetailers = async (signal) => {
     try {
-      const response = await fetch('/api/retailers')
+      const response = await fetch('/api/retailers', { signal })
       if (!response.ok) throw new Error('Failed to load retailers')
       const data = await response.json()
       setRetailers(data)

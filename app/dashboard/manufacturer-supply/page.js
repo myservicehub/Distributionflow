@@ -190,10 +190,14 @@ export default function ManufacturerSupplyPage() {
   const [dataLoading, setDataLoading] = useState(true)
 
   useEffect(() => {
-    loadData()
+    const controller = new AbortController()
+    
+    loadData(controller.signal)
+    
+    return () => controller.abort()
   }, [])
 
-  const loadData = async () => {
+  const loadData = async (signal) => {
     await Promise.all([
       loadEmptyItems(),
       loadWarehouseInventory(),
@@ -202,7 +206,7 @@ export default function ManufacturerSupplyPage() {
     setDataLoading(false)
   }
 
-  const loadEmptyItems = async () => {
+  const loadEmptyItems = async (signal) => {
     try {
       const response = await fetch('/api/empty-bottles?route=empty-items', {
         cache: 'no-store'
@@ -216,7 +220,7 @@ export default function ManufacturerSupplyPage() {
     }
   }
 
-  const loadWarehouseInventory = async () => {
+  const loadWarehouseInventory = async (signal) => {
     try {
       const response = await fetch('/api/empty-bottles?route=warehouse-empty-inventory', {
         cache: 'no-store'
@@ -229,7 +233,7 @@ export default function ManufacturerSupplyPage() {
     }
   }
 
-  const loadRecentMovements = async () => {
+  const loadRecentMovements = async (signal) => {
     try {
       const response = await fetch('/api/empty-bottles?route=empty-movements&limit=20', {
         cache: 'no-store'
