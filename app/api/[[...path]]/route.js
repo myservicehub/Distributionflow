@@ -707,6 +707,46 @@ async function handleRoute(request, { params }) {
         }, { status: 403 }))
       }
       
+      // DUPLICATE CHECK: Check if new shop_name conflicts with a DIFFERENT retailer
+      if (body.shop_name) {
+        const { data: nameConflict } = await supabase
+          .from('retailers')
+          .select('id')
+          .eq('business_id', userContext.businessId)
+          .ilike('shop_name', body.shop_name.trim())
+          .neq('id', retailerId)
+          .maybeSingle()
+
+        if (nameConflict) {
+          return handleCORS(NextResponse.json({
+            error: 'Duplicate retailer',
+            message: 'Another retailer with this shop name already exists.',
+            code: 'DUPLICATE_ENTRY',
+            field: 'shop_name'
+          }, { status: 409 }))
+        }
+      }
+
+      // DUPLICATE CHECK: Check if new phone conflicts with a DIFFERENT retailer
+      if (body.phone) {
+        const { data: phoneConflict } = await supabase
+          .from('retailers')
+          .select('id')
+          .eq('business_id', userContext.businessId)
+          .eq('phone', body.phone.trim())
+          .neq('id', retailerId)
+          .maybeSingle()
+
+        if (phoneConflict) {
+          return handleCORS(NextResponse.json({
+            error: 'Duplicate retailer',
+            message: 'Another retailer with this phone number already exists.',
+            code: 'DUPLICATE_ENTRY',
+            field: 'phone'
+          }, { status: 409 }))
+        }
+      }
+      
       const { data, error } = await supabase
         .from('retailers')
         .update({
@@ -867,12 +907,48 @@ async function handleRoute(request, { params }) {
       const { error: validationError, data } = parseBody(CreateProductSchema, body)
       if (validationError) return handleCORS(validationError, request)
       
+      // DUPLICATE CHECK: Check for duplicate product name (case-insensitive)
+      const { data: nameExists } = await supabase
+        .from('products')
+        .select('id, name')
+        .eq('business_id', userContext.businessId)
+        .ilike('name', data.name.trim())
+        .maybeSingle()
+
+      if (nameExists) {
+        return handleCORS(NextResponse.json({
+          error: 'Duplicate product',
+          message: `A product named "${nameExists.name}" already exists.`,
+          code: 'DUPLICATE_ENTRY',
+          field: 'name'
+        }, { status: 409 }))
+      }
+
+      // DUPLICATE CHECK: Check for duplicate SKU (only if SKU provided — SKU is optional)
+      if (data.sku && data.sku.trim()) {
+        const { data: skuExists } = await supabase
+          .from('products')
+          .select('id, sku')
+          .eq('business_id', userContext.businessId)
+          .eq('sku', data.sku.trim().toUpperCase())
+          .maybeSingle()
+
+        if (skuExists) {
+          return handleCORS(NextResponse.json({
+            error: 'Duplicate SKU',
+            message: `SKU "${data.sku}" is already used by another product.`,
+            code: 'DUPLICATE_ENTRY',
+            field: 'sku'
+          }, { status: 409 }))
+        }
+      }
+      
       const { data: product, error } = await supabase
         .from('products')
         .insert({
           business_id: userContext.businessId,
           name: data.name,
-          sku: data.sku,
+          sku: data.sku ? data.sku.trim().toUpperCase() : null,
           cost_price: data.cost_price || 0,
           selling_price: data.unit_price,
           stock_quantity: data.quantity,
@@ -910,11 +986,51 @@ async function handleRoute(request, { params }) {
       const productId = route.split('/')[2]
       const body = await request.json()
       
+      // DUPLICATE CHECK: Check name conflict with a DIFFERENT product
+      if (body.name) {
+        const { data: nameConflict } = await supabase
+          .from('products')
+          .select('id')
+          .eq('business_id', userContext.businessId)
+          .ilike('name', body.name.trim())
+          .neq('id', productId)
+          .maybeSingle()
+
+        if (nameConflict) {
+          return handleCORS(NextResponse.json({
+            error: 'Duplicate product',
+            message: 'Another product with this name already exists.',
+            code: 'DUPLICATE_ENTRY',
+            field: 'name'
+          }, { status: 409 }))
+        }
+      }
+
+      // DUPLICATE CHECK: Check SKU conflict with a DIFFERENT product
+      if (body.sku && body.sku.trim()) {
+        const { data: skuConflict } = await supabase
+          .from('products')
+          .select('id')
+          .eq('business_id', userContext.businessId)
+          .eq('sku', body.sku.trim().toUpperCase())
+          .neq('id', productId)
+          .maybeSingle()
+
+        if (skuConflict) {
+          return handleCORS(NextResponse.json({
+            error: 'Duplicate SKU',
+            message: `SKU "${body.sku}" is already used by another product.`,
+            code: 'DUPLICATE_ENTRY',
+            field: 'sku'
+          }, { status: 409 }))
+        }
+      }
+      
       const { data, error } = await supabase
         .from('products')
         .update({
           name: body.name,
-          sku: body.sku,
+          sku: body.sku ? body.sku.trim().toUpperCase() : null,
           cost_price: body.cost_price,
           selling_price: body.selling_price,
           stock_quantity: body.stock_quantity,
