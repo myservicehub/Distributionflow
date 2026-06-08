@@ -152,9 +152,13 @@ export default function RetailersPage() {
       const response = await fetch('/api/retailers', { signal })
       if (!response.ok) throw new Error('Failed to load retailers')
       const data = await response.json()
-      setRetailers(data)
+      setRetailers(Array.isArray(data) ? data : [])
     } catch (error) {
-      toast.error('Failed to load retailers')
+      if (error.name !== 'AbortError') {
+        console.error('Error loading retailers:', error)
+        toast.error('Failed to load retailers')
+      }
+      setRetailers([])
     } finally {
       setLoading(false)
     }
@@ -166,9 +170,12 @@ export default function RetailersPage() {
       if (!response.ok) throw new Error('Failed to load staff')
       const data = await response.json()
       // Only show sales reps in the assignment dropdown
-      setStaff(data.filter(s => s.role === 'sales_rep'))
+      setStaff(Array.isArray(data) ? data.filter(s => s.role === 'sales_rep') : [])
     } catch (error) {
-      console.error(error)
+      if (error.name !== 'AbortError') {
+        console.error('Error loading staff:', error)
+      }
+      setStaff([])
     }
   }
 

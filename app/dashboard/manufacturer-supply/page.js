@@ -3,13 +3,9 @@
 import { useState, useEffect } from 'react'
 import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Truck, Plus, Package, ArrowDownToLine, ArrowUpFromLine, ChevronDown, ChevronUp, Calendar, DollarSign } from 'lucide-react'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Button } from '@/components/ui/button'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import {
   Table,
   TableBody,
@@ -34,17 +30,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Label } from '@/components/ui/label'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Textarea } from '@/components/ui/textarea'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Badge } from '@/components/ui/badge'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { toast } from 'sonner'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { useAuth } from '@/lib/auth-context'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 
 // Mobile Card Component for Warehouse Inventory
 function WarehouseInventoryMobileCard({ item }) {
