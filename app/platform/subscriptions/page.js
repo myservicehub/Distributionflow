@@ -3,11 +3,8 @@
 import React, { useEffect, useState } from 'react'
 import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Badge } from '@/components/ui/badge'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Button } from '@/components/ui/button'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import {
   Select,
   SelectContent,
@@ -16,9 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { CreditCard, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import Link from 'next/link'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 
 export default function SubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState([])

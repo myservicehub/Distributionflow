@@ -3,9 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { DollarSign, TrendingUp, TrendingDown, Users, CreditCard } from 'lucide-react'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 
 export default function RevenuePage() {
   const [kpis, setKpis] = useState(null)
@@ -27,7 +25,6 @@ export default function RevenuePage() {
     } finally {
       setLoading(false)
     }
-  }).format(amount || 0)
   }
 
   if (loading) {

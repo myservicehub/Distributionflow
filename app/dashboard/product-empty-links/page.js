@@ -3,11 +3,8 @@
 import { useState, useEffect } from 'react'
 import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Package, Link2, AlertCircle, CheckCircle, Plus, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Button } from '@/components/ui/button'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import {
   Table,
   TableBody,
@@ -32,17 +29,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Label } from '@/components/ui/label'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Badge } from '@/components/ui/badge'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { toast } from 'sonner'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { useAuth } from '@/lib/auth-context'
-import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 
 // Mobile Card Component for Product-Empty Links
 function ProductEmptyLinkMobileCard({ product, emptyItems, linkedEmpty, onLinkProduct, onCreateEmpty, updating, formatCurrency }) {
@@ -270,7 +261,6 @@ export default function ProductEmptyLinksPage() {
     setNewEmptyName(`${product.name} Empty Bottle`)
     setNewEmptyDeposit('50')
     setShowCreateDialog(true)
-  }`
   }
 
   // Calculate stats
