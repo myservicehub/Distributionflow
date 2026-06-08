@@ -1,5 +1,6 @@
 const nextConfig = {
-  output: 'standalone',
+  // Remove 'standalone' for Netlify - use default output
+  // output: 'standalone', // Only use this for Docker/custom deployments
   images: {
     unoptimized: true,
   },
@@ -36,6 +37,6 @@ const nextConfig = {
       },
     ];
   },
-};
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig

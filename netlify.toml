@@ -2,7 +2,7 @@
 
 [build]
   command = "yarn build"
-  publish = ".next"
+  # Don't specify publish directory - @netlify/plugin-nextjs handles this automatically
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
