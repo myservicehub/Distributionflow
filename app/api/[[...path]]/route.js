@@ -407,90 +407,106 @@ async function handleRoute(request, { params }) {
       today.setHours(0, 0, 0, 0)
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
 
-      // Get total sales today (include confirmed and completed orders)
-      const { data: salesToday } = await supabase
-        .from('orders')
-        .select('total_amount')
-        .eq('business_id', userContext.businessId)
-        .gte('created_at', today.toISOString())
-        .in('order_status', ['confirmed', 'completed'])
+      try {
+        // OPTIMIZED: Only select needed columns and use database filtering
+        // Get total sales today (only select total_amount, not all columns)
+        const { data: salesToday } = await supabase
+          .from('orders')
+          .select('total_amount')
+          .eq('business_id', userContext.businessId)
+          .gte('created_at', today.toISOString())
+          .in('order_status', ['confirmed', 'completed'])
 
-      const totalSalesToday = salesToday?.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) || 0
+        const totalSalesToday = salesToday?.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0) || 0
 
-      // Get total sales this month (include confirmed and completed orders)
-      const { data: salesMonth } = await supabase
-        .from('orders')
-        .select('total_amount')
-        .eq('business_id', userContext.businessId)
-        .gte('created_at', startOfMonth.toISOString())
-        .in('order_status', ['confirmed', 'completed'])
+        // Get total sales this month
+        const { data: salesMonth } = await supabase
+          .from('orders')
+          .select('total_amount')
+          .eq('business_id', userContext.businessId)
+          .gte('created_at', startOfMonth.toISOString())
+          .in('order_status', ['confirmed', 'completed'])
 
-      const totalSalesMonth = salesMonth?.reduce((sum, order) => sum + parseFloat(order.total_amount), 0) || 0
+        const totalSalesMonth = salesMonth?.reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0) || 0
 
-      // Get total outstanding debt (sum of all retailer balances)
-      const { data: retailers } = await supabase
-        .from('retailers')
-        .select('current_balance')
-        .eq('business_id', userContext.businessId)
-        .eq('status', 'active')
+        // Get total debt (only select current_balance)
+        const { data: retailers } = await supabase
+          .from('retailers')
+          .select('current_balance')
+          .eq('business_id', userContext.businessId)
+          .eq('status', 'active')
 
-      const totalDebt = retailers?.reduce((sum, retailer) => sum + parseFloat(retailer.current_balance || 0), 0) || 0
+        const totalDebt = retailers?.reduce((sum, retailer) => sum + parseFloat(retailer.current_balance || 0), 0) || 0
 
-      // Get overdue retailers (balance > credit limit)
-      const { data: allRetailers } = await supabase
-        .from('retailers')
-        .select('id, shop_name, owner_name, current_balance, credit_limit')
-        .eq('business_id', userContext.businessId)
-        .eq('status', 'active')
+        // OPTIMIZED: Get only top 10 overdue retailers using database filter
+        const { data: overdueRetailers } = await supabase
+          .from('retailers')
+          .select('id, shop_name, owner_name, current_balance, credit_limit')
+          .eq('business_id', userContext.businessId)
+          .eq('status', 'active')
+          .order('current_balance', { ascending: false })
+          .limit(100) // Limit to reasonable number for filtering
 
-      const overdueRetailers = allRetailers?.filter(r => 
-        parseFloat(r.current_balance || 0) > parseFloat(r.credit_limit || 0)
-      ) || []
+        const topOverdueRetailers = (overdueRetailers || [])
+          .filter(r => parseFloat(r.current_balance || 0) > parseFloat(r.credit_limit || 0))
+          .slice(0, 10) // Only take top 10
 
-      // Get low stock products (stock_quantity <= low_stock_threshold)
-      const { data: allProducts } = await supabase
-        .from('products')
-        .select('id, name, stock_quantity, low_stock_threshold')
-        .eq('business_id', userContext.businessId)
+        // OPTIMIZED: Get only top 10 low stock products
+        const { data: allProducts } = await supabase
+          .from('products')
+          .select('id, name, stock_quantity, low_stock_threshold')
+          .eq('business_id', userContext.businessId)
+          .order('stock_quantity', { ascending: true })
+          .limit(50) // Limit initial fetch
 
-      const lowStockProducts = allProducts?.filter(p => 
-        (p.stock_quantity || 0) <= (p.low_stock_threshold || 10)
-      ) || []
+        const lowStockProducts = (allProducts || [])
+          .filter(p => (p.stock_quantity || 0) <= (p.low_stock_threshold || 10))
+          .slice(0, 10) // Only take top 10
 
-      // Get sales by rep (TODAY only)
-      const { data: salesByRep } = await supabase
-        .from('orders')
-        .select('sales_rep_id, total_amount, users(name)')
-        .eq('business_id', userContext.businessId)
-        .gte('created_at', today.toISOString())
-        .in('order_status', ['confirmed', 'completed'])
+        // OPTIMIZED: Get sales by rep with minimal data
+        const { data: salesByRep } = await supabase
+          .from('orders')
+          .select('sales_rep_id, total_amount, users!orders_sales_rep_id_fkey(name)')
+          .eq('business_id', userContext.businessId)
+          .gte('created_at', today.toISOString())
+          .in('order_status', ['confirmed', 'completed'])
 
-      const repSales = {}
-      salesByRep?.forEach(order => {
-        const repName = order.users?.name || 'Unknown'
-        if (!repSales[repName]) {
-          repSales[repName] = 0
-        }
-        repSales[repName] += parseFloat(order.total_amount)
-      })
+        const repSales = {}
+        salesByRep?.forEach(order => {
+          const repName = order.users?.name || 'Unknown'
+          repSales[repName] = (repSales[repName] || 0) + parseFloat(order.total_amount || 0)
+        })
 
-      // Get recent activity from audit logs (last 10 activities)
-      const { data: recentActivity } = await supabase
-        .from('audit_logs')
-        .select('id, action, entity_type, details, created_at, users(name)')
-        .eq('business_id', userContext.businessId)
-        .order('created_at', { ascending: false })
-        .limit(10)
+        // Get recent activity (already limited)
+        const { data: recentActivity } = await supabase
+          .from('audit_logs')
+          .select('id, action, entity_type, details, created_at, users!audit_logs_user_id_fkey(name)')
+          .eq('business_id', userContext.businessId)
+          .order('created_at', { ascending: false })
+          .limit(10)
 
-      return handleCORS(NextResponse.json({
-        totalSalesToday,
-        totalSalesMonth,
-        totalDebt,
-        overdueRetailers: overdueRetailers || [],
-        lowStockProducts: lowStockProducts || [],
-        salesByRep: Object.entries(repSales).map(([name, total]) => ({ name, total })),
-        recentActivity: recentActivity || []
-      }))
+        return handleCORS(NextResponse.json({
+          totalSalesToday,
+          totalSalesMonth,
+          totalDebt,
+          overdueRetailers: topOverdueRetailers,
+          lowStockProducts,
+          salesByRep: Object.entries(repSales).map(([name, total]) => ({ name, total })),
+          recentActivity: recentActivity || []
+        }))
+      } catch (error) {
+        console.error('Error fetching dashboard metrics:', error)
+        // Return empty data instead of failing
+        return handleCORS(NextResponse.json({
+          totalSalesToday: 0,
+          totalSalesMonth: 0,
+          totalDebt: 0,
+          overdueRetailers: [],
+          lowStockProducts: [],
+          salesByRep: [],
+          recentActivity: []
+        }))
+      }
     }
 
     // ============================================

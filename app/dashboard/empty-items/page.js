@@ -28,8 +28,7 @@ import { useAuth } from '@/lib/auth-context'
 
 // Mobile Card Component
 function EmptyItemMobileCard({ item, onEdit, onDelete }) {
-  const [isExpanded, setIsExpanded] = useState(false)`
-  }
+  const [isExpanded, setIsExpanded] = useState(false)
 
   return (
     <Card className="border-2 border-neutral-200 hover:border-emerald-200 transition-all shadow-sm">
