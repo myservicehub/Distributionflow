@@ -143,9 +143,13 @@ export default function ProductsPage() {
       const response = await fetch('/api/products', { signal })
       if (!response.ok) throw new Error('Failed to load products')
       const data = await response.json()
-      setProducts(data)
+      setProducts(Array.isArray(data) ? data : [])
     } catch (error) {
-      toast.error('Failed to load products')
+      if (error.name !== 'AbortError') {
+        console.error('Error loading products:', error)
+        toast.error('Failed to load products')
+      }
+      setProducts([])
     } finally {
       setLoading(false)
     }
