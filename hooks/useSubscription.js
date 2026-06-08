@@ -22,10 +22,10 @@ export function useSubscription() {
   })
 
   useEffect(() => {
+    const supabase = createClient()
+    
     async function fetchSubscription() {
       try {
-        const supabase = createClient()
-        
         // Get current user
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
@@ -87,7 +87,15 @@ export function useSubscription() {
       }
     }
 
+    // Initial fetch
     fetchSubscription()
+    
+    // Subscribe to auth state changes to re-fetch on user change
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      fetchSubscription()
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   return subscriptionData

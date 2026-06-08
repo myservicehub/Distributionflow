@@ -36,8 +36,14 @@ async function getSupabaseClient() {
 }
 
 // Helper function to handle CORS
-function handleCORS(response) {
-  response.headers.set('Access-Control-Allow-Origin', process.env.CORS_ORIGINS || '*')
+function handleCORS(response, request = null) {
+  const allowedOrigins = (process.env.CORS_ORIGINS || process.env.NEXT_PUBLIC_BASE_URL || '').split(',').map(s => s.trim()).filter(Boolean)
+  const origin = request?.headers?.get('origin') || ''
+  const allowed = allowedOrigins.includes(origin) ? origin : (allowedOrigins[0] || '')
+  
+  if (allowed) {
+    response.headers.set('Access-Control-Allow-Origin', allowed)
+  }
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   response.headers.set('Access-Control-Allow-Credentials', 'true')
@@ -45,18 +51,22 @@ function handleCORS(response) {
 }
 
 // OPTIONS handler for CORS
-export async function OPTIONS() {
-  return handleCORS(new NextResponse(null, { status: 200 }))
+export async function OPTIONS(request) {
+  return handleCORS(new NextResponse(null, { status: 200 }), request)
 }
 
 // Get current user's business ID  
 async function getUserBusinessId(supabase) {
   try {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    console.log('Auth user:', user?.id, 'Error:', authError)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Auth user:', user?.id, 'Error:', authError)
+    }
     
     if (!user) {
-      console.log('No user found in auth')
+      if (process.env.NODE_ENV === 'development') {
+        console.log('No user found in auth')
+      }
       return null
     }
 
@@ -67,15 +77,21 @@ async function getUserBusinessId(supabase) {
       .eq('auth_user_id', user.id)
       .maybeSingle()
 
-    console.log('User profile:', userProfile, 'Error:', profileError)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('User profile:', userProfile, 'Error:', profileError)
+    }
 
     if (!userProfile || !userProfile.business_id) {
-      console.log('No user profile or business_id found for user')
+      if (process.env.NODE_ENV === 'development') {
+        console.log('No user profile or business_id found for user')
+      }
       return null
     }
 
     if (userProfile.status !== 'active') {
-      console.log('User is not active:', userProfile.status)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('User is not active:', userProfile.status)
+      }
       return null
     }
 
