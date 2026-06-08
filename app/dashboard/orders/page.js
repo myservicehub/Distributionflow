@@ -174,12 +174,15 @@ export default function OrdersPage() {
     try {
       const response = await fetch('/api/orders', { signal })
       if (!response.ok) throw new Error('Failed to load orders')
-      const data = await response.json()
+      const responseData = await response.json()
+      // Handle both old format (array) and new format (object with data property)
+      const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
       setOrders(data)
     } catch (error) {
       if (error.name === 'AbortError') return // Component unmounted - normal
       console.error('Error loading orders:', error)
       toast.error('Failed to load orders')
+      setOrders([])
     } finally {
       setLoading(false)
     }
@@ -189,7 +192,8 @@ export default function OrdersPage() {
     try {
       const response = await fetch('/api/retailers', { signal })
       if (!response.ok) throw new Error('Failed to load retailers')
-      const data = await response.json()
+      const responseData = await response.json()
+      const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
       setRetailers(data.filter(r => r.status === 'active'))
     } catch (error) {
       if (error.name === 'AbortError') return

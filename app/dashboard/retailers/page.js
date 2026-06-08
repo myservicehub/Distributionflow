@@ -159,17 +159,20 @@ export default function RetailersPage() {
         throw new Error('Failed to load retailers')
       }
       
-      const data = await response.json()
-      console.log('✅ Retailers loaded:', data.length, 'retailers')
-      console.log('📦 Retailers data:', data)
+      const responseData = await response.json()
+      console.log('📦 Response data:', responseData)
+      
+      // Handle both old format (array) and new format (object with data property)
+      const data = Array.isArray(responseData) ? responseData : responseData.data
       
       if (Array.isArray(data)) {
         setRetailers(data)
+        console.log('✅ Retailers loaded:', data.length, 'retailers')
         if (data.length === 0) {
-          console.warn('⚠️ API returned empty array - no retailers in database')
+          console.warn('⚠️ No retailers in database')
         }
       } else {
-        console.error('❌ API returned non-array:', typeof data, data)
+        console.error('❌ Invalid data format:', typeof data, responseData)
         setRetailers([])
       }
     } catch (error) {

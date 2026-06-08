@@ -136,10 +136,14 @@ export default function PaymentsPage() {
     try {
       const response = await fetch('/api/payments', { signal })
       if (!response.ok) throw new Error('Failed to load payments')
-      const data = await response.json()
+      const responseData = await response.json()
+      const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
       setPayments(data)
     } catch (error) {
-      toast.error('Failed to load payments')
+      if (error.name !== 'AbortError') {
+        toast.error('Failed to load payments')
+      }
+      setPayments([])
     } finally {
       setLoading(false)
     }
@@ -149,11 +153,15 @@ export default function PaymentsPage() {
     try {
       const response = await fetch('/api/retailers', { signal })
       if (!response.ok) throw new Error('Failed to load retailers')
-      const data = await response.json()
+      const responseData = await response.json()
+      const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
       setRetailers(data)
     } catch (error) {
-      console.error('Error loading retailers:', error)
-      toast.error('Failed to load retailers')
+      if (error.name !== 'AbortError') {
+        console.error('Error loading retailers:', error)
+        toast.error('Failed to load retailers')
+      }
+      setRetailers([])
     }
   }
 
