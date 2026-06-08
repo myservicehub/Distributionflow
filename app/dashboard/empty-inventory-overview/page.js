@@ -182,7 +182,6 @@ export default function EmptyInventoryOverviewPage() {
     } finally {
       setLoading(false)
     }
-  }`
   }
 
   // Calculate totals
@@ -499,9 +498,7 @@ export default function EmptyInventoryOverviewPage() {
                     <div 
                       className="h-full bg-blue-600"
                       style={{ 
-                        width: `${totalWarehouse + totalWithRetailers > 0 
-                          ? (totalWarehouse / (totalWarehouse + totalWithRetailers)) * 100 
-                          : 0}%` 
+                        width: `${totalWarehouse + totalWithRetailers > 0 ? (totalWarehouse / (totalWarehouse + totalWithRetailers)) * 100 : 0}%` 
                       }}
                     />
                   </div>
