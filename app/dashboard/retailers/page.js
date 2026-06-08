@@ -149,13 +149,32 @@ export default function RetailersPage() {
 
   const loadRetailers = async (signal) => {
     try {
+      console.log('🔍 Loading retailers...')
       const response = await fetch('/api/retailers', { signal })
-      if (!response.ok) throw new Error('Failed to load retailers')
+      console.log('📡 API Response status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ API Error:', response.status, errorText)
+        throw new Error('Failed to load retailers')
+      }
+      
       const data = await response.json()
-      setRetailers(Array.isArray(data) ? data : [])
+      console.log('✅ Retailers loaded:', data.length, 'retailers')
+      console.log('📦 Retailers data:', data)
+      
+      if (Array.isArray(data)) {
+        setRetailers(data)
+        if (data.length === 0) {
+          console.warn('⚠️ API returned empty array - no retailers in database')
+        }
+      } else {
+        console.error('❌ API returned non-array:', typeof data, data)
+        setRetailers([])
+      }
     } catch (error) {
       if (error.name !== 'AbortError') {
-        console.error('Error loading retailers:', error)
+        console.error('💥 Error loading retailers:', error)
         toast.error('Failed to load retailers')
       }
       setRetailers([])
