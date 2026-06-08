@@ -103,8 +103,7 @@ function WarehouseInventoryMobileCard({ item }) {
 
 // Mobile Card Component for Recent Movements
 function MovementMobileCard({ movement }) {
-  const [isExpanded, setIsExpanded] = useState(false)`
-  }
+  const [isExpanded, setIsExpanded] = useState(false)
 
   const getMovementBadge = (type) => {
     if (type === 'manufacturer_in') {
