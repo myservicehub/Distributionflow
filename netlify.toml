@@ -2,7 +2,7 @@
 
 [build]
   command = "yarn build"
-  # Don't specify publish directory - @netlify/plugin-nextjs handles this automatically
+  publish = ".next"  # Required: Must be set to override UI settings
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

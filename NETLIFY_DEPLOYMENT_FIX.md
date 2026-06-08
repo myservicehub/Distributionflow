@@ -48,12 +48,16 @@ const nextConfig = {
 ```toml
 [build]
   command = "yarn build"
-  # REMOVED: publish = ".next"
-  # Let @netlify/plugin-nextjs handle output automatically
+  publish = ".next"  # REQUIRED: Overrides UI settings
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 ```
+
+**Important:** The `publish = ".next"` line is REQUIRED because:
+- Netlify UI may have publish directory set to repo root
+- This explicitly overrides the UI setting
+- The Next.js plugin needs `.next` as the publish directory
 
 **Status:** ✅ FIXED - Static assets will now be served correctly
 
