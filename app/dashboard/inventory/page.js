@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,7 +12,10 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
-import { Package, TrendingUp, TrendingDown, AlertTriangle, Plus, ArrowUpCircle, ArrowDownCircle, Warehouse, ChevronDown, ChevronUp, Box, Calendar, FileText } from 'lucide-react'
+import { Package, TrendingUp, TrendingDown, AlertTriangle, Plus, ArrowUpCircle, ArrowDownCircle, Warehouse, ChevronDown, ChevronUp, Box, Calendar, FileText, Search } from 'lucide-react'
+
+// Import Pagination component
+import { Pagination } from '@/components/ui/pagination'
 
 // Mobile Card Components
 function ProductMobileCard({ product }) {
@@ -162,6 +165,9 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
   const [formData, setFormData] = useState({
     product_id: '',
     movement_type: 'in',
@@ -259,6 +265,29 @@ export default function InventoryPage() {
       </div>
     )
   }
+
+  // Client-side filtering for products
+  const filteredProducts = useMemo(() => {
+    if (!searchTerm) return products
+
+    const lowerSearch = searchTerm.toLowerCase()
+    return products.filter(product =>
+      product.name?.toLowerCase().includes(lowerSearch) ||
+      product.sku?.toLowerCase().includes(lowerSearch)
+    )
+  }, [products, searchTerm])
+
+  // Pagination
+  const totalPages = Math.ceil(filteredProducts.length / pageSize)
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return filteredProducts.slice(startIndex, startIndex + pageSize)
+  }, [filteredProducts, currentPage, pageSize])
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
 
   return (
     <div className="space-y-8">
@@ -438,6 +467,18 @@ export default function InventoryPage() {
         </TabsList>
 
         <TabsContent value="current" className="space-y-4">
+          {/* Search Bar */}
+          <div className="relative max-w-md animate-slide-down">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
+            <Input
+              type="text"
+              placeholder="Search products by name or SKU..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 border-2 border-neutral-200 focus:border-emerald-400 transition-colors"
+            />
+          </div>
+
           <Card className="border-0 shadow-soft animate-fade-in">
             <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50">
               <div className="flex items-center gap-3">
@@ -445,7 +486,7 @@ export default function InventoryPage() {
                   <Warehouse className="h-5 w-5 text-purple-600" />
                 </div>
                 <div>
-                  <CardTitle className="text-2xl font-bold text-neutral-900">Current Stock Levels</CardTitle>
+                  <CardTitle className="text-2xl font-bold text-neutral-900">Current Stock Levels ({filteredProducts.length})</CardTitle>
                   <CardDescription className="text-neutral-600">Overview of all products and their stock quantities</CardDescription>
                 </div>
               </div>
@@ -465,18 +506,22 @@ export default function InventoryPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {products.length === 0 ? (
+                    {paginatedProducts.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-16">
                           <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
                             <Package className="h-8 w-8 text-neutral-400" />
                           </div>
-                          <p className="text-neutral-600 text-lg font-medium">No products found</p>
-                          <p className="text-neutral-500 text-sm mt-1">Add products to track inventory</p>
+                          <p className="text-neutral-600 text-lg font-medium">
+                            {searchTerm ? 'No products found' : 'No products yet'}
+                          </p>
+                          <p className="text-neutral-500 text-sm mt-1">
+                            {searchTerm ? 'Try adjusting your search' : 'Add products to track inventory'}
+                          </p>
                         </TableCell>
                       </TableRow>
                     ) : (
-                      products.map(product => (
+                      paginatedProducts.map(product => (
                         <TableRow key={product.id} className="hover:bg-neutral-50 transition-colors duration-150">
                           <TableCell className="font-medium text-neutral-900">{product.name}</TableCell>
                           <TableCell className="text-neutral-700">{product.sku || '-'}</TableCell>
@@ -503,22 +548,37 @@ export default function InventoryPage() {
 
               {/* Mobile Cards - Current Stock */}
               <div className="md:hidden p-4 space-y-4">
-                {products.length === 0 ? (
+                {paginatedProducts.length === 0 ? (
                   <div className="text-center py-16">
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
                       <Package className="h-8 w-8 text-neutral-400" />
                     </div>
-                    <p className="text-neutral-600 text-lg font-medium">No products found</p>
-                    <p className="text-neutral-500 text-sm mt-1">Add products to track inventory</p>
+                    <p className="text-neutral-600 text-lg font-medium">
+                      {searchTerm ? 'No products found' : 'No products yet'}
+                    </p>
+                    <p className="text-neutral-500 text-sm mt-1">
+                      {searchTerm ? 'Try adjusting your search' : 'Add products to track inventory'}
+                    </p>
                   </div>
                 ) : (
-                  products.map(product => (
+                  paginatedProducts.map(product => (
                     <ProductMobileCard key={product.id} product={product} />
                   ))
                 )}
               </div>
             </CardContent>
           </Card>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-center mt-6 animate-fade-in">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="movements" className="space-y-4">
