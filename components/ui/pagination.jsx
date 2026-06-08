@@ -1,100 +1,94 @@
-import * as React from "react"
-import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react"
+import { Button } from '@/components/ui/button'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button";
+export function Pagination({ currentPage, totalPages, onPageChange, totalItems, pageSize }) {
+  if (totalPages <= 1) return null
 
-const Pagination = ({
-  className,
-  ...props
-}) => (
-  <nav
-    role="navigation"
-    aria-label="pagination"
-    className={cn("mx-auto flex w-full justify-center", className)}
-    {...props} />
-)
-Pagination.displayName = "Pagination"
+  const pages = []
+  const showEllipsisStart = currentPage > 3
+  const showEllipsisEnd = currentPage < totalPages - 2
 
-const PaginationContent = React.forwardRef(({ className, ...props }, ref) => (
-  <ul
-    ref={ref}
-    className={cn("flex flex-row items-center gap-1", className)}
-    {...props} />
-))
-PaginationContent.displayName = "PaginationContent"
+  // Always show first, last, and up to 2 around current
+  if (showEllipsisStart) {
+    pages.push(1, '...')
+  } else {
+    for (let i = 1; i < currentPage; i++) {
+      pages.push(i)
+    }
+  }
 
-const PaginationItem = React.forwardRef(({ className, ...props }, ref) => (
-  <li ref={ref} className={cn("", className)} {...props} />
-))
-PaginationItem.displayName = "PaginationItem"
+  // Current page and neighbors
+  for (let i = Math.max(1, currentPage - 1); i <= Math.min(totalPages, currentPage + 1); i++) {
+    if (!pages.includes(i)) {
+      pages.push(i)
+    }
+  }
 
-const PaginationLink = ({
-  className,
-  isActive,
-  size = "icon",
-  ...props
-}) => (
-  <a
-    aria-current={isActive ? "page" : undefined}
-    className={cn(buttonVariants({
-      variant: isActive ? "outline" : "ghost",
-      size,
-    }), className)}
-    {...props} />
-)
-PaginationLink.displayName = "PaginationLink"
+  // End pages
+  if (showEllipsisEnd) {
+    pages.push('...', totalPages)
+  } else {
+    for (let i = currentPage + 2; i <= totalPages; i++) {
+      if (!pages.includes(i)) {
+        pages.push(i)
+      }
+    }
+  }
 
-const PaginationPrevious = ({
-  className,
-  ...props
-}) => (
-  <PaginationLink
-    aria-label="Go to previous page"
-    size="default"
-    className={cn("gap-1 pl-2.5", className)}
-    {...props}>
-    <ChevronLeft className="h-4 w-4" />
-    <span>Previous</span>
-  </PaginationLink>
-)
-PaginationPrevious.displayName = "PaginationPrevious"
+  // Deduplicate and ensure proper order
+  const uniquePages = [...new Set(pages)].filter((p, i, arr) => 
+    arr.indexOf(p) === i
+  )
 
-const PaginationNext = ({
-  className,
-  ...props
-}) => (
-  <PaginationLink
-    aria-label="Go to next page"
-    size="default"
-    className={cn("gap-1 pr-2.5", className)}
-    {...props}>
-    <span>Next</span>
-    <ChevronRight className="h-4 w-4" />
-  </PaginationLink>
-)
-PaginationNext.displayName = "PaginationNext"
+  const start = (currentPage - 1) * pageSize + 1
+  const end = Math.min(currentPage * pageSize, totalItems)
 
-const PaginationEllipsis = ({
-  className,
-  ...props
-}) => (
-  <span
-    aria-hidden
-    className={cn("flex h-9 w-9 items-center justify-center", className)}
-    {...props}>
-    <MoreHorizontal className="h-4 w-4" />
-    <span className="sr-only">More pages</span>
-  </span>
-)
-PaginationEllipsis.displayName = "PaginationEllipsis"
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-neutral-200">
+      <p className="text-sm text-neutral-500">
+        Showing {start}–{end} of {totalItems} results
+      </p>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="h-9 px-3"
+          aria-label="Previous page"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
 
-export {
-  Pagination,
-  PaginationContent,
-  PaginationLink,
-  PaginationItem,
-  PaginationPrevious,
-  PaginationNext,
-  PaginationEllipsis,
+        {uniquePages.map((page, i) =>
+          page === '...' ? (
+            <span key={`ellipsis-${i}`} className="px-2 text-neutral-400">…</span>
+          ) : (
+            <Button
+              key={page}
+              variant={page === currentPage ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => onPageChange(page)}
+              className={`h-9 w-9 p-0 ${page === currentPage ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`}
+              aria-label={`Page ${page}`}
+              aria-current={page === currentPage ? 'page' : undefined}
+            >
+              {page}
+            </Button>
+          )
+        )}
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="h-9 px-3"
+          aria-label="Next page"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
 }
