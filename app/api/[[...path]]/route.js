@@ -624,28 +624,31 @@ async function handleRoute(request, { params }) {
       if (validationError) return handleCORS(validationError, request)
       
       // DUPLICATE CHECK: Safe parameterized queries to prevent SQL injection
-      // Check by shop name
+      // Check by shop name (case-insensitive)
       const { data: byName } = await supabase
         .from('retailers')
         .select('id, shop_name')
         .eq('business_id', userContext.businessId)
-        .ilike('shop_name', data.shop_name)
+        .ilike('shop_name', data.shop_name.trim())
         .maybeSingle()
 
-      // Check by phone
-      const { data: byPhone } = await supabase
+      // Check by phone (only if phone provided)
+      const byPhone = data.phone ? await supabase
         .from('retailers')
         .select('id, phone')
         .eq('business_id', userContext.businessId)
-        .eq('phone', data.phone)
+        .eq('phone', data.phone.trim())
         .maybeSingle()
+        .then(r => r.data) : null
 
       if (byName || byPhone) {
-        const duplicateField = byName ? 'shop name' : 'phone number'
+        const field = byName ? 'shop_name' : 'phone'
+        const fieldLabel = byName ? 'shop name' : 'phone number'
         return handleCORS(NextResponse.json({
           error: 'Duplicate retailer',
-          message: `A retailer with this ${duplicateField} already exists.`,
-          code: 'DUPLICATE_ENTRY'
+          message: `A retailer with this ${fieldLabel} already exists.`,
+          code: 'DUPLICATE_ENTRY',
+          field
         }, { status: 409 }), request)
       }
 
