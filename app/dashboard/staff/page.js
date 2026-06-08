@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,8 +30,9 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, Edit, Trash2, Copy, Check, Users, ChevronDown, ChevronUp, Mail, UserCircle } from 'lucide-react'
+import { Plus, Edit, Trash2, Copy, Check, Users, ChevronDown, ChevronUp, Mail, UserCircle, Search } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { Pagination } from '@/components/ui/pagination'
 
 // Mobile Card Component for Staff Members
 function StaffMemberMobileCard({ member, onEdit, onDeactivate, getRoleBadge, getStatusBadge }) {
@@ -120,6 +121,9 @@ export default function StaffPage() {
   const [selectedStaff, setSelectedStaff] = useState(null)
   const [tempPassword, setTempPassword] = useState('')
   const [copied, setCopied] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -271,6 +275,30 @@ export default function StaffPage() {
       : 'bg-red-100 text-red-700 border-red-200'
   }
 
+  // Client-side filtering
+  const filteredStaff = useMemo(() => {
+    if (!searchTerm) return staff
+
+    const lowerSearch = searchTerm.toLowerCase()
+    return staff.filter(member =>
+      member.name?.toLowerCase().includes(lowerSearch) ||
+      member.email?.toLowerCase().includes(lowerSearch) ||
+      member.role?.toLowerCase().includes(lowerSearch)
+    )
+  }, [staff, searchTerm])
+
+  // Pagination
+  const totalPages = Math.ceil(filteredStaff.length / pageSize)
+  const paginatedStaff = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return filteredStaff.slice(startIndex, startIndex + pageSize)
+  }, [filteredStaff, currentPage, pageSize])
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -295,9 +323,21 @@ export default function StaffPage() {
         </Button>
       </div>
 
+      {/* Search Bar */}
+      <div className="relative max-w-md animate-slide-down">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
+        <Input
+          type="text"
+          placeholder="Search by name, email, or role..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10 border-2 border-neutral-200 focus:border-emerald-400 transition-colors"
+        />
+      </div>
+
       {/* Mobile View - Card Layout */}
       <div className="block md:hidden space-y-4 animate-fade-in">
-        {staff.length === 0 ? (
+        {paginatedStaff.length === 0 ? (
           <Card className="border-2 border-neutral-200">
             <CardContent className="p-8">
               <div className="text-center">
@@ -315,9 +355,9 @@ export default function StaffPage() {
               <div className="p-2 bg-emerald-100 rounded-lg">
                 <Users className="h-5 w-5 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-neutral-900">Team Members ({staff.length})</h3>
+              <h3 className="text-xl font-bold text-neutral-900">Team Members ({filteredStaff.length})</h3>
             </div>
-            {staff.map((member) => (
+            {paginatedStaff.map((member) => (
               <StaffMemberMobileCard
                 key={member.id}
                 member={member}
@@ -338,7 +378,7 @@ export default function StaffPage() {
             <div className="p-2 bg-emerald-100 rounded-lg">
               <Users className="h-5 w-5 text-emerald-600" />
             </div>
-            <CardTitle className="text-2xl font-bold text-neutral-900">Team Members ({staff.length})</CardTitle>
+            <CardTitle className="text-2xl font-bold text-neutral-900">Team Members ({filteredStaff.length})</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -354,18 +394,22 @@ export default function StaffPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {staff.length === 0 ? (
+                {paginatedStaff.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-16">
                       <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
-                        <Plus className="h-8 w-8 text-neutral-400" />
+                        <Users className="h-8 w-8 text-neutral-400" />
                       </div>
-                      <p className="text-neutral-600 text-lg font-medium">No staff members yet</p>
-                      <p className="text-neutral-500 text-sm mt-1">Add your first team member to get started</p>
+                      <p className="text-neutral-600 text-lg font-medium">
+                        {searchTerm ? 'No staff members found' : 'No staff members yet'}
+                      </p>
+                      <p className="text-neutral-500 text-sm mt-1">
+                        {searchTerm ? 'Try adjusting your search' : 'Add your first team member to get started'}
+                      </p>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  staff.map((member) => (
+                  paginatedStaff.map((member) => (
                     <TableRow key={member.id} className="hover:bg-emerald-50 transition-colors duration-150">
                       <TableCell className="font-medium text-neutral-900">{member.name}</TableCell>
                       <TableCell className="text-neutral-700">{member.email}</TableCell>
@@ -406,6 +450,17 @@ export default function StaffPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-6 animate-fade-in">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+      )}
 
       {/* Add Staff Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
