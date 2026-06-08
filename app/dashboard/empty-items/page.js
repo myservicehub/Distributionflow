@@ -300,7 +300,7 @@ export default function EmptyItemsPage() {
           <Card className="border-2 border-neutral-200">
             <CardContent className="p-8">
               <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600" role="status" aria-label="Loading"><span className="sr-only">Loading...</span></div>
               </div>
             </CardContent>
           </Card>
@@ -361,7 +361,7 @@ export default function EmptyItemsPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600" role="status" aria-label="Loading"><span className="sr-only">Loading...</span></div>
             </div>
           ) : emptyItems.length === 0 ? (
             <div className="text-center py-16 px-4">
@@ -373,7 +373,7 @@ export default function EmptyItemsPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table aria-label="Data table">
                 <TableHeader>
                   <TableRow className="bg-neutral-50">
                     <TableHead className="font-semibold">Name</TableHead>

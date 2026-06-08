@@ -787,17 +787,23 @@ async function handleRoute(request, { params }) {
     if (route === '/products' && method === 'GET') {
       const userContext = await getUserBusinessId(supabase)
       if (!userContext) {
-        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }), request)
       }
 
-      const { data, error } = await supabase
+      // Get pagination parameters
+      const { page, pageSize, from, to } = getPaginationParams(request)
+
+      const { data, error, count } = await supabase
         .from('products')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('business_id', userContext.businessId)
         .order('name')
+        .range(from, to)
 
       if (error) throw error
-      return handleCORS(NextResponse.json(data || []))
+      
+      const response = buildPaginatedResponse(data || [], count, page, pageSize)
+      return handleCORS(NextResponse.json(response), request)
     }
 
     if (route === '/products' && method === 'POST') {
@@ -833,20 +839,25 @@ async function handleRoute(request, { params }) {
           message: `Your current plan allows ${maxProducts} products. You have ${currentProducts}. Please upgrade to add more.`,
           code: 'LIMIT_REACHED',
           upgradeUrl: '/settings/billing'
-        }, { status: 402 }))
+        }, { status: 402 }), request)
       }
 
       const body = await request.json()
-      const { data, error } = await supabase
+      
+      // Validate request body with Zod
+      const { error: validationError, data } = parseBody(CreateProductSchema, body)
+      if (validationError) return handleCORS(validationError, request)
+      
+      const { data: product, error } = await supabase
         .from('products')
         .insert({
           business_id: userContext.businessId,
-          name: body.name,
-          sku: body.sku,
-          cost_price: body.cost_price || 0,
-          selling_price: body.selling_price,
-          stock_quantity: body.stock_quantity || 0,
-          low_stock_threshold: body.low_stock_threshold || 10
+          name: data.name,
+          sku: data.sku,
+          cost_price: data.cost_price || 0,
+          selling_price: data.unit_price,
+          stock_quantity: data.quantity,
+          low_stock_threshold: data.low_stock_threshold
         })
         .select()
         .single()
@@ -921,24 +932,30 @@ async function handleRoute(request, { params }) {
     if (route.startsWith('/products/') && method === 'PATCH') {
       const userContext = await getUserBusinessId(supabase)
       if (!userContext) {
-        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }), request)
       }
 
       if (!['admin', 'manager'].includes(userContext.role)) {
-        return handleCORS(NextResponse.json({ error: 'Forbidden' }, { status: 403 }))
+        return handleCORS(NextResponse.json({ error: 'Forbidden' }, { status: 403 }), request)
       }
 
       const productId = route.split('/')[2] // Extract ID from /products/:id
       const body = await request.json()
-      const { empty_item_id } = body
+      
+      // Validate with partial schema (allows updating specific fields)
+      const { error: validationError, data } = parseBody(UpdateProductSchema, body)
+      if (validationError) return handleCORS(validationError, request)
 
-      // Update product with empty_item_id
+      // Build update object from validated data
+      const updateData = {
+        ...data,
+        updated_at: new Date().toISOString()
+      }
+
+      // Update product with validated data
       const { data: product, error: updateError } = await supabase
         .from('products')
-        .update({ 
-          empty_item_id: empty_item_id || null,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', productId)
         .eq('business_id', userContext.businessId)
         .select()
@@ -946,14 +963,14 @@ async function handleRoute(request, { params }) {
 
       if (updateError) {
         console.error('Error updating product:', updateError)
-        return handleCORS(NextResponse.json({ error: updateError.message }, { status: 400 }))
+        return handleCORS(NextResponse.json({ error: updateError.message }, { status: 400 }), request)
       }
 
       if (!product) {
-        return handleCORS(NextResponse.json({ error: 'Product not found' }, { status: 404 }))
+        return handleCORS(NextResponse.json({ error: 'Product not found' }, { status: 404 }), request)
       }
 
-      return handleCORS(NextResponse.json(product))
+      return handleCORS(NextResponse.json(product), request)
     }
 
     if (route.startsWith('/products/') && method === 'DELETE') {
@@ -1097,8 +1114,11 @@ async function handleRoute(request, { params }) {
     if (route === '/orders' && method === 'GET') {
       const userContext = await getUserBusinessId(supabase)
       if (!userContext) {
-        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }), request)
       }
+
+      // Get pagination parameters
+      const { page, pageSize, from, to } = getPaginationParams(request)
 
       // Build query with order items and products - explicitly select new workflow fields
       let query = supabase
@@ -1118,14 +1138,15 @@ async function handleRoute(request, { params }) {
           vehicle_number,
           retailers(shop_name, owner_name),
           order_items(*, product:products(name, sku))
-        `)
+        `, { count: 'exact' })
         .eq('business_id', userContext.businessId)
         .order('created_at', { ascending: false })
+        .range(from, to)
 
       // Apply sales rep filter - sales reps only see their own orders
       query = applySalesRepFilter(query, userContext, 'sales_rep_id')
 
-      const { data: orders, error } = await query
+      const { data: orders, error, count } = await query
 
       if (error) {
         console.error('Orders query error:', error)
@@ -1175,7 +1196,8 @@ async function handleRoute(request, { params }) {
         })
       )
       
-      return handleCORS(NextResponse.json(ordersWithSalesRep))
+      const response = buildPaginatedResponse(ordersWithSalesRep, count, page, pageSize)
+      return handleCORS(NextResponse.json(response), request)
     }
 
     // GET single order with items
@@ -1244,26 +1266,30 @@ async function handleRoute(request, { params }) {
     if (route === '/orders' && method === 'POST') {
       const userContext = await getUserBusinessId(supabase)
       if (!userContext) {
-        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }), request)
       }
 
       // SUBSCRIPTION CHECK: Enforce active subscription
       const subscriptionError = await enforceSubscription(userContext.businessId)
       if (subscriptionError) {
-        return handleCORS(NextResponse.json(subscriptionError, { status: 402 }))
+        return handleCORS(NextResponse.json(subscriptionError, { status: 402 }), request)
       }
 
       // Check permission
       if (!canCreateOrders(userContext.role)) {
         return handleCORS(NextResponse.json({ 
           error: 'Forbidden: You do not have permission to create orders' 
-        }, { status: 403 }))
+        }, { status: 403 }), request)
       }
 
       const body = await request.json()
       
+      // Validate request body with Zod
+      const { error: validationError, data } = parseBody(CreateOrderSchema, body)
+      if (validationError) return handleCORS(validationError, request)
+      
       // STEP 1: Validate stock availability for all items
-      for (const item of body.items) {
+      for (const item of data.items) {
         const { data: product } = await supabase
           .from('products')
           .select('stock_quantity, name')
@@ -2110,15 +2136,19 @@ async function handleRoute(request, { params }) {
     if (route === '/payments' && method === 'GET') {
       const userContext = await getUserBusinessId(supabase)
       if (!userContext) {
-        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }), request)
       }
 
+      // Get pagination parameters
+      const { page, pageSize, from, to } = getPaginationParams(request)
+
       // Fetch payments without joins first
-      const { data: payments, error } = await supabase
+      const { data: payments, error, count } = await supabase
         .from('payments')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('business_id', userContext.businessId)
         .order('created_at', { ascending: false })
+        .range(from, to)
 
       if (error) throw error
 
@@ -2175,16 +2205,21 @@ async function handleRoute(request, { params }) {
         })
       )
 
-      return handleCORS(NextResponse.json(paymentsWithDetails))
+      const response = buildPaginatedResponse(paymentsWithDetails, count, page, pageSize)
+      return handleCORS(NextResponse.json(response), request)
     }
 
     if (route === '/payments' && method === 'POST') {
       const userContext = await getUserBusinessId(supabase)
       if (!userContext) {
-        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
+        return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }), request)
       }
 
       const body = await request.json()
+      
+      // Validate request body with Zod
+      const { error: validationError, data } = parseBody(CreatePaymentSchema, body)
+      if (validationError) return handleCORS(validationError, request)
       
       // Use service role client for operations that might be affected by RLS
       const { createClient } = await import('@supabase/supabase-js')
@@ -2199,16 +2234,16 @@ async function handleRoute(request, { params }) {
         }
       )
       
-      // Create payment record
+      // Create payment record using validated data
       const { data: payment, error: paymentError } = await adminSupabase
         .from('payments')
         .insert({
           business_id: userContext.businessId,
-          retailer_id: body.retailer_id,
+          retailer_id: data.retailer_id,
           order_id: body.order_id || null,
-          amount_paid: body.amount_paid,
-          payment_method: body.payment_method,
-          notes: body.notes,
+          amount_paid: data.amount,
+          payment_method: data.payment_method,
+          notes: data.notes,
           recorded_by: userContext.userId
         })
         .select()
@@ -2389,6 +2424,10 @@ async function handleRoute(request, { params }) {
       }
 
       const body = await request.json()
+      
+      // Validate request body with Zod
+      const { error: validationError, data } = parseBody(CreateStaffSchema, body)
+      if (validationError) return handleCORS(validationError, request)
       
       // Create service role client for admin operations
       const { createClient } = await import('@supabase/supabase-js')

@@ -404,7 +404,7 @@ export default function OrdersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" role="status" aria-label="Loading"><span className="sr-only">Loading...</span></div>
       </div>
     )
   }
@@ -622,7 +622,7 @@ export default function OrdersPage() {
         <CardContent className="p-0">
           {/* Desktop Table View */}
           <div className="hidden md:block overflow-x-auto">
-            <Table>
+            <Table aria-label="Data table">
               <TableHeader>
                 <TableRow className="bg-neutral-50">
                   <TableHead className="w-10"></TableHead>
@@ -704,7 +704,7 @@ export default function OrdersPage() {
                           <div className="p-6">
                             <h4 className="font-semibold text-lg text-neutral-900 mb-4">Order Items</h4>
                             {order.order_items && order.order_items.length > 0 ? (
-                              <Table>
+                              <Table aria-label="Data table">
                                 <TableHeader>
                                   <TableRow>
                                     <TableHead>Product</TableHead>

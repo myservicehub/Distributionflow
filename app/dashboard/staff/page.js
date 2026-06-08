@@ -272,7 +272,7 @@ export default function StaffPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" role="status" aria-label="Loading"><span className="sr-only">Loading...</span></div>
       </div>
     )
   }
@@ -341,7 +341,7 @@ export default function StaffPage() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <Table>
+            <Table aria-label="Data table">
               <TableHeader>
                 <TableRow className="bg-neutral-50">
                   <TableHead className="font-semibold">Name</TableHead>

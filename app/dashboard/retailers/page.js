@@ -248,7 +248,7 @@ export default function RetailersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" role="status" aria-label="Loading"><span className="sr-only">Loading...</span></div>
       </div>
     )
   }
@@ -382,7 +382,7 @@ export default function RetailersPage() {
         <CardContent className="p-0">
           {/* Desktop Table View */}
           <div className="hidden md:block overflow-x-auto">
-            <Table>
+            <Table aria-label="Data table">
               <TableHeader>
                 <TableRow className="bg-neutral-50">
                   <TableHead className="font-semibold">Shop Name</TableHead>
