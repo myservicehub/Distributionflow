@@ -1,10 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Truck, Plus, Package, ArrowDownToLine, ArrowUpFromLine, ChevronDown, ChevronUp, Calendar, DollarSign } from 'lucide-react'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Button } from '@/components/ui/button'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import {
   Table,
   TableBody,
@@ -29,18 +34,21 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Label } from '@/components/ui/label'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Textarea } from '@/components/ui/textarea'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Badge } from '@/components/ui/badge'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { toast } from 'sonner'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { useAuth } from '@/lib/auth-context'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 
 // Mobile Card Component for Warehouse Inventory
 function WarehouseInventoryMobileCard({ item }) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  
-  const formatCurrency = (amount) => {
-    return `₦${parseFloat(amount).toLocaleString()}`
+  const [isExpanded, setIsExpanded] = useState(false)`
   }
 
   const totalValue = item.quantity_available * (item.empty_items?.deposit_value || 0)
@@ -105,10 +113,7 @@ function WarehouseInventoryMobileCard({ item }) {
 
 // Mobile Card Component for Recent Movements
 function MovementMobileCard({ movement }) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  
-  const formatCurrency = (amount) => {
-    return `₦${parseFloat(amount).toLocaleString()}`
+  const [isExpanded, setIsExpanded] = useState(false)`
   }
 
   const getMovementBadge = (type) => {
@@ -309,17 +314,8 @@ export default function ManufacturerSupplyPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const formatCurrency = (amount) => {
-    return `₦${parseFloat(amount || 0).toLocaleString()}`
-  }
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString()
-  }
-
-  const getMovementTypeLabel = (type) => {
+  }`
+  }  const getMovementTypeLabel = (type) => {
     if (type === 'manufacturer_in') return 'Received'
     if (type === 'returned_to_manufacturer') return 'Returned'
     return type

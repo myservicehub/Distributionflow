@@ -1,8 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Package, Warehouse, Users, DollarSign, TrendingUp, AlertCircle, ChevronDown, ChevronUp, Eye } from 'lucide-react'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import {
   Table,
   TableBody,
@@ -12,10 +15,15 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Button } from '@/components/ui/button'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { useAuth } from '@/lib/auth-context'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 
 // Mobile Card Component for Empty Inventory Items
 function EmptyInventoryMobileCard({ item, formatCurrency, onViewDetails }) {
@@ -177,10 +185,7 @@ export default function EmptyInventoryOverviewPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const formatCurrency = (amount) => {
-    return `₦${parseFloat(amount).toLocaleString()}`
+  }`
   }
 
   // Calculate totals

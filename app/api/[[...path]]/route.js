@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { randomBytes } from 'crypto'
 import { logAudit, AUDIT_ACTIONS, RESOURCE_TYPES } from '@/lib/audit-logger'
 import { sendStaffInvitation } from '@/lib/email'
 import { can } from '@/lib/permissions'
@@ -467,23 +468,30 @@ async function handleRoute(request, { params }) {
 
       const body = await request.json()
       
-      // DUPLICATE CHECK: Check for existing retailer with same shop_name or phone
-      const { data: existingRetailer } = await supabase
+      // DUPLICATE CHECK: Safe parameterized queries to prevent SQL injection
+      // Check by shop name
+      const { data: byName } = await supabase
         .from('retailers')
-        .select('id, shop_name, phone')
+        .select('id, shop_name')
         .eq('business_id', userContext.businessId)
-        .or(`shop_name.ilike.${body.shop_name},phone.eq.${body.phone}`)
+        .ilike('shop_name', body.shop_name)
         .maybeSingle()
 
-      if (existingRetailer) {
-        const duplicateField = existingRetailer.shop_name.toLowerCase() === body.shop_name.toLowerCase() 
-          ? 'shop name' 
-          : 'phone number'
+      // Check by phone
+      const { data: byPhone } = await supabase
+        .from('retailers')
+        .select('id, phone')
+        .eq('business_id', userContext.businessId)
+        .eq('phone', body.phone)
+        .maybeSingle()
+
+      if (byName || byPhone) {
+        const duplicateField = byName ? 'shop name' : 'phone number'
         return handleCORS(NextResponse.json({
           error: 'Duplicate retailer',
           message: `A retailer with this ${duplicateField} already exists.`,
           code: 'DUPLICATE_ENTRY'
-        }, { status: 409 }))
+        }, { status: 409 }), request)
       }
 
       const { data, error } = await supabase
@@ -2263,8 +2271,8 @@ async function handleRoute(request, { params }) {
         .eq('id', userContext.businessId)
         .single()
 
-      // Generate temporary password
-      const tempPassword = `Temp${Math.random().toString(36).slice(-8)}@${Math.floor(Math.random() * 999)}`
+      // Generate cryptographically secure temporary password
+      const tempPassword = `Df${randomBytes(10).toString('base64url')}!`
 
       // Create auth user with temporary password
       const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({

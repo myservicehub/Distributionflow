@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
+import { formatCurrency } from '@/lib/utils/format'
 
 export default function SalesRepDashboard() {
   const { userProfile } = useAuth()
@@ -53,14 +54,6 @@ export default function SalesRepDashboard() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0
-    }).format(amount || 0)
   }
 
   // Calculate my sales today

@@ -1,9 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Package, Users, DollarSign, ArrowDownCircle, Search, AlertCircle, ChevronDown, ChevronUp, Store } from 'lucide-react'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Button } from '@/components/ui/button'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import {
   Table,
   TableBody,
@@ -21,19 +25,22 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Label } from '@/components/ui/label'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Badge } from '@/components/ui/badge'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { toast } from 'sonner'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { useAuth } from '@/lib/auth-context'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 
 // Mobile Card Component for Empty Balances
 function EmptyBalanceMobileCard({ balance, onRecordReturn }) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const totalValue = balance.quantity_outstanding * parseFloat(balance.empty_items?.deposit_value || 0)
-  
-  const formatCurrency = (amount) => {
-    return `₦${parseFloat(amount).toLocaleString()}`
+  const totalValue = balance.quantity_outstanding * parseFloat(balance.empty_items?.deposit_value || 0)`
   }
 
   return (
@@ -207,10 +214,7 @@ export default function RetailerEmptyBalancesPage() {
     } finally {
       setProcessing(false)
     }
-  }
-
-  const formatCurrency = (amount) => {
-    return `₦${parseFloat(amount).toLocaleString()}`
+  }`
   }
 
   // Calculate summary metrics

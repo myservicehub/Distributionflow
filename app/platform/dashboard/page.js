@@ -1,11 +1,17 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Badge } from '@/components/ui/badge'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Button } from '@/components/ui/button'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Building2, Users, DollarSign, TrendingUp, AlertTriangle, CreditCard, UserPlus, UserX, Activity } from 'lucide-react'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import Link from 'next/link'
+import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 
 export default function PlatformDashboard() {
   const [kpis, setKpis] = useState(null)
@@ -44,14 +50,7 @@ export default function PlatformDashboard() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0
-    }).format(amount)
+  }).format(amount)
   }
 
   if (loading) {
