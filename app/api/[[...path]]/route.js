@@ -633,7 +633,7 @@ async function handleRoute(request, { params }) {
         }, { status: 409 }), request)
       }
 
-      const { data, error } = await supabase
+      const { data: insertedData, error } = await supabase
         .from('retailers')
         .insert({
           business_id: userContext.businessId,
@@ -657,12 +657,12 @@ async function handleRoute(request, { params }) {
         supabase,
         userContext,
         'CREATE_RETAILER',
-        `Created retailer: ${data.shop_name}`,
+        `Created retailer: ${insertedData.shop_name}`,
         'retailer',
-        newRetailer.id
+        insertedData.id
       )
 
-      return handleCORS(NextResponse.json(newRetailer), request)
+      return handleCORS(NextResponse.json(insertedData), request)
     }
 
     if (route.startsWith('/retailers/') && method === 'PUT') {

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
@@ -13,8 +13,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { toast } from 'sonner'
-import { Plus, Eye, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, ShoppingCart, User, Calendar, DollarSign } from 'lucide-react'
+import { Plus, Eye, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, ShoppingCart, User, Calendar, DollarSign, Search } from 'lucide-react'
 import BottleExchangeSection from '@/components/BottleExchangeSection'
+import { Pagination } from '@/components/ui/pagination'
 
 // Mobile Card Component for Orders
 function OrderMobileCard({ order, onExpand, isExpanded, canApprove, onApprove, onReject, getPaymentStatusColor, getStatusColor }) {

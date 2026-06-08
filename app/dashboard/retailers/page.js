@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { Plus, Edit, Trash2, ChevronDown, ChevronUp, Store, User, Phone, CreditCard, DollarSign } from 'lucide-react'
+import { Plus, Edit, Trash2, ChevronDown, ChevronUp, Store, User, Phone, CreditCard, DollarSign, Search } from 'lucide-react'
+import { Pagination } from '@/components/ui/pagination'
 
 // Mobile Card Component with View More
 function RetailerMobileCard({ retailer, onEdit, onDelete }) {
@@ -122,6 +123,9 @@ export default function RetailersPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingRetailer, setEditingRetailer] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
   const [formData, setFormData] = useState({
     shop_name: '',
     owner_name: '',
@@ -244,6 +248,32 @@ export default function RetailersPage() {
     })
     setEditingRetailer(null)
   }
+
+  // Filter retailers based on search term
+  const filteredRetailers = useMemo(() => {
+    if (!searchTerm) return retailers
+
+    const lowerSearch = searchTerm.toLowerCase()
+    return retailers.filter(retailer =>
+      retailer.shop_name?.toLowerCase().includes(lowerSearch) ||
+      retailer.owner_name?.toLowerCase().includes(lowerSearch) ||
+      retailer.phone?.toLowerCase().includes(lowerSearch) ||
+      retailer.email?.toLowerCase().includes(lowerSearch) ||
+      retailer.users?.name?.toLowerCase().includes(lowerSearch)
+    )
+  }, [retailers, searchTerm])
+
+  // Pagination
+  const totalPages = Math.ceil(filteredRetailers.length / pageSize)
+  const paginatedRetailers = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return filteredRetailers.slice(startIndex, startIndex + pageSize)
+  }, [filteredRetailers, currentPage, pageSize])
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
 
   if (loading) {
     return (
@@ -375,9 +405,22 @@ export default function RetailersPage() {
         </Dialog>
       </div>
 
+      {/* Search Bar */}
+      <div className="flex gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+          <Input
+            placeholder="Search by shop name, owner, phone, email, or assigned rep..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 h-12 border-2"
+          />
+        </div>
+      </div>
+
       <Card className="border-0 shadow-soft animate-fade-in">
         <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50">
-          <CardTitle className="text-2xl font-bold text-neutral-900">All Retailers ({retailers.length})</CardTitle>
+          <CardTitle className="text-2xl font-bold text-neutral-900">All Retailers ({filteredRetailers.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {/* Desktop Table View */}
@@ -396,7 +439,7 @@ export default function RetailersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {retailers.map((retailer) => (
+                {paginatedRetailers.map((retailer) => (
                   <TableRow key={retailer.id} className="hover:bg-neutral-50 transition-colors duration-150">
                     <TableCell className="font-medium text-neutral-900">{retailer.shop_name}</TableCell>
                     <TableCell className="text-neutral-700">{retailer.owner_name || '-'}</TableCell>
@@ -425,38 +468,70 @@ export default function RetailersPage() {
                 ))}
               </TableBody>
             </Table>
-            {retailers.length === 0 && (
+            {filteredRetailers.length === 0 && (
               <div className="text-center py-16 px-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
-                  <Plus className="h-8 w-8 text-neutral-400" />
+                  <Store className="h-8 w-8 text-neutral-400" />
                 </div>
-                <p className="text-neutral-600 text-lg font-medium">No retailers yet</p>
-                <p className="text-neutral-500 text-sm mt-1">Click "Add Retailer" to create your first retail customer</p>
+                <p className="text-neutral-600 text-lg font-medium">
+                  {searchTerm ? 'No matching retailers' : 'No retailers yet'}
+                </p>
+                <p className="text-neutral-500 text-sm mt-1">
+                  {searchTerm ? 'Try adjusting your search terms' : 'Click "Add Retailer" to create your first retail customer'}
+                </p>
+              </div>
+            )}
+            {totalPages > 1 && (
+              <div className="p-4 border-t border-neutral-200">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  totalItems={filteredRetailers.length}
+                  pageSize={pageSize}
+                />
               </div>
             )}
           </div>
 
           {/* Mobile Card View */}
           <div className="md:hidden">
-            {retailers.length === 0 ? (
+            {filteredRetailers.length === 0 ? (
               <div className="text-center py-16 px-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
-                  <Plus className="h-8 w-8 text-neutral-400" />
+                  <Store className="h-8 w-8 text-neutral-400" />
                 </div>
-                <p className="text-neutral-600 text-lg font-medium">No retailers yet</p>
-                <p className="text-neutral-500 text-sm mt-1">Click "Add Retailer" to create your first retail customer</p>
+                <p className="text-neutral-600 text-lg font-medium">
+                  {searchTerm ? 'No matching retailers' : 'No retailers yet'}
+                </p>
+                <p className="text-neutral-500 text-sm mt-1">
+                  {searchTerm ? 'Try adjusting your search terms' : 'Click "Add Retailer" to create your first retail customer'}
+                </p>
               </div>
             ) : (
-              <div className="p-4 space-y-4">
-                {retailers.map((retailer) => (
-                  <RetailerMobileCard 
-                    key={retailer.id} 
-                    retailer={retailer} 
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="p-4 space-y-4">
+                  {paginatedRetailers.map((retailer) => (
+                    <RetailerMobileCard 
+                      key={retailer.id} 
+                      retailer={retailer} 
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <div className="p-4 border-t border-neutral-200">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                      totalItems={filteredRetailers.length}
+                      pageSize={pageSize}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </CardContent>
