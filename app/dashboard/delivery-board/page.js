@@ -63,7 +63,9 @@ export default function DeliveryBoardPage() {
     try {
       const response = await fetch('/api/empty-bottles?route=empty-items')
       if (!response.ok) throw new Error('Failed to load empty items')
-      const data = await response.json()
+      const responseData = await response.json()
+      // Handle both old format (array) and new format (object with data property)
+      const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
       setEmptyItems(data.filter(item => item.is_active))
     } catch (error) {
       console.error('Failed to load empty items:', error)
@@ -91,9 +93,12 @@ export default function DeliveryBoardPage() {
     try {
       setLoading(true)
       const response = await fetch('/api/orders')
-      const data = await response.json()
+      const responseData = await response.json()
       
-      if (!response.ok) throw new Error(data.error || 'Failed to load orders')
+      if (!response.ok) throw new Error(responseData.error || 'Failed to load orders')
+
+      // Handle both old format (array) and new format (object with data property)
+      const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
 
       console.log('📦 All orders loaded:', data?.length || 0)
       console.log('Sample order:', data?.[0])

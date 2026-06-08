@@ -142,8 +142,10 @@ export default function ProductsPage() {
     try {
       const response = await fetch('/api/products', { signal })
       if (!response.ok) throw new Error('Failed to load products')
-      const data = await response.json()
-      setProducts(Array.isArray(data) ? data : [])
+      const responseData = await response.json()
+      // Handle both old format (array) and new format (object with data property)
+      const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
+      setProducts(data)
     } catch (error) {
       if (error.name !== 'AbortError') {
         console.error('Error loading products:', error)

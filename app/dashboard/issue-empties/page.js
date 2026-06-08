@@ -138,14 +138,18 @@ export default function IssueEmptiesPage() {
       // Load retailers
       const retailersRes = await fetch('/api/retailers', { signal })
       if (retailersRes.ok) {
-        const retailersData = await retailersRes.json()
+        const retailersResponseData = await retailersRes.json()
+        // Handle both old format (array) and new format (object with data property)
+        const retailersData = Array.isArray(retailersResponseData) ? retailersResponseData : (retailersResponseData.data || [])
         setRetailers(retailersData)
       }
 
       // Load empty items
       const emptyRes = await fetch('/api/empty-bottles?route=empty-items')
       if (emptyRes.ok) {
-        const emptyData = await emptyRes.json()
+        const emptyResponseData = await emptyRes.json()
+        // Handle both old format (array) and new format (object with data property)
+        const emptyData = Array.isArray(emptyResponseData) ? emptyResponseData : (emptyResponseData.data || [])
         setEmptyItems(emptyData)
       }
 

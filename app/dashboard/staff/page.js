@@ -144,7 +144,9 @@ export default function StaffPage() {
     try {
       const response = await fetch('/api/staff', { signal })
       if (response.ok) {
-        const data = await response.json()
+        const responseData = await response.json()
+        // Handle both old format (array) and new format (object with data property)
+        const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
         setStaff(data)
       }
     } catch (error) {

@@ -187,8 +187,12 @@ export default function InventoryPage() {
       if (!productsRes.ok) throw new Error('Failed to load products')
       if (!movementsRes.ok) throw new Error('Failed to load stock movements')
 
-      const productsData = await productsRes.json()
-      const movementsData = await movementsRes.json()
+      const productsResponseData = await productsRes.json()
+      const movementsResponseData = await movementsRes.json()
+
+      // Handle both old format (array) and new format (object with data property)
+      const productsData = Array.isArray(productsResponseData) ? productsResponseData : (productsResponseData.data || [])
+      const movementsData = Array.isArray(movementsResponseData) ? movementsResponseData : (movementsResponseData.data || [])
 
       setProducts(productsData)
       setStockMovements(movementsData)

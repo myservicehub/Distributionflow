@@ -170,14 +170,18 @@ export default function ProductEmptyLinksPage() {
       // Load products with empty item details
       const productsRes = await fetch('/api/products')
       if (productsRes.ok) {
-        const productsData = await productsRes.json()
+        const productsResponseData = await productsRes.json()
+        // Handle both old format (array) and new format (object with data property)
+        const productsData = Array.isArray(productsResponseData) ? productsResponseData : (productsResponseData.data || [])
         setProducts(productsData)
       }
 
       // Load empty items
       const emptyRes = await fetch('/api/empty-bottles?route=empty-items')
       if (emptyRes.ok) {
-        const emptyData = await emptyRes.json()
+        const emptyResponseData = await emptyRes.json()
+        // Handle both old format (array) and new format (object with data property)
+        const emptyData = Array.isArray(emptyResponseData) ? emptyResponseData : (emptyResponseData.data || [])
         setEmptyItems(emptyData)
       }
     } catch (error) {
