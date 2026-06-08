@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { Plus, Edit, Trash2, AlertTriangle, ChevronDown, ChevronUp, Package as PackageIcon, DollarSign, Box } from 'lucide-react'
+import { Plus, Edit, Trash2, AlertTriangle, ChevronDown, ChevronUp, Package as PackageIcon, DollarSign, Box, Search } from 'lucide-react'
+import { Pagination } from '@/components/ui/pagination'
 
 // Mobile Card Component for Products
 function ProductMobileCard({ product, onEdit, onDelete }) {
@@ -120,6 +121,9 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
   const [formData, setFormData] = useState({
     name: '',
     sku: '',
@@ -218,6 +222,29 @@ export default function ProductsPage() {
     })
     setEditingProduct(null)
   }
+
+  // Client-side filtering
+  const filteredProducts = useMemo(() => {
+    if (!searchTerm) return products
+
+    const lowerSearch = searchTerm.toLowerCase()
+    return products.filter(product =>
+      product.name?.toLowerCase().includes(lowerSearch) ||
+      product.sku?.toLowerCase().includes(lowerSearch)
+    )
+  }, [products, searchTerm])
+
+  // Pagination
+  const totalPages = Math.ceil(filteredProducts.length / pageSize)
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return filteredProducts.slice(startIndex, startIndex + pageSize)
+  }, [filteredProducts, currentPage, pageSize])
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
 
   if (loading) {
     return (
@@ -324,9 +351,21 @@ export default function ProductsPage() {
         </Dialog>
       </div>
 
+      {/* Search Bar */}
+      <div className="relative max-w-md animate-slide-down">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
+        <Input
+          type="text"
+          placeholder="Search by product name or SKU..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10 border-2 border-neutral-200 focus:border-emerald-400 transition-colors"
+        />
+      </div>
+
       <Card className="border-0 shadow-soft animate-fade-in">
         <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50">
-          <CardTitle className="text-2xl font-bold text-neutral-900">All Products ({products.length})</CardTitle>
+          <CardTitle className="text-2xl font-bold text-neutral-900">All Products ({filteredProducts.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {/* Desktop Table */}
@@ -344,7 +383,7 @@ export default function ProductsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.map((product) => {
+                {paginatedProducts.map((product) => {
                   const isLowStock = product.stock_quantity <= product.low_stock_threshold
                   return (
                     <TableRow key={product.id} className="hover:bg-neutral-50 transition-colors duration-150">
@@ -376,30 +415,38 @@ export default function ProductsPage() {
                 })}
               </TableBody>
             </Table>
-            {products.length === 0 && (
+            {paginatedProducts.length === 0 && (
               <div className="text-center py-16 px-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
-                  <Plus className="h-8 w-8 text-neutral-400" />
+                  <PackageIcon className="h-8 w-8 text-neutral-400" />
                 </div>
-                <p className="text-neutral-600 text-lg font-medium">No products yet</p>
-                <p className="text-neutral-500 text-sm mt-1">Click "Add Product" to create your first product</p>
+                <p className="text-neutral-600 text-lg font-medium">
+                  {searchTerm ? 'No products found' : 'No products yet'}
+                </p>
+                <p className="text-neutral-500 text-sm mt-1">
+                  {searchTerm ? 'Try adjusting your search' : 'Click "Add Product" to create your first product'}
+                </p>
               </div>
             )}
           </div>
 
           {/* Mobile Cards */}
           <div className="md:hidden">
-            {products.length === 0 ? (
+            {paginatedProducts.length === 0 ? (
               <div className="text-center py-16 px-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
-                  <Plus className="h-8 w-8 text-neutral-400" />
+                  <PackageIcon className="h-8 w-8 text-neutral-400" />
                 </div>
-                <p className="text-neutral-600 text-lg font-medium">No products yet</p>
-                <p className="text-neutral-500 text-sm mt-1">Click "Add Product" to create your first product</p>
+                <p className="text-neutral-600 text-lg font-medium">
+                  {searchTerm ? 'No products found' : 'No products yet'}
+                </p>
+                <p className="text-neutral-500 text-sm mt-1">
+                  {searchTerm ? 'Try adjusting your search' : 'Click "Add Product" to create your first product'}
+                </p>
               </div>
             ) : (
               <div className="p-4 space-y-4">
-                {products.map((product) => (
+                {paginatedProducts.map((product) => (
                   <ProductMobileCard
                     key={product.id}
                     product={product}
@@ -412,6 +459,17 @@ export default function ProductsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-6 animate-fade-in">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+      )}
     </div>
   )
 }
