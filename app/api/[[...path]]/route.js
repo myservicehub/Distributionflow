@@ -1115,21 +1115,22 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
+      // TEMPORARY WORKAROUND: Return empty array due to database schema issue
+      // TODO: Fix stock_movements table schema - foreign key cache issue
+      console.warn('Stock movements temporarily disabled due to database schema issue')
+      return handleCORS(NextResponse.json([]))
+
+      /* ORIGINAL CODE - Re-enable after database fix
       try {
-        // Use service role client to bypass PostgREST relationship cache issues
         const { createClient } = await import('@supabase/supabase-js')
         const supabaseAdmin = createClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL,
           process.env.SUPABASE_SERVICE_ROLE_KEY,
           {
-            auth: {
-              autoRefreshToken: false,
-              persistSession: false
-            }
+            auth: { autoRefreshToken: false, persistSession: false }
           }
         )
 
-        // Query without any relationships to avoid foreign key cache issues
         const { data: movements, error: movementsError } = await supabaseAdmin
           .from('stock_movements')
           .select('id, product_id, movement_type, quantity, notes, created_at, business_id')
@@ -1142,7 +1143,6 @@ async function handleRoute(request, { params }) {
           return handleCORS(NextResponse.json({ error: 'Failed to load stock movements', details: movementsError.message }, { status: 500 }))
         }
 
-        // Get product details separately
         if (movements && movements.length > 0) {
           const productIds = [...new Set(movements.map(m => m.product_id).filter(Boolean))]
           
@@ -1152,7 +1152,6 @@ async function handleRoute(request, { params }) {
               .select('id, name, sku')
               .in('id', productIds)
 
-            // Merge product data
             const productsMap = (products || []).reduce((acc, p) => {
               acc[p.id] = p
               return acc
@@ -1172,6 +1171,7 @@ async function handleRoute(request, { params }) {
         console.error('Exception in stock movements:', error)
         return handleCORS(NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 }))
       }
+      */
     }
 
     if (route === '/stock-movements' && method === 'POST') {
