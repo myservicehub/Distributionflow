@@ -18,10 +18,10 @@ export async function GET(request) {
   try {
     const { page, pageSize, from, to } = getPaginationParams(request)
 
-    // FIXED: Remove broken foreign key reference - query without user join
+    // FIXED: Select only columns that exist in the table
     const { data: movements, error, count } = await supabase
       .from('stock_movements')
-      .select('id, product_id, movement_type, quantity, quantity_before, quantity_after, notes, created_at, business_id, products(name)', { count: 'exact' })
+      .select('id, product_id, movement_type, quantity, notes, created_at, business_id, products(name)', { count: 'exact' })
       .eq('business_id', userContext.businessId)
       .order('created_at', { ascending: false })
       .range(from, to)
