@@ -269,7 +269,19 @@ export default function InventoryPage() {
     )
   }, [products, searchTerm])
 
-  // Early return for loading state (MUST be after all hooks)
+  // Pagination (MUST be before any conditional returns)
+  const totalPages = Math.ceil(filteredProducts.length / pageSize)
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return filteredProducts.slice(startIndex, startIndex + pageSize)
+  }, [filteredProducts, currentPage, pageSize])
+
+  // Reset to page 1 when search changes (MUST be before any conditional returns)
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
+
+  // Early return for loading state (MUST be after ALL hooks)
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -277,18 +289,6 @@ export default function InventoryPage() {
       </div>
     )
   }
-
-  // Pagination
-  const totalPages = Math.ceil(filteredProducts.length / pageSize)
-  const paginatedProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize
-    return filteredProducts.slice(startIndex, startIndex + pageSize)
-  }, [filteredProducts, currentPage, pageSize])
-
-  // Reset to page 1 when search changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm])
 
   return (
     <div className="space-y-8">
