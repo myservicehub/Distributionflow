@@ -258,15 +258,7 @@ export default function InventoryPage() {
     sum + (p.stock_quantity * (p.cost_price || 0)), 0
   )
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" role="status" aria-label="Loading"><span className="sr-only">Loading...</span></div>
-      </div>
-    )
-  }
-
-  // Client-side filtering for products
+  // Client-side filtering for products (MUST be before any conditional returns)
   const filteredProducts = useMemo(() => {
     if (!searchTerm) return products
 
@@ -276,6 +268,15 @@ export default function InventoryPage() {
       product.sku?.toLowerCase().includes(lowerSearch)
     )
   }, [products, searchTerm])
+
+  // Early return for loading state (MUST be after all hooks)
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600" role="status" aria-label="Loading"><span className="sr-only">Loading...</span></div>
+      </div>
+    )
+  }
 
   // Pagination
   const totalPages = Math.ceil(filteredProducts.length / pageSize)
