@@ -84,6 +84,29 @@ export async function POST(request) {
       return validationError
     }
 
+    // DOUBLE-SUBMIT GUARD: Check for identical payment in the last 30 seconds
+    const thirtySecondsAgo = new Date(Date.now() - 30000).toISOString()
+    const { data: recentDuplicate } = await supabase
+      .from('payments')
+      .select('id, created_at')
+      .eq('business_id', userContext.businessId)
+      .eq('retailer_id', validatedData.retailer_id)
+      .eq('amount', validatedData.amount)
+      .eq('payment_method', validatedData.payment_method)
+      .gte('created_at', thirtySecondsAgo)
+      .maybeSingle()
+
+    if (recentDuplicate) {
+      return errorResponse(
+        'An identical payment was just recorded for this retailer. If this is intentional, please wait 30 seconds and try again.',
+        409,
+        {
+          error: 'Duplicate payment',
+          code: 'DUPLICATE_PAYMENT'
+        }
+      )
+    }
+
     // Get current retailer balance
     const { data: retailer } = await supabase
       .from('retailers')

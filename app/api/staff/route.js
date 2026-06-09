@@ -84,7 +84,7 @@ export async function POST(request) {
       return validationError
     }
 
-    // Check if email already exists
+    // Use admin client for staff operations
     const { createClient } = await import('@supabase/supabase-js')
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -97,14 +97,23 @@ export async function POST(request) {
       }
     )
 
+    // DUPLICATE CHECK: Check if email already exists (across all businesses)
     const { data: existingUser } = await supabaseAdmin
       .from('users')
-      .select('id')
+      .select('id, email')
       .eq('email', validatedData.email)
-      .single()
+      .maybeSingle()
 
     if (existingUser) {
-      return errorResponse('Email already exists', 400)
+      return errorResponse(
+        'A user with this email already exists.',
+        409,
+        {
+          error: 'Duplicate email',
+          code: 'DUPLICATE_ENTRY',
+          field: 'email'
+        }
+      )
     }
 
     // Generate temporary password

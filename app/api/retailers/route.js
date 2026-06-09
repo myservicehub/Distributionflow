@@ -130,6 +130,36 @@ export async function POST(request) {
       return validationError
     }
 
+    // DUPLICATE CHECK: Check for duplicate shop name (case-insensitive)
+    const { data: byName } = await supabase
+      .from('retailers')
+      .select('id')
+      .eq('business_id', userContext.businessId)
+      .ilike('shop_name', validatedData.shop_name.trim())
+      .maybeSingle()
+
+    // DUPLICATE CHECK: Check for duplicate phone number
+    const { data: byPhone } = validatedData.phone ? await supabase
+      .from('retailers')
+      .select('id')
+      .eq('business_id', userContext.businessId)
+      .eq('phone', validatedData.phone.trim())
+      .maybeSingle() : { data: null }
+
+    if (byName || byPhone) {
+      const field = byName ? 'shop_name' : 'phone'
+      const fieldLabel = byName ? 'shop name' : 'phone number'
+      return errorResponse(
+        `A retailer with this ${fieldLabel} already exists.`,
+        409,
+        {
+          error: 'Duplicate retailer',
+          code: 'DUPLICATE_ENTRY',
+          field
+        }
+      )
+    }
+
     // Create retailer
     const { data: retailer, error: createError } = await supabase
       .from('retailers')

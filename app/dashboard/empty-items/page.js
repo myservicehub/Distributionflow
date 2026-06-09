@@ -252,7 +252,6 @@ export default function EmptyItemsPage() {
     setShowDialog(false)
     setEditingItem(null)
     setFormData({ name: '', deposit_value: '', initial_quantity: '0' })
-  }`
   }
 
   if (!['admin', 'manager'].includes(userProfile?.role)) {
@@ -479,7 +478,7 @@ export default function EmptyItemsPage() {
           <DialogHeader>
             <DialogTitle>Delete Empty Item</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{deletingItem?.name}"?
+              Are you sure you want to delete &ldquo;{deletingItem?.name}&rdquo;?
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">

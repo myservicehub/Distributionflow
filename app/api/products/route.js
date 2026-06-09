@@ -68,6 +68,48 @@ export async function POST(request) {
       return validationError
     }
 
+    // DUPLICATE CHECK: Check for duplicate product name (case-insensitive)
+    const { data: nameExists } = await supabase
+      .from('products')
+      .select('id, name')
+      .eq('business_id', userContext.businessId)
+      .ilike('name', validatedData.name.trim())
+      .maybeSingle()
+
+    if (nameExists) {
+      return errorResponse(
+        `A product named "${nameExists.name}" already exists.`,
+        409,
+        {
+          error: 'Duplicate product',
+          code: 'DUPLICATE_ENTRY',
+          field: 'name'
+        }
+      )
+    }
+
+    // DUPLICATE CHECK: Check for duplicate SKU (only if SKU provided — SKU is optional)
+    if (validatedData.sku && validatedData.sku.trim()) {
+      const { data: skuExists } = await supabase
+        .from('products')
+        .select('id, sku')
+        .eq('business_id', userContext.businessId)
+        .eq('sku', validatedData.sku.trim().toUpperCase())
+        .maybeSingle()
+
+      if (skuExists) {
+        return errorResponse(
+          `SKU "${validatedData.sku}" is already used by another product.`,
+          409,
+          {
+            error: 'Duplicate SKU',
+            code: 'DUPLICATE_ENTRY',
+            field: 'sku'
+          }
+        )
+      }
+    }
+
     // Create product
     const { data: product, error: createError } = await supabase
       .from('products')
@@ -139,6 +181,52 @@ export async function PUT(request) {
     
     if (validationError) {
       return validationError
+    }
+
+    // DUPLICATE CHECK: Check name conflict with a DIFFERENT product
+    if (validatedData.name) {
+      const { data: nameConflict } = await supabase
+        .from('products')
+        .select('id')
+        .eq('business_id', userContext.businessId)
+        .ilike('name', validatedData.name.trim())
+        .neq('id', product_id)
+        .maybeSingle()
+
+      if (nameConflict) {
+        return errorResponse(
+          'Another product with this name already exists.',
+          409,
+          {
+            error: 'Duplicate product',
+            code: 'DUPLICATE_ENTRY',
+            field: 'name'
+          }
+        )
+      }
+    }
+
+    // DUPLICATE CHECK: Check SKU conflict with a DIFFERENT product
+    if (validatedData.sku && validatedData.sku.trim()) {
+      const { data: skuConflict } = await supabase
+        .from('products')
+        .select('id')
+        .eq('business_id', userContext.businessId)
+        .eq('sku', validatedData.sku.trim().toUpperCase())
+        .neq('id', product_id)
+        .maybeSingle()
+
+      if (skuConflict) {
+        return errorResponse(
+          `SKU "${validatedData.sku}" is already used by another product.`,
+          409,
+          {
+            error: 'Duplicate SKU',
+            code: 'DUPLICATE_ENTRY',
+            field: 'sku'
+          }
+        )
+      }
     }
 
     // Update product

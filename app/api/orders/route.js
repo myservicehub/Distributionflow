@@ -88,6 +88,31 @@ export async function POST(request) {
       sum + (item.quantity * item.unit_price), 0
     )
 
+    // DUPLICATE CHECK: Check for identical order in last 60 seconds (double-submit guard)
+    const sixtySecondsAgo = new Date(Date.now() - 60000).toISOString()
+    const calculatedTotal = subtotal
+    
+    const { data: recentOrder } = await supabase
+      .from('orders')
+      .select('id, created_at')
+      .eq('business_id', userContext.businessId)
+      .eq('retailer_id', validatedData.retailer_id)
+      .gte('total_amount', calculatedTotal - 0.01)
+      .lte('total_amount', calculatedTotal + 0.01)
+      .gte('created_at', sixtySecondsAgo)
+      .maybeSingle()
+
+    if (recentOrder) {
+      return errorResponse(
+        'An identical order was just created for this retailer. If this is intentional, please wait 60 seconds and try again.',
+        409,
+        {
+          error: 'Duplicate order',
+          code: 'DUPLICATE_ORDER'
+        }
+      )
+    }
+
     // Create order
     const { data: order, error: createError } = await supabase
       .from('orders')
