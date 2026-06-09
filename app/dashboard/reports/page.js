@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { ChevronDown, ChevronUp, TrendingDown, BarChart3, Package, Store, Calendar, CreditCard, AlertTriangle, DollarSign, ShoppingBag, Download } from 'lucide-react'
+import { DateRangeFilter, getDateRangeStart } from '@/components/ui/date-range-filter'
 
 // CSV Export utility function
 function exportToCSV(data, filename, columns) {
@@ -240,6 +241,16 @@ export default function ReportsPage() {
   const [inventory, setInventory] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedReps, setExpandedReps] = useState({})
+  const [dateRange, setDateRange] = useState('30d')
+
+  // Helper to get human-readable range label
+  const rangeLabel = {
+    today: 'Today',
+    '7d': 'Last 7 Days',
+    '30d': 'Last 30 Days',
+    '90d': 'Last 90 Days',
+    all: 'All Time'
+  }[dateRange]
 
   const toggleRepExpand = (repName) => {
     setExpandedReps(prev => ({
@@ -256,30 +267,45 @@ export default function ReportsPage() {
     return () => controller.abort()
   }, [])
 
-  const loadReports = async (signal) => {
+  const loadReports = async (signal, range = dateRange) => {
     try {
+      const start = getDateRangeStart(range)
+      const params = new URLSearchParams()
+      if (start) params.set('from', start.toISOString())
+      const rangeParam = `range=${range}`
+
+      // Debt aging is always current snapshot - no date filter
       const debtResponse = await fetch('/api/reports/debt-aging', { signal })
       if (debtResponse.ok) {
         const debtData = await debtResponse.json()
         setDebtAging(debtData)
       }
 
-      const salesResponse = await fetch('/api/reports/sales-by-rep')
+      // Sales by rep - apply date filter
+      const salesResponse = await fetch(`/api/reports/sales-by-rep?${params}&${rangeParam}`, { signal })
       if (salesResponse.ok) {
         const salesData = await salesResponse.json()
         setSalesByRep(salesData)
       }
 
-      const inventoryResponse = await fetch('/api/reports/inventory')
+      // Inventory is a snapshot - no date filter
+      const inventoryResponse = await fetch('/api/reports/inventory', { signal })
       if (inventoryResponse.ok) {
         const inventoryData = await inventoryResponse.json()
         setInventory(inventoryData)
       }
     } catch (error) {
+      if (error.name === 'AbortError') return
+      console.error('Error loading reports:', error)
       toast.error('Failed to load reports')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleDateChange = (range) => {
+    setDateRange(range)
+    loadReports(undefined, range)
   }
 
   if (loading) {
@@ -408,6 +434,9 @@ export default function ReportsPage() {
 
         {/* Sales by Rep Report */}
         <TabsContent value="sales" className="space-y-4">
+          {/* Date Range Filter - Only on Sales tab */}
+          <DateRangeFilter value={dateRange} onChange={handleDateChange} />
+
           {/* Mobile View */}
           <div className="block md:hidden space-y-4 animate-fade-in">
             {salesByRep.length === 0 ? (
@@ -442,7 +471,7 @@ export default function ReportsPage() {
                   <div className="p-2 bg-emerald-100 rounded-lg">
                     <BarChart3 className="h-5 w-5 text-emerald-600" />
                   </div>
-                  <CardTitle className="text-2xl font-bold text-neutral-900">Sales Performance by Representative (Last 30 Days)</CardTitle>
+                  <CardTitle className="text-2xl font-bold text-neutral-900">Sales Performance by Representative ({rangeLabel})</CardTitle>
                 </div>
                 <Button
                   variant="outline"
