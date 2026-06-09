@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '@/lib/auth-context'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { RefreshCw, ChevronDown, ChevronUp, Calendar, User, Activity, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
+import { DateRangeFilter, getDateRangeStart } from '@/components/ui/date-range-filter'
 
 // Mobile Card Component for Activity Logs
 function ActivityLogMobileCard({ log, formatDate, formatAction, getActionBadgeColor, getDetailedDescription }) {
@@ -83,11 +84,15 @@ function ActivityLogMobileCard({ log, formatDate, formatAction, getActionBadgeCo
 export default function ActivityLogPage() {
   const { userProfile } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 15
+  const [dateRange, setDateRange] = useState(searchParams.get('range') || '30d')
 
   // Check if user is admin
   useEffect(() => {
@@ -102,10 +107,14 @@ export default function ActivityLogPage() {
     }
   }, [userProfile])
 
-  const fetchLogs = async () => {
+  const fetchLogs = async (range = dateRange) => {
     setLoading(true)
     try {
-      const response = await fetch('/api/audit-logs?limit=100')
+      const start = getDateRangeStart(range)
+      const params = new URLSearchParams({ limit: '500' })
+      if (start) params.set('from', start.toISOString())
+
+      const response = await fetch(`/api/audit-logs?${params}`)
       if (response.ok) {
         const data = await response.json()
         setLogs(data)
@@ -115,6 +124,17 @@ export default function ActivityLogPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleDateChange = (range) => {
+    setDateRange(range)
+    setCurrentPage(1)
+
+    const params = new URLSearchParams(searchParams)
+    params.set('range', range)
+    router.replace(`${pathname}?${params}`, { scroll: false })
+
+    fetchLogs(range)
   }
 
   const getActionBadgeColor = (action) => {
@@ -319,16 +339,22 @@ export default function ActivityLogPage() {
         </Button>
       </div>
 
-      {/* Search Bar */}
-      <div className="relative max-w-md animate-slide-down">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
-        <Input
-          type="text"
-          placeholder="Search by user, action, or entity..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 border-2 border-neutral-200 focus:border-emerald-400 transition-colors"
-        />
+      {/* Filter bar — date + search */}
+      <div className="flex flex-col gap-3">
+        {/* Date range filter */}
+        <DateRangeFilter value={dateRange} onChange={handleDateChange} />
+
+        {/* Search Bar */}
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
+          <Input
+            type="text"
+            placeholder="Search by user, action, or entity..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 border-2 border-neutral-200 focus:border-emerald-400 transition-colors"
+          />
+        </div>
       </div>
 
       {/* Mobile View - Card Layout */}
@@ -340,8 +366,14 @@ export default function ActivityLogPage() {
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-neutral-100 rounded-full mb-4">
                   <Activity className="h-8 w-8 text-neutral-400" />
                 </div>
-                <p className="text-neutral-600 text-lg font-medium">No activity logs found</p>
-                <p className="text-neutral-500 text-sm mt-1">Activity will appear here as actions are performed</p>
+                <p className="text-neutral-600 text-lg font-medium">
+                  {searchTerm ? 'No matching activities' : 'No activity logs in the selected period'}
+                </p>
+                <p className="text-neutral-500 text-sm mt-1">
+                  {searchTerm ? 'Try different search terms' :
+                   dateRange !== 'all' ? 'Try selecting a longer date range or "All time"' :
+                   'Activity will appear here as actions are performed'}
+                </p>
               </div>
             </CardContent>
           </Card>
