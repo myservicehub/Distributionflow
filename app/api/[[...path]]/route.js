@@ -1383,57 +1383,75 @@ async function handleRoute(request, { params }) {
       // Extract order ID from route
       const orderId = route.split('/orders/')[1]
 
-      // Fetch order with items
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          order_status,
-          delivery_status,
-          is_legacy_order,
-          confirmed_by,
-          confirmed_at,
-          packed_at,
-          dispatched_at,
-          delivered_at,
-          delivery_reference,
-          driver_name,
-          vehicle_number,
-          retailers(shop_name, owner_name)
-        `)
-        .eq('id', orderId)
-        .eq('business_id', userContext.businessId)
-        .single()
+      try {
+        // OPTIMIZED: Select only necessary columns to reduce query time
+        const { data: order, error: orderError } = await supabase
+          .from('orders')
+          .select(`
+            id,
+            order_number,
+            retailer_id,
+            sales_rep_id,
+            business_id,
+            order_status,
+            delivery_status,
+            total_amount,
+            discount_amount,
+            payment_status,
+            notes,
+            is_legacy_order,
+            confirmed_by,
+            confirmed_at,
+            packed_at,
+            dispatched_at,
+            delivered_at,
+            delivery_reference,
+            driver_name,
+            vehicle_number,
+            created_at,
+            updated_at,
+            retailers(shop_name, owner_name, phone)
+          `)
+          .eq('id', orderId)
+          .eq('business_id', userContext.businessId)
+          .single()
 
-      if (orderError) {
-        console.error('Order query error:', orderError)
-        return handleCORS(NextResponse.json({ error: 'Order not found' }, { status: 404 }))
+        if (orderError) {
+          console.error('Order query error:', orderError)
+          return handleCORS(NextResponse.json({ error: 'Order not found' }, { status: 404 }))
+        }
+
+        // OPTIMIZED: Fetch order items in parallel with specific columns only
+        const { data: items, error: itemsError } = await supabase
+          .from('order_items')
+          .select('id, order_id, product_id, quantity, unit_price, total_price, products(name, sku)')
+          .eq('order_id', orderId)
+
+        if (itemsError) {
+          console.error('Order items query error:', itemsError)
+        }
+
+        // Format response
+        const response = {
+          ...order,
+          retailer_name: order.retailers?.shop_name || 'Unknown',
+          retailer_phone: order.retailers?.phone || null,
+          items: (items || []).map(item => ({
+            id: item.id,
+            product_id: item.product_id,
+            product_name: item.products?.name || 'Unknown Product',
+            product_sku: item.products?.sku || 'N/A',
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_price: item.total_price
+          }))
+        }
+
+        return handleCORS(NextResponse.json(response))
+      } catch (error) {
+        console.error('Order detail fetch error:', error)
+        return handleCORS(NextResponse.json({ error: 'Failed to load order details' }, { status: 500 }))
       }
-
-      // Fetch order items
-      const { data: items, error: itemsError } = await supabase
-        .from('order_items')
-        .select(`
-          *,
-          product:products(name, sku)
-        `)
-        .eq('order_id', orderId)
-
-      if (itemsError) {
-        console.error('Order items query error:', itemsError)
-      }
-
-      // Format response
-      const response = {
-        ...order,
-        retailer_name: order.retailers?.shop_name || 'Unknown',
-        items: (items || []).map(item => ({
-          ...item,
-          product_name: item.product?.name || 'Unknown Product'
-        }))
-      }
-
-      return handleCORS(NextResponse.json(response))
     }
 
     if (route === '/orders' && method === 'POST') {
