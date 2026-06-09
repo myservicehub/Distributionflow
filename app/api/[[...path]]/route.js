@@ -1,6 +1,5 @@
-import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { randomBytes } from 'crypto'
 import { z } from 'zod'
 import { logAudit, AUDIT_ACTIONS, RESOURCE_TYPES } from '@/lib/audit-logger'
@@ -146,24 +145,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 // Helper to create authenticated Supabase client from request
 async function getSupabaseClient() {
-  const cookieStore = await cookies()
-  
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll()
-      },
-      setAll(cookiesToSet) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
-        } catch {
-          // Ignore
-        }
-      },
-    },
-  })
+  return await createClient()
 }
 
 // Helper function to handle CORS
@@ -2570,26 +2552,18 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Forbidden - Admin or Manager only' }, { status: 403 }))
       }
 
-      // Use service role client to bypass RLS and fetch all staff
-      const { createClient } = await import('@supabase/supabase-js')
-      const supabaseAdmin = createClient(
-        supabaseUrl,
-        process.env.SUPABASE_SERVICE_ROLE_KEY,
-        {
-          auth: {
-            autoRefreshToken: false,
-            persistSession: false
-          }
-        }
-      )
-
-      const { data, error } = await supabaseAdmin
+      // Query users table for staff in the same business
+      const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select('id, auth_user_id, email, name, role, business_id, status, created_at')
         .eq('business_id', userContext.businessId)
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching staff:', error)
+        return handleCORS(NextResponse.json({ error: 'Failed to load staff', details: error.message }, { status: 500 }))
+      }
+      
       return handleCORS(NextResponse.json(data || []))
     }
 
