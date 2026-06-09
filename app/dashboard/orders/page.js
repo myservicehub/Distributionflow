@@ -160,6 +160,15 @@ export default function OrdersPage() {
   const [submitting, setSubmitting] = useState(false)
   const supabase = createClient()
 
+  // Helper to get human-readable range label
+  const rangeLabel = {
+    today: 'Today',
+    '7d': 'Last 7 Days',
+    '30d': 'Last 30 Days',
+    '90d': 'Last 90 Days',
+    all: 'All Time'
+  }[dateRange]
+
   const toggleOrderExpand = (orderId) => {
     setExpandedOrders(prev => ({
       ...prev,
@@ -717,7 +726,7 @@ export default function OrdersPage() {
 
       <Card className="border-0 shadow-soft animate-fade-in">
         <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-white to-neutral-50">
-          <CardTitle className="text-2xl font-bold text-neutral-900">All Orders ({filteredOrders.length})</CardTitle>
+          <CardTitle className="text-2xl font-bold text-neutral-900">All Orders · {rangeLabel}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {/* Desktop Table View */}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 import { Truck, Plus, Package, ArrowDownToLine, ArrowUpFromLine, ChevronDown, ChevronUp, Calendar, DollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -35,6 +35,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/auth-context'
+import { DateRangeFilter, getDateRangeStart } from '@/components/ui/date-range-filter'
 
 // Mobile Card Component for Warehouse Inventory
 function WarehouseInventoryMobileCard({ item }) {
@@ -177,6 +178,15 @@ export default function ManufacturerSupplyPage() {
   const [returnFormData, setReturnFormData] = useState({ empty_item_id: '', quantity: '', notes: '' })
   const [loading, setLoading] = useState(false)
   const [dataLoading, setDataLoading] = useState(true)
+  const [dateRange, setDateRange] = useState('30d')
+
+  // Filter movements by date range
+  const filteredMovements = useMemo(() => {
+    if (dateRange === 'all') return recentMovements
+    const start = getDateRangeStart(dateRange)
+    if (!start) return recentMovements
+    return recentMovements.filter(m => new Date(m.created_at) >= start)
+  }, [recentMovements, dateRange])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -535,7 +545,10 @@ export default function ManufacturerSupplyPage() {
           <CardTitle className="text-neutral-900">Recent Manufacturer Transactions</CardTitle>
           <CardDescription>History of empties received from and returned to manufacturer</CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-6 space-y-4">
+          {/* Date Range Filter */}
+          <DateRangeFilter value={dateRange} onChange={setDateRange} />
+
           {dataLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
@@ -556,15 +569,17 @@ export default function ManufacturerSupplyPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {recentMovements.length === 0 ? (
+                    {filteredMovements.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-neutral-600 py-12">
                           <Package className="h-12 w-12 mx-auto mb-4 text-neutral-400" />
-                          <p className="font-medium">No transactions yet</p>
+                          <p className="font-medium">
+                            {dateRange !== 'all' ? 'No transactions in the selected period' : 'No transactions yet'}
+                          </p>
                         </TableCell>
                       </TableRow>
                     ) : (
-                      recentMovements.map((movement) => (
+                      filteredMovements.map((movement) => (
                         <TableRow key={movement.id} className="hover:bg-emerald-50 transition-colors duration-150">
                           <TableCell>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMovementTypeColor(movement.type)}`}>
@@ -590,13 +605,15 @@ export default function ManufacturerSupplyPage() {
 
               {/* Mobile Cards */}
               <div className="md:hidden space-y-4 p-4">
-                {recentMovements.length === 0 ? (
+                {filteredMovements.length === 0 ? (
                   <div className="text-center text-neutral-600 py-12">
                     <Package className="h-12 w-12 mx-auto mb-4 text-neutral-400" />
-                    <p className="font-medium">No transactions yet</p>
+                    <p className="font-medium">
+                      {dateRange !== 'all' ? 'No transactions in the selected period' : 'No transactions yet'}
+                    </p>
                   </div>
                 ) : (
-                  recentMovements.map((movement) => (
+                  filteredMovements.map((movement) => (
                     <MovementMobileCard key={movement.id} movement={movement} />
                   ))
                 )}

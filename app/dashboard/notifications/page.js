@@ -100,6 +100,15 @@ export default function NotificationsPage() {
   const pageSize = 10
   const [dateRange, setDateRange] = useState('all')
 
+  // Helper to get human-readable range label
+  const rangeLabel = {
+    today: 'Today',
+    '7d': 'Last 7 Days',
+    '30d': 'Last 30 Days',
+    '90d': 'Last 90 Days',
+    all: 'All Time'
+  }[dateRange]
+
   useEffect(() => {
     loadNotifications()
   }, [])
@@ -365,7 +374,7 @@ export default function NotificationsPage() {
       <Card className="border-2 border-neutral-200 shadow-lg">
         <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-emerald-50 to-white">
           <CardTitle className="text-2xl font-bold text-neutral-900">
-            All Notifications ({filteredNotifications.length})
+            All Notifications · {rangeLabel}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">

@@ -131,6 +131,15 @@ export default function PaymentsPage() {
   const [submitting, setSubmitting] = useState(false)
   const supabase = createClient()
 
+  // Helper to get human-readable range label
+  const rangeLabel = {
+    today: 'Today',
+    '7d': 'Last 7 Days',
+    '30d': 'Last 30 Days',
+    '90d': 'Last 90 Days',
+    all: 'All Time'
+  }[dateRange]
+
   useEffect(() => {
     const controller = new AbortController()
     
@@ -170,19 +179,6 @@ export default function PaymentsPage() {
     router.replace(`${pathname}?${params}`, { scroll: false })
 
     loadPayments(undefined, range)
-  }
-      if (!response.ok) throw new Error('Failed to load payments')
-      const responseData = await response.json()
-      const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
-      setPayments(data)
-    } catch (error) {
-      if (error.name !== 'AbortError') {
-        toast.error('Failed to load payments')
-      }
-      setPayments([])
-    } finally {
-      setLoading(false)
-    }
   }
 
   const loadRetailers = async (signal) => {
@@ -475,7 +471,7 @@ export default function PaymentsPage() {
             <div className="p-2 bg-emerald-100 rounded-lg">
               <DollarSign className="h-5 w-5 text-emerald-600" />
             </div>
-            <CardTitle className="text-2xl font-bold text-neutral-900">Payment History ({filteredPayments.length})</CardTitle>
+            <CardTitle className="text-2xl font-bold text-neutral-900">Payment History · {rangeLabel}</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="p-0">

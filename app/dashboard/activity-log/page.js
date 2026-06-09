@@ -94,6 +94,15 @@ export default function ActivityLogPage() {
   const pageSize = 15
   const [dateRange, setDateRange] = useState(searchParams.get('range') || '30d')
 
+  // Helper to get human-readable range label
+  const rangeLabel = {
+    today: 'Today',
+    '7d': 'Last 7 Days',
+    '30d': 'Last 30 Days',
+    '90d': 'Last 90 Days',
+    all: 'All Time'
+  }[dateRange]
+
   // Check if user is admin
   useEffect(() => {
     if (userProfile && userProfile.role !== 'admin') {
@@ -383,7 +392,7 @@ export default function ActivityLogPage() {
               <div className="p-2 bg-emerald-100 rounded-lg">
                 <Activity className="h-5 w-5 text-emerald-600" />
               </div>
-              <h3 className="text-xl font-bold text-neutral-900">Recent Activity ({filteredLogs.length})</h3>
+              <h3 className="text-xl font-bold text-neutral-900">Recent Activity · {rangeLabel}</h3>
             </div>
             {paginatedLogs.map((log) => (
               <ActivityLogMobileCard
@@ -406,7 +415,7 @@ export default function ActivityLogPage() {
             <div className="p-2 bg-emerald-100 rounded-lg">
               <Activity className="h-5 w-5 text-emerald-600" />
             </div>
-            <CardTitle className="text-2xl font-bold text-neutral-900">Recent Activity ({filteredLogs.length})</CardTitle>
+            <CardTitle className="text-2xl font-bold text-neutral-900">Recent Activity · {rangeLabel}</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="p-0">

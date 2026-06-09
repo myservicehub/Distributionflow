@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Package, Users, Send, AlertCircle, History, Eye, ChevronDown, ChevronUp, Calendar, DollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,6 +33,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { useAuth } from '@/lib/auth-context'
+import { DateRangeFilter, getDateRangeStart } from '@/components/ui/date-range-filter'
 
 // Mobile Card Component for Warehouse Inventory
 function WarehouseInventoryMobileCard({ inv, emptyItem, onViewHistory }) {
@@ -117,6 +118,7 @@ export default function IssueEmptiesPage() {
   const [viewingHistory, setViewingHistory] = useState(null)
   const [movements, setMovements] = useState([])
   const [loadingMovements, setLoadingMovements] = useState(false)
+  const [dateRange, setDateRange] = useState('30d')
   
   const [formData, setFormData] = useState({
     retailer_id: '',
@@ -124,6 +126,23 @@ export default function IssueEmptiesPage() {
     quantity: '',
     notes: ''
   })
+
+  // Helper to get human-readable range label
+  const rangeLabel = {
+    today: 'Today',
+    '7d': 'Last 7 Days',
+    '30d': 'Last 30 Days',
+    '90d': 'Last 90 Days',
+    all: 'All Time'
+  }[dateRange]
+
+  // Filter movements by date range
+  const filteredMovements = useMemo(() => {
+    if (dateRange === 'all') return movements
+    const start = getDateRangeStart(dateRange)
+    if (!start) return movements
+    return movements.filter(m => new Date(m.created_at) >= start)
+  }, [movements, dateRange])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -410,6 +429,22 @@ export default function IssueEmptiesPage() {
       </Card>
 
       {/* Warehouse Inventory */}
+      {/* Date Range Filter for Movement History */}
+      <Card className="border-2 border-emerald-200 bg-emerald-50/50">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2">
+              <History className="h-5 w-5 text-emerald-600" />
+              <p className="text-sm font-medium text-emerald-900">Movement History Filter:</p>
+            </div>
+            <DateRangeFilter value={dateRange} onChange={setDateRange} />
+            <p className="text-xs text-emerald-700">
+              When you click "View History", you'll see movements from {rangeLabel.toLowerCase()}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Mobile View - Card Layout */}
       <div className="block md:hidden space-y-4 animate-fade-in">
         {warehouseInventory.length === 0 ? (
