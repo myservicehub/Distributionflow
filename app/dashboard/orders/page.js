@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useMemo } from 'react'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ import { toast } from 'sonner'
 import { Plus, Eye, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, ShoppingCart, User, Calendar, DollarSign, Search } from 'lucide-react'
 import BottleExchangeSection from '@/components/BottleExchangeSection'
 import { Pagination } from '@/components/ui/pagination'
+import { DateRangeFilter, getDateRangeStart } from '@/components/ui/date-range-filter'
 
 // Mobile Card Component for Orders
 function OrderMobileCard({ order, onExpand, isExpanded, canApprove, onApprove, onReject, getPaymentStatusColor, getStatusColor }) {
@@ -134,6 +136,10 @@ function OrderMobileCard({ order, onExpand, isExpanded, canApprove, onApprove, o
 
 export default function OrdersPage() {
   const { userProfile } = useAuth()
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  
   const [orders, setOrders] = useState([])
   const [retailers, setRetailers] = useState([])
   const [products, setProducts] = useState([])
@@ -144,6 +150,7 @@ export default function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
+  const [dateRange, setDateRange] = useState(searchParams.get('range') || '30d')
   const [orderItems, setOrderItems] = useState([{ product_id: '', quantity: 1, unit_price: 0, total_price: 0 }])
   const [bottleExchange, setBottleExchange] = useState({ enabled: false, empties: [] })
   const [formData, setFormData] = useState({
@@ -171,9 +178,13 @@ export default function OrdersPage() {
     return () => controller.abort()
   }, [])
 
-  const loadOrders = async (signal) => {
+  const loadOrders = async (signal, range = dateRange) => {
     try {
-      const response = await fetch('/api/orders', { signal })
+      const start = getDateRangeStart(range)
+      const params = new URLSearchParams()
+      if (start) params.set('from', start.toISOString())
+
+      const response = await fetch(`/api/orders?${params}`, { signal })
       if (!response.ok) throw new Error('Failed to load orders')
       const responseData = await response.json()
       // Handle both old format (array) and new format (object with data property)
@@ -187,6 +198,18 @@ export default function OrdersPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleDateChange = (range) => {
+    setDateRange(range)
+    setCurrentPage(1)
+
+    // Update URL without full navigation
+    const params = new URLSearchParams(searchParams)
+    params.set('range', range)
+    router.replace(`${pathname}?${params}`, { scroll: false })
+
+    loadOrders(undefined, range)
   }
 
   const loadRetailers = async (signal) => {
@@ -673,16 +696,22 @@ export default function OrdersPage() {
         </Dialog>
       </div>
 
-      {/* Search Bar */}
-      <div className="flex gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
-          <Input
-            placeholder="Search by order ID, retailer name, or sales rep..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-12 border-2"
-          />
+      {/* Filter bar — date + search */}
+      <div className="flex flex-col gap-3">
+        {/* Date range filter */}
+        <DateRangeFilter value={dateRange} onChange={handleDateChange} />
+
+        {/* Search Bar */}
+        <div className="flex gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+            <Input
+              placeholder="Search by order ID, retailer name, or sales rep..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-12 border-2"
+            />
+          </div>
         </div>
       </div>
 
@@ -849,10 +878,12 @@ export default function OrdersPage() {
                   <ShoppingCart className="h-8 w-8 text-neutral-400" />
                 </div>
                 <p className="text-neutral-600 text-lg font-medium">
-                  {searchTerm ? 'No matching orders' : 'No orders yet'}
+                  {searchTerm ? 'No matching orders' : 'No orders in the selected period'}
                 </p>
                 <p className="text-neutral-500 text-sm mt-1">
-                  {searchTerm ? 'Try adjusting your search terms' : 'Click "New Order" to create your first order'}
+                  {searchTerm ? 'Try adjusting your search terms' : 
+                   dateRange !== 'all' ? 'Try selecting a longer date range or "All time"' : 
+                   'Click "New Order" to create your first order'}
                 </p>
               </div>
             )}
@@ -877,10 +908,12 @@ export default function OrdersPage() {
                   <ShoppingCart className="h-8 w-8 text-neutral-400" />
                 </div>
                 <p className="text-neutral-600 text-lg font-medium">
-                  {searchTerm ? 'No matching orders' : 'No orders yet'}
+                  {searchTerm ? 'No matching orders' : 'No orders in the selected period'}
                 </p>
                 <p className="text-neutral-500 text-sm mt-1">
-                  {searchTerm ? 'Try adjusting your search terms' : 'Click "New Order" to create your first order'}
+                  {searchTerm ? 'Try adjusting your search terms' : 
+                   dateRange !== 'all' ? 'Try selecting a longer date range or "All time"' : 
+                   'Click "New Order" to create your first order'}
                 </p>
               </div>
             ) : (
