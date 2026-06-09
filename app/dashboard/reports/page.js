@@ -1,12 +1,33 @@
 'use client'
 
+import React from 'react'
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { ChevronDown, ChevronUp, TrendingDown, BarChart3, Package, Store, Calendar, CreditCard, AlertTriangle, DollarSign, ShoppingBag } from 'lucide-react'
+import { ChevronDown, ChevronUp, TrendingDown, BarChart3, Package, Store, Calendar, CreditCard, AlertTriangle, DollarSign, ShoppingBag, Download } from 'lucide-react'
+
+// CSV Export utility function
+function exportToCSV(data, filename, columns) {
+  const headers = columns.map(c => c.label).join(',')
+  const rows = data.map(row =>
+    columns.map(c => {
+      const val = c.getValue(row)
+      // Wrap in quotes if contains comma or newline
+      return typeof val === 'string' && (val.includes(',') || val.includes('\n'))
+        ? `"${val.replace(/"/g, '""')}"`
+        : val
+    }).join(',')
+  )
+  const csv = [headers, ...rows].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `${filename}-${new Date().toISOString().split('T')[0]}.csv`
+  link.click()
+}
 
 // Mobile Card for Debt Aging
 function DebtAgingMobileCard({ item }) {
@@ -314,11 +335,29 @@ export default function ReportsPage() {
           {/* Desktop View */}
           <Card className="hidden md:block border-2 border-neutral-200 shadow-lg animate-fade-in">
             <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-emerald-50 to-white">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-red-100 rounded-lg">
-                  <TrendingDown className="h-5 w-5 text-red-600" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <TrendingDown className="h-5 w-5 text-red-600" />
+                  </div>
+                  <CardTitle className="text-2xl font-bold text-neutral-900">Debt Aging Report</CardTitle>
                 </div>
-                <CardTitle className="text-2xl font-bold text-neutral-900">Debt Aging Report</CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => exportToCSV(debtAging, 'debt-aging', [
+                    { label: 'Retailer', getValue: r => r.shop_name },
+                    { label: 'Outstanding Balance (₦)', getValue: r => r.current_balance },
+                    { label: 'Credit Limit (₦)', getValue: r => r.credit_limit },
+                    { label: 'Aging Category', getValue: r => r.aging_category },
+                    { label: 'Days Outstanding', getValue: r => r.days_outstanding },
+                    { label: 'Last Payment Date', getValue: r => r.last_payment_date || 'Never' },
+                  ])}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -398,11 +437,29 @@ export default function ReportsPage() {
           {/* Desktop View */}
           <Card className="hidden md:block border-2 border-neutral-200 shadow-lg animate-fade-in">
             <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-emerald-50 to-white">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-100 rounded-lg">
-                  <BarChart3 className="h-5 w-5 text-emerald-600" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <BarChart3 className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <CardTitle className="text-2xl font-bold text-neutral-900">Sales Performance by Representative (Last 30 Days)</CardTitle>
                 </div>
-                <CardTitle className="text-2xl font-bold text-neutral-900">Sales Performance by Representative (Last 30 Days)</CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => exportToCSV(salesByRep, 'sales-by-rep', [
+                    { label: 'Sales Rep', getValue: r => r.name },
+                    { label: 'Email', getValue: r => r.email },
+                    { label: 'Total Orders', getValue: r => r.orders },
+                    { label: 'Total Items Sold', getValue: r => r.items },
+                    { label: 'Total Sales (₦)', getValue: r => r.total },
+                    { label: 'Average Order (₦)', getValue: r => r.orders > 0 ? (r.total / r.orders).toFixed(2) : 0 },
+                  ])}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -420,8 +477,8 @@ export default function ReportsPage() {
                   </TableHeader>
                   <TableBody>
                     {salesByRep.map((rep, idx) => (
-                      <>
-                        <TableRow key={`${rep.name}-${idx}`} className="cursor-pointer hover:bg-emerald-50 transition-colors duration-150">
+                      <React.Fragment key={`${rep.name}-${idx}`}>
+                        <TableRow className="cursor-pointer hover:bg-emerald-50 transition-colors duration-150">
                           <TableCell>
                             <Button 
                               variant="ghost" 
@@ -500,7 +557,7 @@ export default function ReportsPage() {
                             </TableCell>
                           </TableRow>
                         )}
-                      </>
+                      </React.Fragment>
                     ))}
                   </TableBody>
                 </Table>
@@ -546,11 +603,33 @@ export default function ReportsPage() {
           {/* Desktop View */}
           <Card className="hidden md:block border-2 border-neutral-200 shadow-lg animate-fade-in">
             <CardHeader className="border-b border-neutral-200 bg-gradient-to-r from-emerald-50 to-white">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Package className="h-5 w-5 text-purple-600" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <Package className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <CardTitle className="text-2xl font-bold text-neutral-900">Inventory Report</CardTitle>
                 </div>
-                <CardTitle className="text-2xl font-bold text-neutral-900">Inventory Report</CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => exportToCSV(inventory, 'inventory', [
+                    { label: 'Product Name', getValue: p => p.name },
+                    { label: 'SKU', getValue: p => p.sku || '' },
+                    { label: 'Stock Quantity', getValue: p => p.stock_quantity },
+                    { label: 'Low Stock Threshold', getValue: p => p.low_stock_threshold || 10 },
+                    { label: 'Selling Price (₦)', getValue: p => p.selling_price },
+                    { label: 'Stock Status', getValue: p =>
+                        p.stock_quantity === 0 ? 'Out of Stock'
+                        : p.stock_quantity <= (p.low_stock_threshold || 10) ? 'Low Stock'
+                        : 'In Stock'
+                    },
+                  ])}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="p-0">

@@ -50,7 +50,6 @@ export default function DeliveryBoardPage() {
             filter: `business_id=eq.${userProfile.business_id}`
           },
           (payload) => {
-            console.log('Order updated:', payload)
             loadOrders()
           }
         )
@@ -103,16 +102,11 @@ export default function DeliveryBoardPage() {
       // Handle both old format (array) and new format (object with data property)
       const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
 
-      console.log('📦 All orders loaded:', data?.length || 0)
-      console.log('Sample order:', data?.[0])
-
       // Filter for orders in the delivery workflow (confirmed or completed)
       const workflowOrders = (data || []).filter(o => {
-        console.log(`Order ${o.id?.substring(0, 8)}: order_status=${o.order_status}, delivery_status=${o.delivery_status}, is_legacy=${o.is_legacy_order}`)
         return (o.order_status === 'confirmed' || o.order_status === 'completed') && !o.is_legacy_order
       })
 
-      console.log('✅ Filtered workflow orders:', workflowOrders.length)
       setOrders(workflowOrders)
     } catch (error) {
       console.error('Error loading orders:', error)

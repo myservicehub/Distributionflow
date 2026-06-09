@@ -108,9 +108,7 @@ export default function NotificationBell() {
     
     // Subscribe to channel
     channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        console.log('✅ Notification subscription active')
-      }
+      // Subscription active
     })
   }
 

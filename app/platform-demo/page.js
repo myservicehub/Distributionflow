@@ -1,253 +1,259 @@
 'use client'
 
-import React from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { useState } from 'react'
+import PublicNav from '@/components/PublicNav'
 import { Button } from '@/components/ui/button'
-import { Building2, Users, DollarSign, TrendingUp, AlertTriangle, CreditCard, UserPlus, UserX, Activity } from 'lucide-react'
-import Link from 'next/link'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Calendar, CheckCircle2, Users, TrendingUp } from 'lucide-react'
+import { toast } from 'sonner'
 
-export default function PlatformDemo() {
-  // Demo data
-  const kpis = {
-    total_businesses: 2,
-    active_businesses: 0,
-    trial_businesses: 2,
-    expired_businesses: 0,
-    suspended_businesses: 0,
-    total_active_users: 5,
-    mrr: 22000,
-    arr: 264000,
-    arpu: 0,
-    new_signups_this_month: 0,
-    churn_this_month: 0
-  }
+export default function RequestDemoPage() {
+  const [formData, setFormData] = useState({
+    name: '',
+    company: '',
+    email: '',
+    phone: ''
+  })
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0
-    }).format(amount)
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setSubmitting(true)
+
+    try {
+      // Send to contact API route
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: formData.name,
+          company: formData.company,
+          email: formData.email,
+          phone: formData.phone,
+          message: 'Demo request from platform demo page'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to submit demo request')
+      }
+
+      setSubmitted(true)
+      toast.success('Demo request submitted successfully!')
+    } catch (error) {
+      toast.error('Failed to submit request. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b px-8 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Platform Dashboard Demo</h1>
-            <p className="text-sm text-gray-600">This is how the super admin dashboard looks</p>
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-neutral-50">
+      <PublicNav />
+      
+      <main className="container mx-auto px-4 py-16">
+        {/* Hero Section */}
+        <div className="max-w-4xl mx-auto text-center mb-16">
+          <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 mb-6">
+            See DistributionFlow in Action
+          </h1>
+          <p className="text-xl text-neutral-600 mb-8">
+            Schedule a personalized demo and discover how DistributionFlow can transform your distribution business
+          </p>
+        </div>
+
+        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8 mb-16">
+          {/* Benefits */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <Calendar className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <CardTitle>Personalized Walkthrough</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-neutral-600">
+                  Get a customized demo tailored to your specific business needs and challenges
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Users className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <CardTitle>Expert Guidance</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-neutral-600">
+                  Learn best practices from our distribution experts during your demo session
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <TrendingUp className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <CardTitle>ROI Analysis</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-neutral-600">
+                  Understand the potential impact on your operations and bottom line
+                </p>
+              </CardContent>
+            </Card>
           </div>
-          <Link href="/login">
-            <Button>Login to Access</Button>
-          </Link>
-        </div>
-      </div>
 
-      <div className="p-8">
-        {/* KPI Cards */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          {/* Total Businesses */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Total Businesses
-              </CardTitle>
-              <Building2 className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{kpis.total_businesses}</div>
-              <p className="text-xs text-gray-500 mt-1">
-                {kpis.new_signups_this_month} new this month
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Active Businesses */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Active Businesses
-              </CardTitle>
-              <Activity className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{kpis.active_businesses}</div>
-              <p className="text-xs text-gray-500 mt-1">
-                {kpis.trial_businesses} on trial
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* MRR */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Monthly Recurring Revenue
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-emerald-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(kpis.mrr)}</div>
-              <p className="text-xs text-gray-500 mt-1">MRR</p>
-            </CardContent>
-          </Card>
-
-          {/* ARR */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Annual Recurring Revenue
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(kpis.arr)}</div>
-              <p className="text-xs text-gray-500 mt-1">ARR</p>
-            </CardContent>
-          </Card>
-
-          {/* Total Active Users */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Total Active Users
-              </CardTitle>
-              <Users className="h-4 w-4 text-indigo-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{kpis.total_active_users}</div>
-              <p className="text-xs text-gray-500 mt-1">Across all businesses</p>
-            </CardContent>
-          </Card>
-
-          {/* ARPU */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                ARPU
-              </CardTitle>
-              <CreditCard className="h-4 w-4 text-cyan-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(kpis.arpu)}</div>
-              <p className="text-xs text-gray-500 mt-1">Average Revenue Per User</p>
-            </CardContent>
-          </Card>
-
-          {/* Trial Businesses */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Trial Businesses
-              </CardTitle>
-              <UserPlus className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{kpis.trial_businesses}</div>
-              <p className="text-xs text-gray-500 mt-1">Currently on trial</p>
-            </CardContent>
-          </Card>
-
-          {/* Churn */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Churn This Month
-              </CardTitle>
-              <UserX className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{kpis.churn_this_month}</div>
-              <p className="text-xs text-gray-500 mt-1">Expired subscriptions</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Sample Business List */}
-        <div className="grid gap-6 md:grid-cols-2">
+          {/* Demo Request Form */}
           <Card>
             <CardHeader>
-              <CardTitle>Recent Businesses</CardTitle>
-              <CardDescription>Latest signups</CardDescription>
+              <CardTitle>Request Your Demo</CardTitle>
+              <CardDescription>
+                Fill out the form below and we'll get back to you within 24 hours
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="font-medium">Demo Business 1</div>
-                    <div className="text-sm text-gray-600">demo1@example.com</div>
-                  </div>
-                  <Badge variant="secondary">trial</Badge>
+              {submitted ? (
+                <div className="text-center py-8">
+                  <CheckCircle2 className="h-16 w-16 text-emerald-600 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-neutral-900 mb-2">
+                    Request Submitted!
+                  </h3>
+                  <p className="text-neutral-600">
+                    We'll contact you within 24 hours to schedule your personalized demo.
+                  </p>
                 </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="font-medium">Demo Business 2</div>
-                    <div className="text-sm text-gray-600">demo2@example.com</div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">Full Name *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
+                      placeholder="John Doe"
+                    />
                   </div>
-                  <Badge variant="secondary">trial</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Features</CardTitle>
-              <CardDescription>What you can do as super admin</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                  <span>View all businesses & metrics</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                  <span>Suspend/reactivate businesses</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                  <span>Reset trial periods</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                  <span>Track MRR, ARR, churn</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                  <span>Override features per business</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                  <span>Monitor business health scores</span>
-                </div>
-              </div>
+                  <div>
+                    <Label htmlFor="company">Company Name *</Label>
+                    <Input
+                      id="company"
+                      value={formData.company}
+                      onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                      required
+                      placeholder="Acme Distribution Ltd"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="email">Email *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      required
+                      placeholder="john@acme.com"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="phone">Phone Number *</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      required
+                      placeholder="+234 xxx xxx xxxx"
+                    />
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    className="w-full"
+                    disabled={submitting}
+                  >
+                    {submitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                        Submitting...
+                      </>
+                    ) : (
+                      'Request Demo'
+                    )}
+                  </Button>
+                </form>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        {/* CTA */}
-        <Card className="mt-8 border-indigo-200 bg-indigo-50">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <h3 className="text-xl font-bold text-indigo-900 mb-2">
-                Ready to access the full platform?
-              </h3>
-              <p className="text-indigo-700 mb-4">
-                Login with your super admin credentials to manage all businesses
-              </p>
-              <Link href="/login">
-                <Button size="lg">
-                  Go to Login
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        {/* What to Expect */}
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-neutral-900 text-center mb-8">
+            What to Expect in Your Demo
+          </h2>
+          <div className="grid md:grid-cols-3 gap-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl font-bold text-emerald-600">1</span>
+                  </div>
+                  <h3 className="font-semibold text-neutral-900 mb-2">Discovery Call</h3>
+                  <p className="text-sm text-neutral-600">
+                    We'll learn about your business and specific requirements
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl font-bold text-emerald-600">2</span>
+                  </div>
+                  <h3 className="font-semibold text-neutral-900 mb-2">Live Demo</h3>
+                  <p className="text-sm text-neutral-600">
+                    See the platform in action with your use cases
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl font-bold text-emerald-600">3</span>
+                  </div>
+                  <h3 className="font-semibold text-neutral-900 mb-2">Q&A Session</h3>
+                  <p className="text-sm text-neutral-600">
+                    Get all your questions answered by our experts
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
     </div>
   )
 }

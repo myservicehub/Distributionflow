@@ -23,6 +23,7 @@ import { formatCurrency, formatDate, getTimeAgo } from '@/lib/utils/format'
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [showAllActivities, setShowAllActivities] = useState(false)
 
   useEffect(() => {
@@ -32,12 +33,13 @@ export default function AdminDashboard() {
   const fetchMetrics = async () => {
     try {
       const response = await fetch('/api/dashboard/metrics')
-      if (response.ok) {
-        const data = await response.json()
-        setMetrics(data)
-      }
+      if (!response.ok) throw new Error('Failed to load dashboard metrics')
+      const data = await response.json()
+      setMetrics(data)
+      setError(null)
     } catch (error) {
       console.error('Error fetching metrics:', error)
+      setError(error.message)
     } finally {
       setLoading(false)
     }
@@ -123,6 +125,23 @@ export default function AdminDashboard() {
       </Button>
     </Link>
   )
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <div className="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
+          <AlertTriangle className="h-12 w-12 text-red-400" />
+          <div>
+            <p className="font-semibold text-neutral-900 text-lg">Failed to load dashboard</p>
+            <p className="text-sm text-neutral-500 mt-1">{error}</p>
+          </div>
+          <Button variant="outline" onClick={fetchMetrics}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-white">
