@@ -14,6 +14,16 @@ export default function DashboardLayout({ children }) {
   useEffect(() => {
     if (!loading && (!user || !userProfile)) {
       router.push('/login')
+      return
+    }
+
+    // NEW: Enforce password change for new staff accounts
+    if (!loading && user) {
+      const needsChange = user.user_metadata?.needs_password_change
+      if (needsChange === true) {
+        router.push('/change-password')
+        return
+      }
     }
   }, [loading, user, userProfile, router])
 

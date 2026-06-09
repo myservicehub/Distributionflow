@@ -2414,6 +2414,30 @@ async function handleRoute(request, { params }) {
           code: 'DUPLICATE_PAYMENT'
         }, { status: 409 }))
       }
+
+      // Prevent overpayment (accidental wrong amount)
+      const { data: currentRetailer } = await adminSupabase
+        .from('retailers')
+        .select('current_balance, shop_name')
+        .eq('id', data.retailer_id)
+        .eq('business_id', userContext.businessId)
+        .single()
+
+      if (!currentRetailer) {
+        return handleCORS(NextResponse.json({
+          error: 'Retailer not found'
+        }, { status: 404 }), request)
+      }
+
+      if (parseFloat(data.amount) > parseFloat(currentRetailer.current_balance) * 1.1) {
+        // Allow up to 10% overpayment (rounding), but block obvious errors
+        return handleCORS(NextResponse.json({
+          error: 'Payment exceeds balance',
+          message: `Payment of ₦${parseFloat(data.amount).toLocaleString()} exceeds the outstanding balance of ₦${parseFloat(currentRetailer.current_balance).toLocaleString()} for ${currentRetailer.shop_name}. Please verify the amount.`,
+          code: 'OVERPAYMENT',
+          current_balance: currentRetailer.current_balance
+        }, { status: 400 }), request)
+      }
       
       // Create payment record using validated data
       const { data: payment, error: paymentError } = await adminSupabase
@@ -2435,41 +2459,21 @@ async function handleRoute(request, { params }) {
         throw paymentError
       }
 
-      // Update retailer balance using admin client
-      const { data: retailer, error: retailerFetchError } = await adminSupabase
-        .from('retailers')
-        .select('current_balance, credit_limit')
-        .eq('id', body.retailer_id)
-        .eq('business_id', userContext.businessId)
-        .single()
-
-      if (retailerFetchError) {
-        console.error('Error fetching retailer:', retailerFetchError)
-        throw new Error('Failed to fetch retailer data')
-      }
-
-      const newBalance = parseFloat(retailer.current_balance) - parseFloat(body.amount_paid)
-      const finalBalance = Math.max(0, newBalance) // Don't allow negative balance
-
-      console.log(`Payment processing: Retailer ${body.retailer_id}, Old balance: ${retailer.current_balance}, Payment: ${body.amount_paid}, New balance: ${finalBalance}`)
-
-      // Update status based on new balance
-      const newStatus = finalBalance <= parseFloat(retailer.credit_limit) ? 'active' : 'blocked'
-
-      const { error: updateError } = await adminSupabase
-        .from('retailers')
-        .update({ 
-          current_balance: finalBalance,
-          status: newStatus,
-          updated_at: new Date().toISOString()
+      // Atomic payment application — prevents race conditions
+      const { data: updateResult, error: updateError } = await adminSupabase
+        .rpc('apply_payment', {
+          p_retailer_id: data.retailer_id,
+          p_business_id: userContext.businessId,
+          p_amount: parseFloat(data.amount)
         })
-        .eq('id', body.retailer_id)
-        .eq('business_id', userContext.businessId)
 
       if (updateError) {
-        console.error('Error updating retailer balance:', updateError)
-        throw new Error('Failed to update retailer balance: ' + updateError.message)
+        console.error('Error applying payment atomically:', updateError)
+        throw new Error('Failed to update retailer balance')
       }
+
+      const finalBalance = updateResult?.[0]?.new_balance ?? 0
+      const newStatus = updateResult?.[0]?.new_status ?? 'active'
 
       console.log(`✅ Retailer balance updated successfully. New balance: ${finalBalance}, Status: ${newStatus}`)
 
@@ -2905,26 +2909,49 @@ async function handleRoute(request, { params }) {
 
       const { data, error } = await supabase
         .from('retailers')
-        .select('shop_name, current_balance, credit_limit, created_at')
+        .select(`
+          shop_name,
+          current_balance,
+          credit_limit,
+          created_at,
+          payments (
+            created_at
+          )
+        `)
         .eq('business_id', userContext.businessId)
         .gt('current_balance', 0)
         .order('current_balance', { ascending: false })
 
       if (error) throw error
 
-      // Calculate aging (simplified - based on account creation date)
+      // Calculate aging based on last payment date (or account creation if never paid)
       const now = new Date()
       const aging = data?.map(retailer => {
-        const daysSinceCreation = Math.floor((now - new Date(retailer.created_at)) / (1000 * 60 * 60 * 24))
-        let category = '0-30 days'
-        if (daysSinceCreation > 90) category = '90+ days'
-        else if (daysSinceCreation > 60) category = '60-90 days'
-        else if (daysSinceCreation > 30) category = '30-60 days'
+        // Find the most recent payment date for this retailer
+        const payments = retailer.payments || []
+        const lastPaymentDate = payments.length > 0
+          ? new Date(Math.max(...payments.map(p => new Date(p.created_at))))
+          : null
+
+        // Aging is from last payment, or from account creation if never paid
+        const referenceDate = lastPaymentDate || new Date(retailer.created_at)
+        const daysOutstanding = Math.floor(
+          (now - referenceDate) / (1000 * 60 * 60 * 24)
+        )
+
+        let agingCategory = '0-30 days'
+        if (daysOutstanding > 90) agingCategory = '90+ days'
+        else if (daysOutstanding > 60) agingCategory = '60-90 days'
+        else if (daysOutstanding > 30) agingCategory = '30-60 days'
 
         return {
-          ...retailer,
-          aging_category: category,
-          days_outstanding: daysSinceCreation
+          shop_name: retailer.shop_name,
+          current_balance: retailer.current_balance,
+          credit_limit: retailer.credit_limit,
+          aging_category: agingCategory,
+          days_outstanding: daysOutstanding,
+          last_payment_date: lastPaymentDate?.toISOString() || null,
+          never_paid: !lastPaymentDate
         }
       })
 
@@ -2937,17 +2964,25 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
-      // Get today's date at midnight for filtering
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
+      // Get date range from query parameter
+      const url = new URL(request.url)
+      const range = url.searchParams.get('range') || '30d'
 
-      // Fetch orders with order items and products (TODAY only)
+      const startDate = new Date()
+      startDate.setHours(0, 0, 0, 0)
+      if (range === '7d') startDate.setDate(startDate.getDate() - 7)
+      else if (range === '30d') startDate.setDate(startDate.getDate() - 30)
+      else if (range === '90d') startDate.setDate(startDate.getDate() - 90)
+      else if (range === 'today') { /* already today */ }
+      else startDate.setFullYear(2000) // 'all' — no date filter
+
+      // Fetch orders with order items and products
       const { data: orders, error } = await supabase
         .from('orders')
-        .select('id, sales_rep_id, total_amount, status, created_at, order_items(quantity, unit_price, total_price, product_id, products(name, sku))')
+        .select('id, sales_rep_id, total_amount, status, order_status, created_at, order_items(quantity, unit_price, total_price, product_id, products(name, sku))')
         .eq('business_id', userContext.businessId)
-        .gte('created_at', today.toISOString())
-        .in('status', ['confirmed', 'delivered'])
+        .gte('created_at', startDate.toISOString())
+        .or('order_status.in.(confirmed,completed),status.in.(confirmed,delivered)')
         .order('created_at', { ascending: false })
 
       if (error) throw error

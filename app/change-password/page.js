@@ -52,9 +52,10 @@ export default function ChangePasswordPage() {
       if (metadataError) throw metadataError
 
       setSuccess(true)
+      // Give user 2 seconds to see the success message, then redirect
       setTimeout(() => {
         router.push('/dashboard')
-      }, 1500)
+      }, 2000)
     } catch (error) {
       setError(error.message || 'Failed to change password')
     } finally {

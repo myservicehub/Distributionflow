@@ -102,7 +102,9 @@ function SalesByRepMobileCard({ rep }) {
             <div className="py-2 px-3 bg-neutral-50 rounded-lg text-center">
               <p className="text-xs text-neutral-600">Avg Order</p>
               <p className="text-lg font-bold text-neutral-900">
-                ₦{(parseFloat(rep.total) / rep.orders).toLocaleString(undefined, {maximumFractionDigits: 0})}
+                {rep.orders > 0
+                  ? `₦${(parseFloat(rep.total) / rep.orders).toLocaleString(undefined, {maximumFractionDigits: 0})}`
+                  : '—'}
               </p>
             </div>
           </div>
@@ -400,7 +402,7 @@ export default function ReportsPage() {
                 <div className="p-2 bg-emerald-100 rounded-lg">
                   <BarChart3 className="h-5 w-5 text-emerald-600" />
                 </div>
-                <CardTitle className="text-2xl font-bold text-neutral-900">Sales Performance by Representative (Today)</CardTitle>
+                <CardTitle className="text-2xl font-bold text-neutral-900">Sales Performance by Representative (Last 30 Days)</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -441,7 +443,9 @@ export default function ReportsPage() {
                             ₦{parseFloat(rep.total).toLocaleString()}
                           </TableCell>
                           <TableCell className="text-neutral-700">
-                            ₦{(parseFloat(rep.total) / rep.orders).toLocaleString(undefined, {maximumFractionDigits: 2})}
+                            {rep.orders > 0
+                              ? `₦${(parseFloat(rep.total) / rep.orders).toLocaleString(undefined, {maximumFractionDigits: 0})}`
+                              : '—'}
                           </TableCell>
                         </TableRow>
                         {expandedReps[rep.name] && rep.products && rep.products.length > 0 && (
