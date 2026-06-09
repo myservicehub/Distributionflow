@@ -1252,8 +1252,11 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }), request)
       }
 
-      // Get pagination parameters
+      // Get pagination parameters and date filters
       const { page, pageSize, from, to } = getPaginationParams(request)
+      const url = new URL(request.url)
+      const dateFrom = url.searchParams.get('from')
+      const dateTo = url.searchParams.get('to')
 
       // Build query with order items and products - explicitly select new workflow fields
       let query = supabase
@@ -1275,7 +1278,12 @@ async function handleRoute(request, { params }) {
           order_items(*, product:products(name, sku))
         `, { count: 'exact' })
         .eq('business_id', userContext.businessId)
-        .order('created_at', { ascending: false })
+
+      // Apply date range filters
+      if (dateFrom) query = query.gte('created_at', dateFrom)
+      if (dateTo) query = query.lte('created_at', dateTo)
+
+      query = query.order('created_at', { ascending: false })
         .range(from, to)
 
       // Apply sales rep filter - sales reps only see their own orders
@@ -2300,16 +2308,26 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }), request)
       }
 
-      // Get pagination parameters
+      // Get pagination parameters and date filters
       const { page, pageSize, from, to } = getPaginationParams(request)
+      const url = new URL(request.url)
+      const dateFrom = url.searchParams.get('from')
+      const dateTo = url.searchParams.get('to')
 
-      // Fetch payments without joins first
-      const { data: payments, error, count } = await supabase
+      // Build payments query with date filters
+      let query = supabase
         .from('payments')
         .select('*', { count: 'exact' })
         .eq('business_id', userContext.businessId)
-        .order('created_at', { ascending: false })
+
+      // Apply date range filters
+      if (dateFrom) query = query.gte('created_at', dateFrom)
+      if (dateTo) query = query.lte('created_at', dateTo)
+
+      query = query.order('created_at', { ascending: false })
         .range(from, to)
+
+      const { data: payments, error, count } = await query
 
       if (error) throw error
 
@@ -3114,11 +3132,15 @@ async function handleRoute(request, { params }) {
       const limit = parseInt(url.searchParams.get('limit') || '100')
       const resourceType = url.searchParams.get('resource_type')
       const userId = url.searchParams.get('user_id')
+      const dateFrom = url.searchParams.get('from')
+      const dateTo = url.searchParams.get('to')
 
       const logs = await getAuditLogs(userContext.businessId, {
         limit,
         resourceType,
-        userId
+        userId,
+        dateFrom,
+        dateTo
       })
 
       return handleCORS(NextResponse.json(logs))

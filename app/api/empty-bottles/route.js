@@ -152,6 +152,8 @@ export async function GET(request) {
       const limit = parseInt(searchParams.get('limit') || '50')
       const emptyItemId = searchParams.get('empty_item_id')
       const retailerId = searchParams.get('retailer_id')
+      const dateFrom = searchParams.get('from')
+      const dateTo = searchParams.get('to')
 
       let query = adminSupabase
         .from('empty_movements')
@@ -162,11 +164,13 @@ export async function GET(request) {
           users(name)
         `)
         .eq('business_id', userProfile.business_id)
-        .order('created_at', { ascending: false })
-        .limit(limit)
 
       if (emptyItemId) query = query.eq('empty_item_id', emptyItemId)
       if (retailerId) query = query.eq('retailer_id', retailerId)
+      if (dateFrom) query = query.gte('created_at', dateFrom)
+      if (dateTo) query = query.lte('created_at', dateTo)
+
+      query = query.order('created_at', { ascending: false }).limit(limit)
 
       const { data, error } = await query
 
