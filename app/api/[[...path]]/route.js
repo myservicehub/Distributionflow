@@ -1389,7 +1389,6 @@ async function handleRoute(request, { params }) {
           .from('orders')
           .select(`
             id,
-            order_number,
             retailer_id,
             sales_rep_id,
             business_id,
