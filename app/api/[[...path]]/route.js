@@ -1115,15 +1115,47 @@ async function handleRoute(request, { params }) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
-      const { data, error } = await supabase
-        .from('stock_movements')
-        .select('*, product:products(name, sku)')
-        .eq('business_id', userContext.businessId)
-        .order('created_at', { ascending: false })
-        .limit(100)
+      try {
+        // First, try to get stock movements without joins
+        const { data: movements, error: movementsError } = await supabase
+          .from('stock_movements')
+          .select('id, product_id, movement_type, quantity, notes, created_at, business_id')
+          .eq('business_id', userContext.businessId)
+          .order('created_at', { ascending: false })
+          .limit(100)
 
-      if (error) throw error
-      return handleCORS(NextResponse.json(data || []))
+        if (movementsError) {
+          console.error('Error fetching stock movements:', movementsError)
+          return handleCORS(NextResponse.json({ error: 'Failed to load stock movements', details: movementsError.message }, { status: 500 }))
+        }
+
+        // Then get product details separately
+        if (movements && movements.length > 0) {
+          const productIds = [...new Set(movements.map(m => m.product_id))]
+          const { data: products } = await supabase
+            .from('products')
+            .select('id, name, sku')
+            .in('id', productIds)
+
+          // Merge product data
+          const productsMap = (products || []).reduce((acc, p) => {
+            acc[p.id] = p
+            return acc
+          }, {})
+
+          const enrichedMovements = movements.map(m => ({
+            ...m,
+            product: productsMap[m.product_id] || null
+          }))
+
+          return handleCORS(NextResponse.json(enrichedMovements))
+        }
+        
+        return handleCORS(NextResponse.json(movements || []))
+      } catch (error) {
+        console.error('Exception in stock movements:', error)
+        return handleCORS(NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 }))
+      }
     }
 
     if (route === '/stock-movements' && method === 'POST') {
