@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { useAuth } from '@/lib/auth-context'
 import { toast } from 'sonner'
 import { Pagination } from '@/components/ui/pagination'
+import { DateRangeFilter, getDateRangeStart } from '@/components/ui/date-range-filter'
 
 // Mobile Card Component for Notifications
 function NotificationMobileCard({ notification, onMarkAsRead, onDelete, getNotificationIcon, getNotificationColor, formatDate }) {
@@ -97,6 +98,7 @@ export default function NotificationsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
+  const [dateRange, setDateRange] = useState('all')
 
   useEffect(() => {
     loadNotifications()
@@ -213,14 +215,27 @@ export default function NotificationsPage() {
 
   // Filter notifications based on search term
   const filteredNotifications = useMemo(() => {
-    if (!searchTerm) return notifications
+    let result = notifications
 
-    const lowerSearch = searchTerm.toLowerCase()
-    return notifications.filter(notification =>
-      notification.title?.toLowerCase().includes(lowerSearch) ||
-      notification.message?.toLowerCase().includes(lowerSearch)
-    )
-  }, [notifications, searchTerm])
+    // Date range filter
+    if (dateRange !== 'all') {
+      const start = getDateRangeStart(dateRange)
+      if (start) {
+        result = result.filter(n => new Date(n.created_at) >= start)
+      }
+    }
+
+    // Search filter
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase()
+      result = result.filter(notification =>
+        notification.title?.toLowerCase().includes(lowerSearch) ||
+        notification.message?.toLowerCase().includes(lowerSearch)
+      )
+    }
+
+    return result
+  }, [notifications, searchTerm, dateRange])
 
   // Pagination
   const totalPages = Math.ceil(filteredNotifications.length / pageSize)
@@ -327,16 +342,22 @@ export default function NotificationsPage() {
         </Card>
       </div>
 
-      {/* Search Bar */}
-      <div className="flex gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
-          <Input
-            placeholder="Search notifications by title or message..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-12 border-2"
-          />
+      {/* Filter bar — date + search */}
+      <div className="flex flex-col gap-3">
+        {/* Date range filter */}
+        <DateRangeFilter value={dateRange} onChange={setDateRange} />
+
+        {/* Search Bar */}
+        <div className="flex gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+            <Input
+              placeholder="Search notifications by title or message..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-12 border-2"
+            />
+          </div>
         </div>
       </div>
 
