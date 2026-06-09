@@ -180,6 +180,15 @@ export default function ManufacturerSupplyPage() {
   const [dataLoading, setDataLoading] = useState(true)
   const [dateRange, setDateRange] = useState('30d')
 
+  // Helper to get human-readable range label
+  const rangeLabel = {
+    today: 'Today',
+    '7d': 'Last 7 Days',
+    '30d': 'Last 30 Days',
+    '90d': 'Last 90 Days',
+    all: 'All Time'
+  }[dateRange]
+
   // Filter movements by date range
   const filteredMovements = useMemo(() => {
     if (dateRange === 'all') return recentMovements
