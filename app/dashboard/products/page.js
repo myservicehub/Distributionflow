@@ -132,6 +132,8 @@ export default function ProductsPage() {
     stock_quantity: '0',
     low_stock_threshold: '10'
   })
+  const [submitting, setSubmitting] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
   const supabase = createClient()
 
   useEffect(() => {
@@ -163,17 +165,49 @@ export default function ProductsPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    // Clear previous errors
+    setFieldErrors({})
+    setSubmitting(true)
+    
     try {
-      const url = editingProduct ? `/api/products/${editingProduct.id}` : '/api/products'
+      const url = editingProduct ? `/api/products` : '/api/products'
       const method = editingProduct ? 'PUT' : 'POST'
+      
+      const submitData = editingProduct 
+        ? { ...formData, product_id: editingProduct.id }
+        : formData
       
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(submitData)
       })
 
-      if (!response.ok) throw new Error('Failed to save product')
+      if (!response.ok) {
+        const error = await response.json()
+        
+        // Part 4: Handle duplicate errors with specific field highlighting
+        if (response.status === 409 && error.field) {
+          setFieldErrors({ [error.field]: error.message || error.error })
+          toast.error(error.message || error.error, {
+            description: `Please check the ${error.field} field`
+          })
+          
+          // Part 6: Auto-focus the problematic field
+          setTimeout(() => {
+            const errorField = document.getElementById(error.field)
+            if (errorField) {
+              errorField.focus()
+              errorField.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }
+          }, 100)
+          
+          return
+        }
+        
+        throw new Error(error.error || error.message || 'Failed to save product')
+      }
 
       toast.success(editingProduct ? 'Product updated!' : 'Product created!')
       setDialogOpen(false)
@@ -181,6 +215,9 @@ export default function ProductsPage() {
       loadProducts()
     } catch (error) {
       toast.error(error.message)
+    } finally {
+      // Part 5: Reset loading state
+      setSubmitting(false)
     }
   }
 
@@ -221,6 +258,8 @@ export default function ProductsPage() {
       low_stock_threshold: '10'
     })
     setEditingProduct(null)
+    setFieldErrors({})
+    setSubmitting(false)
   }
 
   // Client-side filtering
@@ -284,17 +323,31 @@ export default function ProductsPage() {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value })
+                    if (fieldErrors.name) setFieldErrors({ ...fieldErrors, name: undefined })
+                  }}
+                  className={fieldErrors.name ? 'border-red-500 focus:ring-red-500' : ''}
                   required
                 />
+                {fieldErrors.name && (
+                  <p className="text-xs text-red-600 mt-1">{fieldErrors.name}</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="sku">SKU</Label>
                 <Input
                   id="sku"
                   value={formData.sku}
-                  onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, sku: e.target.value })
+                    if (fieldErrors.sku) setFieldErrors({ ...fieldErrors, sku: undefined })
+                  }}
+                  className={fieldErrors.sku ? 'border-red-500 focus:ring-red-500' : ''}
                 />
+                {fieldErrors.sku && (
+                  <p className="text-xs text-red-600 mt-1">{fieldErrors.sku}</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -343,8 +396,15 @@ export default function ProductsPage() {
                   />
                 </div>
               </div>
-              <Button type="submit" className="w-full">
-                {editingProduct ? 'Update' : 'Create'} Product
+              <Button type="submit" className="w-full" disabled={submitting}>
+                {submitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    {editingProduct ? 'Updating...' : 'Creating...'}
+                  </>
+                ) : (
+                  <>{editingProduct ? 'Update' : 'Create'} Product</>
+                )}
               </Button>
             </form>
           </DialogContent>

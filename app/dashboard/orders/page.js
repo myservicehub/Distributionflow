@@ -150,6 +150,7 @@ export default function OrdersPage() {
     retailer_id: '',
     payment_status: 'paid'
   })
+  const [submitting, setSubmitting] = useState(false)
   const supabase = createClient()
 
   const toggleOrderExpand = (orderId) => {
@@ -270,6 +271,8 @@ export default function OrdersPage() {
       return
     }
 
+    setSubmitting(true)
+
     try {
       // Calculate deposit if bottle exchange is enabled
       let depositAmount = 0
@@ -323,6 +326,15 @@ export default function OrdersPage() {
 
       if (!response.ok) {
         const error = await response.json()
+        
+        // Part 4: Handle duplicate order error (double-submit guard)
+        if (response.status === 409) {
+          toast.error(error.message || error.error, {
+            description: 'Please wait a moment if this was intentional'
+          })
+          return
+        }
+        
         throw new Error(error.error || 'Failed to create order')
       }
 
@@ -340,6 +352,8 @@ export default function OrdersPage() {
       loadProducts() // Reload to update stock
     } catch (error) {
       toast.error(error.message)
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -644,7 +658,16 @@ export default function OrdersPage() {
                 onChange={setBottleExchange}
               />
 
-              <Button type="submit" className="w-full">Create Order</Button>
+              <Button type="submit" className="w-full" disabled={submitting}>
+                {submitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Creating Order...
+                  </>
+                ) : (
+                  'Create Order'
+                )}
+              </Button>
             </form>
           </DialogContent>
         </Dialog>

@@ -130,6 +130,7 @@ export default function StaffPage() {
     role: 'sales_rep'
   })
   const [submitting, setSubmitting] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
 
   // Check if user is admin
   useEffect(() => {
@@ -162,6 +163,9 @@ export default function StaffPage() {
 
   const handleAddStaff = async (e) => {
     e.preventDefault()
+    
+    // Clear previous errors
+    setFieldErrors({})
     setSubmitting(true)
 
     try {
@@ -184,6 +188,24 @@ export default function StaffPage() {
         fetchStaff()
       } else {
         const error = await response.json()
+        
+        // Part 4: Handle duplicate errors with specific field highlighting
+        if (response.status === 409 && error.field) {
+          setFieldErrors({ [error.field]: error.message || error.error })
+          alert(`⚠️ ${error.message || error.error}\n\nPlease check the ${error.field} field.`)
+          
+          // Part 6: Auto-focus the problematic field
+          setTimeout(() => {
+            const errorField = document.getElementById(error.field)
+            if (errorField) {
+              errorField.focus()
+              errorField.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }
+          }, 100)
+          
+          return
+        }
+        
         alert(`Error: ${error.error || 'Failed to create staff member'}`)
       }
     } catch (error) {
@@ -488,9 +510,16 @@ export default function StaffPage() {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, email: e.target.value })
+                    if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: undefined })
+                  }}
+                  className={fieldErrors.email ? 'border-red-500 focus:ring-red-500' : ''}
                   required
                 />
+                {fieldErrors.email && (
+                  <p className="text-xs text-red-600 mt-1">{fieldErrors.email}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role">Role</Label>

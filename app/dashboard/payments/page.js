@@ -121,6 +121,7 @@ export default function PaymentsPage() {
     payment_method: 'cash',
     notes: ''
   })
+  const [submitting, setSubmitting] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -173,6 +174,8 @@ export default function PaymentsPage() {
       return
     }
 
+    setSubmitting(true)
+
     try {
       const response = await fetch('/api/payments', {
         method: 'POST',
@@ -180,7 +183,19 @@ export default function PaymentsPage() {
         body: JSON.stringify(formData)
       })
 
-      if (!response.ok) throw new Error('Failed to record payment')
+      if (!response.ok) {
+        const error = await response.json()
+        
+        // Part 4: Handle duplicate payment error (double-submit guard)
+        if (response.status === 409) {
+          toast.error(error.message || error.error, {
+            description: 'Please wait a moment if this was intentional'
+          })
+          return
+        }
+        
+        throw new Error(error.error || 'Failed to record payment')
+      }
 
       toast.success('Payment recorded successfully!')
       setDialogOpen(false)
@@ -189,6 +204,8 @@ export default function PaymentsPage() {
       loadRetailers()
     } catch (error) {
       toast.error(error.message)
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -200,6 +217,7 @@ export default function PaymentsPage() {
       notes: ''
     })
     setSelectedRetailer(null)
+    setSubmitting(false)
   }
 
   // Filter payments based on search term
@@ -335,7 +353,16 @@ export default function PaymentsPage() {
                 />
               </div>
 
-              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">Record Payment</Button>
+              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white" disabled={submitting}>
+                {submitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Recording Payment...
+                  </>
+                ) : (
+                  'Record Payment'
+                )}
+              </Button>
             </form>
           </DialogContent>
         </Dialog>
