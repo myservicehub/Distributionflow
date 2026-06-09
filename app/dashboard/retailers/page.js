@@ -136,6 +136,8 @@ export default function RetailersPage() {
     credit_limit: '0',
     status: 'active'
   })
+  const [submitting, setSubmitting] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
   const supabase = createClient()
 
   useEffect(() => {
@@ -203,6 +205,11 @@ export default function RetailersPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    // Clear previous errors
+    setFieldErrors({})
+    setSubmitting(true)
+    
     try {
       const url = editingRetailer ? `/api/retailers/${editingRetailer.id}` : '/api/retailers'
       const method = editingRetailer ? 'PUT' : 'POST'
@@ -223,7 +230,27 @@ export default function RetailersPage() {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Failed to save retailer')
+        
+        // Part 4: Handle duplicate errors with specific field highlighting
+        if (response.status === 409 && error.field) {
+          setFieldErrors({ [error.field]: error.message || error.error })
+          toast.error(error.message || error.error, {
+            description: `Please check the ${error.field.replace('_', ' ')} field`
+          })
+          
+          // Part 6: Auto-focus the problematic field
+          setTimeout(() => {
+            const errorField = document.getElementById(error.field)
+            if (errorField) {
+              errorField.focus()
+              errorField.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }
+          }, 100)
+          
+          return
+        }
+        
+        throw new Error(error.error || error.message || 'Failed to save retailer')
       }
 
       toast.success(editingRetailer ? 'Retailer updated!' : 'Retailer created!')
@@ -232,6 +259,9 @@ export default function RetailersPage() {
       loadRetailers()
     } catch (error) {
       toast.error(error.message)
+    } finally {
+      // Part 5: Reset loading state
+      setSubmitting(false)
     }
   }
 
@@ -276,6 +306,8 @@ export default function RetailersPage() {
       status: 'active'
     })
     setEditingRetailer(null)
+    setFieldErrors({})
+    setSubmitting(false)
   }
 
   // Filter retailers based on search term
@@ -342,9 +374,16 @@ export default function RetailersPage() {
                 <Input
                   id="shop_name"
                   value={formData.shop_name}
-                  onChange={(e) => setFormData({ ...formData, shop_name: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, shop_name: e.target.value })
+                    if (fieldErrors.shop_name) setFieldErrors({ ...fieldErrors, shop_name: undefined })
+                  }}
+                  className={fieldErrors.shop_name ? 'border-red-500 focus:ring-red-500' : ''}
                   required
                 />
+                {fieldErrors.shop_name && (
+                  <p className="text-xs text-red-600 mt-1">{fieldErrors.shop_name}</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="owner_name">Owner Name</Label>
@@ -359,8 +398,15 @@ export default function RetailersPage() {
                 <Input
                   id="phone"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, phone: e.target.value })
+                    if (fieldErrors.phone) setFieldErrors({ ...fieldErrors, phone: undefined })
+                  }}
+                  className={fieldErrors.phone ? 'border-red-500 focus:ring-red-500' : ''}
                 />
+                {fieldErrors.phone && (
+                  <p className="text-xs text-red-600 mt-1">{fieldErrors.phone}</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="email">Email (Optional)</Label>
@@ -426,8 +472,15 @@ export default function RetailersPage() {
                   </Select>
                 </div>
               )}
-              <Button type="submit" className="w-full">
-                {editingRetailer ? 'Update' : 'Create'} Retailer
+              <Button type="submit" className="w-full" disabled={submitting}>
+                {submitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    {editingRetailer ? 'Updating...' : 'Creating...'}
+                  </>
+                ) : (
+                  <>{editingRetailer ? 'Update' : 'Create'} Retailer</>
+                )}
               </Button>
             </form>
           </DialogContent>
