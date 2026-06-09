@@ -190,14 +190,10 @@ export async function OPTIONS(request) {
 async function getUserBusinessId(supabase) {
   try {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Auth user:', user?.id, 'Error:', authError)
-    }
+    console.log('[AUTH] Checking user:', user?.id, 'Error:', authError)
     
     if (!user) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('No user found in auth')
-      }
+      console.log('[AUTH] No user found in session')
       return null
     }
 
@@ -208,9 +204,11 @@ async function getUserBusinessId(supabase) {
       .eq('auth_user_id', user.id)
       .maybeSingle()
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('User profile:', userProfile, 'Error:', profileError)
-    }
+    console.log('[AUTH] User profile query result:', {
+      profile: userProfile,
+      error: profileError,
+      authUserId: user.id
+    })
 
     if (!userProfile || !userProfile.business_id) {
       if (process.env.NODE_ENV === 'development') {
