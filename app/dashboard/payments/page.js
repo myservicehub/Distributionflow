@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import { Plus, DollarSign, ChevronDown, ChevronUp, Calendar, User, CreditCard, FileText, Store, Search } from 'lucide-react'
 import { Pagination } from '@/components/ui/pagination'
+import { DateRangeFilter, getDateRangeStart } from '@/components/ui/date-range-filter'
 
 // Mobile Card Component for Payments
 function PaymentMobileCard({ payment }) {
@@ -107,6 +109,10 @@ function PaymentMobileCard({ payment }) {
 }
 
 export default function PaymentsPage() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  
   const [payments, setPayments] = useState([])
   const [retailers, setRetailers] = useState([])
   const [selectedRetailer, setSelectedRetailer] = useState(null)
@@ -115,6 +121,7 @@ export default function PaymentsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 10
+  const [dateRange, setDateRange] = useState(searchParams.get('range') || '30d')
   const [formData, setFormData] = useState({
     retailer_id: '',
     amount_paid: '0',
@@ -133,9 +140,37 @@ export default function PaymentsPage() {
     return () => controller.abort()
   }, [])
 
-  const loadPayments = async (signal) => {
+  const loadPayments = async (signal, range = dateRange) => {
     try {
-      const response = await fetch('/api/payments', { signal })
+      const start = getDateRangeStart(range)
+      const params = new URLSearchParams()
+      if (start) params.set('from', start.toISOString())
+
+      const response = await fetch(`/api/payments?${params}`, { signal })
+      if (!response.ok) throw new Error('Failed to load payments')
+      const responseData = await response.json()
+      const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
+      setPayments(data)
+    } catch (error) {
+      if (error.name === 'AbortError') return
+      console.error('Error loading payments:', error)
+      toast.error('Failed to load payments')
+      setPayments([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDateChange = (range) => {
+    setDateRange(range)
+    setCurrentPage(1)
+
+    const params = new URLSearchParams(searchParams)
+    params.set('range', range)
+    router.replace(`${pathname}?${params}`, { scroll: false })
+
+    loadPayments(undefined, range)
+  }
       if (!response.ok) throw new Error('Failed to load payments')
       const responseData = await response.json()
       const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
@@ -368,16 +403,22 @@ export default function PaymentsPage() {
         </Dialog>
       </div>
 
-      {/* Search Bar */}
-      <div className="flex gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
-          <Input
-            placeholder="Search by retailer name, payment method, or reference..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-12 border-2"
-          />
+      {/* Filter bar — date + search */}
+      <div className="flex flex-col gap-3">
+        {/* Date range filter */}
+        <DateRangeFilter value={dateRange} onChange={handleDateChange} />
+
+        {/* Search Bar */}
+        <div className="flex gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+            <Input
+              placeholder="Search by retailer name, payment method, or reference..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-12 border-2"
+            />
+          </div>
         </div>
       </div>
 
@@ -391,10 +432,12 @@ export default function PaymentsPage() {
                   <DollarSign className="h-8 w-8 text-neutral-400" />
                 </div>
                 <p className="text-neutral-600 text-lg font-medium">
-                  {searchTerm ? 'No matching payments' : 'No payments recorded yet'}
+                  {searchTerm ? 'No matching payments' : 'No payments in the selected period'}
                 </p>
                 <p className="text-neutral-500 text-sm mt-1">
-                  {searchTerm ? 'Try adjusting your search terms' : 'Start recording customer payments'}
+                  {searchTerm ? 'Try adjusting your search terms' : 
+                   dateRange !== 'all' ? 'Try selecting a longer date range or "All time"' : 
+                   'Start recording customer payments'}
                 </p>
               </div>
             </CardContent>
@@ -467,10 +510,12 @@ export default function PaymentsPage() {
                   <DollarSign className="h-8 w-8 text-neutral-400" />
                 </div>
                 <p className="text-neutral-600 text-lg font-medium">
-                  {searchTerm ? 'No matching payments' : 'No payments recorded yet'}
+                  {searchTerm ? 'No matching payments' : 'No payments in the selected period'}
                 </p>
                 <p className="text-neutral-500 text-sm mt-1">
-                  {searchTerm ? 'Try adjusting your search terms' : 'Start recording customer payments'}
+                  {searchTerm ? 'Try adjusting your search terms' : 
+                   dateRange !== 'all' ? 'Try selecting a longer date range or "All time"' : 
+                   'Start recording customer payments'}
                 </p>
               </div>
             )}
