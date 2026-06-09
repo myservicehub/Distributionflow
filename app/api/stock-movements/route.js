@@ -18,20 +18,24 @@ export async function GET(request) {
   try {
     const { page, pageSize, from, to } = getPaginationParams(request)
 
+    // FIXED: Remove broken foreign key reference - query without user join
     const { data: movements, error, count } = await supabase
       .from('stock_movements')
-      .select('*, products(name), users!stock_movements_user_id_fkey(name)', { count: 'exact' })
+      .select('id, product_id, movement_type, quantity, quantity_before, quantity_after, notes, created_at, business_id, products(name)', { count: 'exact' })
       .eq('business_id', userContext.businessId)
       .order('created_at', { ascending: false })
       .range(from, to)
 
-    if (error) throw error
+    if (error) {
+      console.error('Error fetching stock movements:', error)
+      throw error
+    }
 
     // Format response
     const formattedMovements = (movements || []).map(movement => ({
       ...movement,
       product_name: movement.products?.name || 'N/A',
-      user_name: movement.users?.name || 'System'
+      user_name: 'System' // Default since user_id FK is broken
     }))
 
     const response = buildPaginationResponse(formattedMovements, count, { page, pageSize })

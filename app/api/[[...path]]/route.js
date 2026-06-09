@@ -1110,14 +1110,16 @@ async function handleRoute(request, { params }) {
     // ============================================
 
     if (route === '/stock-movements' && method === 'GET') {
+      console.log('[DEBUG] Stock movements GET handler called')
       const userContext = await getUserBusinessId(supabase)
+      console.log('[DEBUG] User context:', userContext ? 'OK' : 'NULL')
       if (!userContext) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
       // TEMPORARY WORKAROUND: Return empty array due to database schema issue
       // TODO: Fix stock_movements table schema - foreign key cache issue
-      console.warn('Stock movements temporarily disabled due to database schema issue')
+      console.log('[DEBUG] Returning empty array workaround')
       return handleCORS(NextResponse.json([]))
 
       /* ORIGINAL CODE - Re-enable after database fix
