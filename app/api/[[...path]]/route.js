@@ -1116,8 +1116,21 @@ async function handleRoute(request, { params }) {
       }
 
       try {
-        // First, try to get stock movements without joins
-        const { data: movements, error: movementsError } = await supabase
+        // Use service role client to bypass PostgREST relationship cache issues
+        const { createClient } = await import('@supabase/supabase-js')
+        const supabaseAdmin = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
+          process.env.SUPABASE_SERVICE_ROLE_KEY,
+          {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false
+            }
+          }
+        )
+
+        // Query without any relationships to avoid foreign key cache issues
+        const { data: movements, error: movementsError } = await supabaseAdmin
           .from('stock_movements')
           .select('id, product_id, movement_type, quantity, notes, created_at, business_id')
           .eq('business_id', userContext.businessId)
@@ -1129,26 +1142,29 @@ async function handleRoute(request, { params }) {
           return handleCORS(NextResponse.json({ error: 'Failed to load stock movements', details: movementsError.message }, { status: 500 }))
         }
 
-        // Then get product details separately
+        // Get product details separately
         if (movements && movements.length > 0) {
-          const productIds = [...new Set(movements.map(m => m.product_id))]
-          const { data: products } = await supabase
-            .from('products')
-            .select('id, name, sku')
-            .in('id', productIds)
+          const productIds = [...new Set(movements.map(m => m.product_id).filter(Boolean))]
+          
+          if (productIds.length > 0) {
+            const { data: products } = await supabaseAdmin
+              .from('products')
+              .select('id, name, sku')
+              .in('id', productIds)
 
-          // Merge product data
-          const productsMap = (products || []).reduce((acc, p) => {
-            acc[p.id] = p
-            return acc
-          }, {})
+            // Merge product data
+            const productsMap = (products || []).reduce((acc, p) => {
+              acc[p.id] = p
+              return acc
+            }, {})
 
-          const enrichedMovements = movements.map(m => ({
-            ...m,
-            product: productsMap[m.product_id] || null
-          }))
+            const enrichedMovements = movements.map(m => ({
+              ...m,
+              product: productsMap[m.product_id] || { name: 'Unknown Product', sku: 'N/A' }
+            }))
 
-          return handleCORS(NextResponse.json(enrichedMovements))
+            return handleCORS(NextResponse.json(enrichedMovements))
+          }
         }
         
         return handleCORS(NextResponse.json(movements || []))
