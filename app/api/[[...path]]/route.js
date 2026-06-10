@@ -1625,19 +1625,6 @@ async function handleRoute(request, { params }) {
         order.id
       )
 
-      return handleCORS(NextResponse.json({
-        ...order,
-        requires_credit_approval: requiresCreditApproval,
-        message: requiresCreditApproval 
-          ? 'Order created. Awaiting credit approval from manager/admin.'
-          : 'Order created successfully. Awaiting manager approval.'
-      }))
-    }
-
-    if (route.startsWith('/orders/') && route.endsWith('/items') && method === 'GET') {
-      const userContext = await getUserBusinessId(supabase)
-      if (!userContext) {
-
       // STEP 8: Process bottle exchange if provided
       if (body.bottle_exchange && body.bottle_exchange.enabled && body.bottle_exchange.empties && body.bottle_exchange.empties.length > 0) {
         console.log('Processing bottle exchange for order:', order.id)
@@ -1700,6 +1687,18 @@ async function handleRoute(request, { params }) {
         console.log(`✅ Bottle exchange processed: ${totalEmpties} empties added to warehouse`)
       }
 
+      return handleCORS(NextResponse.json({
+        ...order,
+        requires_credit_approval: requiresCreditApproval,
+        message: requiresCreditApproval 
+          ? 'Order created. Awaiting credit approval from manager/admin.'
+          : 'Order created successfully. Awaiting manager approval.'
+      }))
+    }
+
+    if (route.startsWith('/orders/') && route.endsWith('/items') && method === 'GET') {
+      const userContext = await getUserBusinessId(supabase)
+      if (!userContext) {
         return handleCORS(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }))
       }
 
