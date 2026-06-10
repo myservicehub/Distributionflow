@@ -340,8 +340,10 @@ async function logAuditEvent(supabase, userContext, action, details, entityType,
       user_id: userContext.userId,
       action,
       details: detailsObj,
-      entity_type: entityType,
-      resource_id: resourceId
+      entity_type: entityType,        // Legacy column
+      resource_type: entityType,      // New column (same value)
+      entity_id: resourceId,          // Legacy column
+      resource_id: resourceId         // New column (same value)
     }
     
     console.log('Audit log data:', JSON.stringify(logData))
