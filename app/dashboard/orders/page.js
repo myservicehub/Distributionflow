@@ -210,6 +210,7 @@ export default function OrdersPage() {
   }
 
   const handleDateChange = (range) => {
+    console.log('🔵 Date range changed to:', range)
     setDateRange(range)
     setCurrentPage(1)
 
