@@ -43,7 +43,7 @@ const CreateOrderSchema = z.object({
     quantity: z.number().int().min(1, 'Quantity must be at least 1'),
     unit_price: z.number().min(0, 'Price cannot be negative'),
   })).min(1, 'At least one item is required'),
-  payment_status: z.enum(['paid', 'unpaid', 'partial']).default('unpaid'),
+  payment_status: z.enum(['paid', 'unpaid', 'partial', 'credit']).default('unpaid'),
   notes: z.string().max(1000, 'Notes too long').optional(),
 })
 
