@@ -45,7 +45,6 @@ export default function PlatformDashboard() {
     } finally {
       setLoading(false)
     }
-  }).format(amount)
   }
 
   if (loading) {
