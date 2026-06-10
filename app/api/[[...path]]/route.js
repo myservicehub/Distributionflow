@@ -1305,6 +1305,7 @@ async function handleRoute(request, { params }) {
           driver_name,
           vehicle_number,
           retailers(shop_name, owner_name),
+          sales_rep:users!sales_rep_id(id, name, email, role),
           order_items(*, product:products(name, sku))
         `, { count: 'exact' })
         .eq('business_id', userContext.businessId)
@@ -1339,35 +1340,12 @@ async function handleRoute(request, { params }) {
         }
       )
 
-      // Manually fetch sales rep data for each order using admin client
-      const ordersWithSalesRep = await Promise.all(
-        (orders || []).map(async (order) => {
-          if (order.sales_rep_id) {
-            const { data: salesRep, error: repError } = await supabaseAdmin
-              .from('users')
-              .select('id, name, email, role')
-              .eq('id', order.sales_rep_id)
-              .single()
-            
-            if (repError) {
-              console.error('Error fetching sales rep for order', order.id, ':', repError)
-            }
-            
-            return { 
-              ...order, 
-              sales_rep: salesRep,
-              sales_rep_name: salesRep?.name || 'Unassigned',
-              retailer_name: order.retailers?.shop_name || 'Unknown'
-            }
-          }
-          return { 
-            ...order, 
-            sales_rep: null,
-            sales_rep_name: 'Unassigned',
-            retailer_name: order.retailers?.shop_name || 'Unknown'
-          }
-        })
-      )
+      // Map orders with sales rep data (now included in the query)
+      const ordersWithSalesRep = (orders || []).map(order => ({
+        ...order,
+        sales_rep_name: order.sales_rep?.name || 'Unassigned',
+        retailer_name: order.retailers?.shop_name || 'Unknown'
+      }))
       
       const response = buildPaginatedResponse(ordersWithSalesRep, count, page, pageSize)
       return handleCORS(NextResponse.json(response), request)
