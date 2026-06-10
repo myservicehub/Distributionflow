@@ -1384,7 +1384,7 @@ async function handleRoute(request, { params }) {
       const orderId = route.split('/orders/')[1]
 
       try {
-        // OPTIMIZED: Select only necessary columns to reduce query time
+        // OPTIMIZED: Select only core columns that definitely exist
         const { data: order, error: orderError } = await supabase
           .from('orders')
           .select(`
@@ -1392,21 +1392,8 @@ async function handleRoute(request, { params }) {
             retailer_id,
             sales_rep_id,
             business_id,
-            order_status,
-            delivery_status,
             total_amount,
-            discount_amount,
             payment_status,
-            notes,
-            is_legacy_order,
-            confirmed_by,
-            confirmed_at,
-            packed_at,
-            dispatched_at,
-            delivered_at,
-            delivery_reference,
-            driver_name,
-            vehicle_number,
             created_at,
             updated_at,
             retailers(shop_name, owner_name, phone)
