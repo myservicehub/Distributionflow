@@ -1528,12 +1528,24 @@ async function handleRoute(request, { params }) {
 
       // STEP 4: Create order - simple insert without select to avoid cache issues
       let order
+      
+      // Determine sales_rep_id: use provided value, or default to current user, or use retailer's assigned rep
+      let sales_rep_id = body.sales_rep_id
+      if (!sales_rep_id) {
+        if (userContext.role === 'sales_rep') {
+          sales_rep_id = userContext.userId
+        } else {
+          // For admin/manager, use the retailer's assigned rep if available
+          sales_rep_id = retailer.assigned_rep_id || userContext.userId
+        }
+      }
+      
       const { error: insertError } = await supabaseAdmin
         .from('orders')
         .insert({
           business_id: userContext.businessId,
           retailer_id: body.retailer_id,
-          sales_rep_id: body.sales_rep_id || (userContext.role === 'sales_rep' ? userContext.userId : userContext.userId),
+          sales_rep_id: sales_rep_id,
           total_amount: body.total_amount,
           payment_status: body.payment_status,
           status: 'pending',
@@ -1552,7 +1564,7 @@ async function handleRoute(request, { params }) {
         id: `order-${Date.now()}`, // Temporary ID for notifications
         business_id: userContext.businessId,
         retailer_id: body.retailer_id,
-        sales_rep_id: body.sales_rep_id || userContext.userId,
+        sales_rep_id: sales_rep_id, // Use the determined sales_rep_id
         total_amount: body.total_amount,
         payment_status: body.payment_status,
         status: 'pending',
