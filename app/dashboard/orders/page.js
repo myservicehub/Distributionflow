@@ -72,7 +72,7 @@ function OrderMobileCard({ order, onExpand, isExpanded, canApprove, onApprove, o
                     {order.order_items.map((item, idx) => (
                       <div key={idx} className="text-sm bg-neutral-50 rounded-lg p-2">
                         <div className="flex justify-between">
-                          <span className="font-medium text-neutral-900">{item.product?.name || 'Unknown'}</span>
+                          <span className="font-medium text-neutral-900">{item.products?.name || 'Unknown'}</span>
                           <span className="text-neutral-600">x{item.quantity}</span>
                         </div>
                         <div className="text-xs text-neutral-500 mt-1">
@@ -198,6 +198,10 @@ export default function OrdersPage() {
       const responseData = await response.json()
       // Handle both old format (array) and new format (object with data property)
       const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
+      console.log('📦 Orders loaded:', data.length, 'orders')
+      if (data.length > 0 && data[0].order_items && data[0].order_items.length > 0) {
+        console.log('📦 First order_item:', JSON.stringify(data[0].order_items[0], null, 2))
+      }
       setOrders(data)
     } catch (error) {
       if (error.name === 'AbortError') return // Component unmounted - normal
@@ -826,18 +830,18 @@ export default function OrdersPage() {
                                 </TableHeader>
                                 <TableBody>
                                   {order.order_items.map((item, idx) => {
-                                    const emptyItem = item.product?.empty_item_id ? 
-                                      emptyItems.find(e => e.id === item.product.empty_item_id) : null
+                                    const emptyItem = item.products?.empty_item_id ? 
+                                      emptyItems.find(e => e.id === item.products.empty_item_id) : null
                                     
                                     return (
                                       <TableRow key={idx}>
                                         <TableCell className="font-medium">
                                           <div className="flex flex-col gap-2">
                                             <div>
-                                              <div>{item.product?.name || 'Unknown Product'}</div>
-                                              {item.product?.sku && (
+                                              <div>{item.products?.name || 'Unknown Product'}</div>
+                                              {item.products?.sku && (
                                                 <div className="text-xs text-muted-foreground">
-                                                  SKU: {item.product.sku}
+                                                  SKU: {item.products.sku}
                                                 </div>
                                               )}
                                             </div>

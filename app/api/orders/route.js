@@ -30,7 +30,7 @@ export async function GET(request) {
 
     let query = supabase
       .from('orders')
-      .select('*, retailers(shop_name, owner_name), users!orders_sales_rep_id_fkey(name)', { count: 'exact' })
+      .select('*, retailers(shop_name, owner_name), users!orders_sales_rep_id_fkey(name), order_items(*, products(name, sku))', { count: 'exact' })
       .eq('business_id', userContext.businessId)
       .order('created_at', { ascending: false })
       .range(from, to)
