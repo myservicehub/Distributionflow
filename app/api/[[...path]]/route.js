@@ -3148,8 +3148,8 @@ async function handleRoute(request, { params }) {
 
     if (route === '/audit-logs' && method === 'GET') {
       const userContext = await getUserBusinessId(supabase)
-      if (!userContext || userContext.role !== 'admin') {
-        return handleCORS(NextResponse.json({ error: 'Unauthorized - Admin only' }, { status: 403 }))
+      if (!userContext || !['admin', 'manager'].includes(userContext.role)) {
+        return handleCORS(NextResponse.json({ error: 'Unauthorized - Admin or Manager access required' }, { status: 403 }))
       }
 
       const { getAuditLogs } = await import('@/lib/audit-logger')

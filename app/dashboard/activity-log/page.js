@@ -103,15 +103,15 @@ export default function ActivityLogPage() {
     all: 'All Time'
   }[dateRange]
 
-  // Check if user is admin
+  // Check if user has permission (admin or manager)
   useEffect(() => {
-    if (userProfile && userProfile.role !== 'admin') {
+    if (userProfile && !['admin', 'manager'].includes(userProfile.role)) {
       router.push('/dashboard')
     }
   }, [userProfile, router])
 
   useEffect(() => {
-    if (userProfile?.role === 'admin') {
+    if (userProfile && ['admin', 'manager'].includes(userProfile.role)) {
       fetchLogs()
     }
   }, [userProfile])
