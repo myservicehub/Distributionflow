@@ -1540,7 +1540,7 @@ async function handleRoute(request, { params }) {
           delivery_status: deliveryStatus,
           is_legacy_order: false // Mark as new workflow order
         })
-        .select()
+        .select('id, business_id, retailer_id, sales_rep_id, total_amount, payment_status, status, order_status, delivery_status, is_legacy_order, created_at')
         .single()
 
       if (orderError) throw orderError
