@@ -49,7 +49,7 @@ export default function DashboardLayout({ children }) {
       <DynamicSidebar />
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
         {/* Top bar */}
         <header className="bg-white border-b border-neutral-200 sticky top-0 z-30 shadow-soft">
           <div className="flex items-center gap-3 px-4 lg:px-8 py-4">
@@ -85,7 +85,7 @@ export default function DashboardLayout({ children }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-4 md:p-6 lg:p-8">
+        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-x-hidden">
           {children}
         </main>
       </div>
