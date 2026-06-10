@@ -26,14 +26,27 @@ export async function GET(request) {
   }
 
   try {
+    const { searchParams } = new URL(request.url)
     const { page, pageSize, from, to } = getPaginationParams(request)
+    
+    // Date filtering
+    const dateFrom = searchParams.get('from')
+    const dateTo = searchParams.get('to')
 
     let query = supabase
       .from('orders')
-      .select('*, retailers(shop_name, owner_name), users!orders_sales_rep_id_fkey(name), order_items(*, products(name, sku))', { count: 'exact' })
+      .select('*, retailers(shop_name, owner_name), sales_rep:users!orders_sales_rep_id_fkey(name), order_items(*, products(name, sku))', { count: 'exact' })
       .eq('business_id', userContext.businessId)
       .order('created_at', { ascending: false })
       .range(from, to)
+    
+    // Apply date filters if provided
+    if (dateFrom) {
+      query = query.gte('created_at', dateFrom)
+    }
+    if (dateTo) {
+      query = query.lte('created_at', dateTo)
+    }
 
     // Sales reps only see their orders
     query = applySalesRepFilter(query, userContext, 'sales_rep_id')

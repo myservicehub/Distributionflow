@@ -19,14 +19,15 @@ export function getDateRangeStart(value) {
   if (value === 'all') return null
   const d = new Date()
   if (value === 'today') {
-    // Use UTC to avoid timezone issues
-    d.setUTCHours(0, 0, 0, 0)
+    // Set to local midnight (start of today in user's timezone)
+    d.setHours(0, 0, 0, 0)
     return d
   }
   const range = DATE_RANGES.find(r => r.value === value)
   if (!range) return null
   d.setDate(d.getDate() - range.days)
-  d.setUTCHours(0, 0, 0, 0)
+  // Set to local midnight
+  d.setHours(0, 0, 0, 0)
   return d
 }
 
