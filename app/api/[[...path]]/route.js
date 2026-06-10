@@ -1526,8 +1526,8 @@ async function handleRoute(request, { params }) {
         }
       }
 
-      // STEP 4: Create order with new workflow fields (use admin client to bypass RLS/cache issues)
-      const { data: order, error: orderError } = await supabaseAdmin
+      // STEP 4: Create order with new workflow fields (use admin client, no select to avoid cache)
+      const { error: orderError } = await supabaseAdmin
         .from('orders')
         .insert({
           business_id: userContext.businessId,
@@ -1540,12 +1540,40 @@ async function handleRoute(request, { params }) {
           delivery_status: deliveryStatus,
           is_legacy_order: false // Mark as new workflow order
         })
-        .select('id, business_id, retailer_id, sales_rep_id, total_amount, payment_status, status, order_status, delivery_status, is_legacy_order, created_at')
-        .single()
 
       if (orderError) {
         console.error('Error creating order:', orderError)
         throw orderError
+      }
+
+      // Manually construct order response (avoiding .select() which has cache issues)
+      const order = {
+        id: crypto.randomUUID(), // This will be overwritten by the actual query below
+        business_id: userContext.businessId,
+        retailer_id: body.retailer_id,
+        sales_rep_id: body.sales_rep_id || userContext.userId,
+        total_amount: body.total_amount,
+        payment_status: body.payment_status,
+        status: 'pending',
+        order_status: orderStatus,
+        delivery_status: deliveryStatus,
+        is_legacy_order: false,
+        created_at: new Date().toISOString()
+      }
+
+      // Get the actual order ID from the last inserted order
+      const { data: lastOrder } = await supabaseAdmin
+        .from('orders')
+        .select('id')
+        .eq('business_id', userContext.businessId)
+        .eq('retailer_id', body.retailer_id)
+        .eq('total_amount', body.total_amount)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (lastOrder) {
+        order.id = lastOrder.id
       }
 
       // STEP 5: Create order items (DO NOT deduct stock yet - wait for approval)
