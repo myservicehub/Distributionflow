@@ -1,24 +1,42 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseClient, getUserBusinessId, handleCORS, errorResponse, successResponse } from '@/lib/api/helpers'
-import { enforceSubscription } from '@/lib/api/subscription'
+import { createClient } from '@/lib/supabase/server'
+
+// Get current user's business ID
+async function getUserBusinessId(supabase) {
+  try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (!user) return null
+
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('id, role, business_id, status')
+      .eq('auth_user_id', user.id)
+      .maybeSingle()
+
+    if (!userProfile || !userProfile.business_id) return null
+
+    return {
+      userId: userProfile.id,
+      businessId: userProfile.business_id,
+      role: userProfile.role,
+      status: userProfile.status
+    }
+  } catch (error) {
+    console.error('Error getting user business ID:', error)
+    return null
+  }
+}
 
 /**
  * GET /api/dashboard/metrics
- * Get dashboard metrics (optimized for memory)
+ * Dashboard overview metrics
  */
 export async function GET(request) {
-  const supabase = createSupabaseClient()
+  const supabase = await createClient()
   
-  // Auth check
   const userContext = await getUserBusinessId(supabase)
   if (!userContext) {
-    return errorResponse('Unauthorized', 401)
-  }
-
-  // Subscription check
-  const subscriptionError = await enforceSubscription(userContext.businessId)
-  if (subscriptionError) {
-    return errorResponse(subscriptionError.message, 402)
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const today = new Date()
@@ -26,7 +44,6 @@ export async function GET(request) {
   const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
 
   try {
-    // OPTIMIZED: Only select needed columns and use database filtering
     // Get total sales today
     const { data: salesToday } = await supabase
       .from('orders')
@@ -56,7 +73,7 @@ export async function GET(request) {
 
     const totalDebt = retailers?.reduce((sum, retailer) => sum + parseFloat(retailer.current_balance || 0), 0) || 0
 
-    // Get only top 10 overdue retailers
+    // Get top 10 overdue retailers
     const { data: overdueRetailers } = await supabase
       .from('retailers')
       .select('id, shop_name, owner_name, current_balance, credit_limit')
@@ -69,7 +86,7 @@ export async function GET(request) {
       .filter(r => parseFloat(r.current_balance || 0) > parseFloat(r.credit_limit || 0))
       .slice(0, 10)
 
-    // Get only top 10 low stock products
+    // Get top 10 low stock products
     const { data: allProducts } = await supabase
       .from('products')
       .select('id, name, stock_quantity, low_stock_threshold')
@@ -81,7 +98,7 @@ export async function GET(request) {
       .filter(p => (p.stock_quantity || 0) <= (p.low_stock_threshold || 10))
       .slice(0, 10)
 
-    // Get sales by rep (today only)
+    // Get sales by rep
     const { data: salesByRep } = await supabase
       .from('orders')
       .select('sales_rep_id, total_amount, users!orders_sales_rep_id_fkey(name)')
@@ -103,7 +120,7 @@ export async function GET(request) {
       .order('created_at', { ascending: false })
       .limit(10)
 
-    return successResponse({
+    return NextResponse.json({
       totalSalesToday,
       totalSalesMonth,
       totalDebt,
@@ -114,8 +131,7 @@ export async function GET(request) {
     })
   } catch (error) {
     console.error('Error fetching dashboard metrics:', error)
-    // Return empty data instead of failing
-    return successResponse({
+    return NextResponse.json({
       totalSalesToday: 0,
       totalSalesMonth: 0,
       totalDebt: 0,
@@ -125,9 +141,4 @@ export async function GET(request) {
       recentActivity: []
     })
   }
-}
-
-// Handle OPTIONS for CORS
-export async function OPTIONS(request) {
-  return handleCORS(new NextResponse(null, { status: 200 }))
 }
