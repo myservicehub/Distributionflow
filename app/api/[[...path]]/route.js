@@ -1637,22 +1637,27 @@ async function handleRoute(request, { params }) {
         console.error('Failed to send large order alert:', err)
       })
 
-      // Log audit event
-      await logAuditEvent(
-        supabase,
-        userContext,
-        'create',
-        {
-          order_id: order.id,
-          retailer_name: retailer.shop_name,
-          total_amount: body.total_amount,
-          payment_status: body.payment_status,
-          order_status: orderStatus,
-          requires_approval: requiresCreditApproval
-        },
-        'order',
-        order.id
-      )
+      // Log audit event (use admin client to bypass RLS)
+      try {
+        await logAuditEvent(
+          supabaseAdmin,
+          userContext,
+          'create',
+          {
+            order_id: order.id,
+            retailer_name: retailer.shop_name,
+            total_amount: body.total_amount,
+            payment_status: body.payment_status,
+            order_status: orderStatus,
+            requires_approval: requiresCreditApproval
+          },
+          'order',
+          order.id
+        )
+        console.log(`✅ Audit log created for order ${order.id}`)
+      } catch (auditError) {
+        console.error('Failed to create audit log:', auditError)
+      }
 
       // STEP 8: Process bottle exchange if provided
       if (body.bottle_exchange && body.bottle_exchange.enabled && body.bottle_exchange.empties && body.bottle_exchange.empties.length > 0) {
