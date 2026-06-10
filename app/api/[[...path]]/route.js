@@ -1526,8 +1526,8 @@ async function handleRoute(request, { params }) {
         }
       }
 
-      // STEP 4: Create order with new workflow fields
-      const { data: order, error: orderError } = await supabase
+      // STEP 4: Create order with new workflow fields (use admin client to bypass RLS/cache issues)
+      const { data: order, error: orderError } = await supabaseAdmin
         .from('orders')
         .insert({
           business_id: userContext.businessId,
@@ -1543,7 +1543,10 @@ async function handleRoute(request, { params }) {
         .select('id, business_id, retailer_id, sales_rep_id, total_amount, payment_status, status, order_status, delivery_status, is_legacy_order, created_at')
         .single()
 
-      if (orderError) throw orderError
+      if (orderError) {
+        console.error('Error creating order:', orderError)
+        throw orderError
+      }
 
       // STEP 5: Create order items (DO NOT deduct stock yet - wait for approval)
       for (const item of body.items) {
