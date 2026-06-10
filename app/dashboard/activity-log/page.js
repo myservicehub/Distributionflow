@@ -126,10 +126,15 @@ export default function ActivityLogPage() {
       const response = await fetch(`/api/audit-logs?${params}`)
       if (response.ok) {
         const data = await response.json()
-        setLogs(data)
+        // Ensure data is always an array
+        setLogs(Array.isArray(data) ? data : [])
+      } else {
+        console.error('Error response:', response.status)
+        setLogs([])
       }
     } catch (error) {
       console.error('Error fetching audit logs:', error)
+      setLogs([])
     } finally {
       setLoading(false)
     }
@@ -296,10 +301,13 @@ export default function ActivityLogPage() {
 
   // Client-side filtering
   const filteredLogs = useMemo(() => {
-    if (!searchTerm) return logs
+    // Ensure logs is an array
+    const logsArray = Array.isArray(logs) ? logs : []
+    
+    if (!searchTerm) return logsArray
 
     const lowerSearch = searchTerm.toLowerCase()
-    return logs.filter(log =>
+    return logsArray.filter(log =>
       log.users?.name?.toLowerCase().includes(lowerSearch) ||
       log.users?.email?.toLowerCase().includes(lowerSearch) ||
       log.action?.toLowerCase().includes(lowerSearch) ||
