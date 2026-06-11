@@ -164,11 +164,7 @@ export async function GET(request) {
       const supabase = getAdminClient()
       const { data: invoice, error } = await supabase
         .from('invoices')
-        .select(`
-          *,
-          businesses(name, email, address, phone),
-          plans(display_name, base_price)
-        `)
+        .select('*')
         .eq('id', invoiceId)
         .eq('business_id', userProfile.business_id)
         .maybeSingle()
@@ -182,6 +178,28 @@ export async function GET(request) {
         console.error('Invoice not found:', invoiceId, 'for business:', userProfile.business_id)
         return handleCORS(NextResponse.json({ error: 'Invoice not found' }, { status: 404 }))
       }
+
+      // Fetch related data separately
+      const { data: business } = await supabase
+        .from('businesses')
+        .select('name, address, phone')
+        .eq('id', invoice.business_id)
+        .single()
+
+      const { data: plan } = await supabase
+        .from('plans')
+        .select('display_name, base_price')
+        .eq('id', invoice.plan_id)
+        .single()
+
+      // Get business email from users table
+      const { data: businessOwner } = await supabase
+        .from('users')
+        .select('email')
+        .eq('business_id', invoice.business_id)
+        .eq('role', 'admin')
+        .limit(1)
+        .maybeSingle()
 
       // Generate HTML invoice
       const invoiceHTML = `
@@ -216,10 +234,10 @@ export async function GET(request) {
           <div class="invoice-info">
             <div class="company-info">
               <h3>Bill To:</h3>
-              <p><strong>${invoice.businesses?.name || 'N/A'}</strong></p>
-              <p>${invoice.businesses?.email || 'N/A'}</p>
-              <p>${invoice.businesses?.phone || 'N/A'}</p>
-              <p>${invoice.businesses?.address || 'N/A'}</p>
+              <p><strong>${business?.name || 'N/A'}</strong></p>
+              <p>${businessOwner?.email || 'N/A'}</p>
+              <p>${business?.phone || 'N/A'}</p>
+              <p>${business?.address || 'N/A'}</p>
             </div>
             <div class="invoice-details">
               <h3>Invoice Details:</h3>
@@ -241,7 +259,7 @@ export async function GET(request) {
             <tbody>
               <tr>
                 <td>Subscription Payment</td>
-                <td>${invoice.plans?.display_name || 'N/A'}</td>
+                <td>${plan?.display_name || 'N/A'}</td>
                 <td>${invoice.billing_period_start ? new Date(invoice.billing_period_start).toLocaleDateString('en-GB') : 'N/A'} - ${invoice.billing_period_end ? new Date(invoice.billing_period_end).toLocaleDateString('en-GB') : 'N/A'}</td>
                 <td style="text-align: right;">₦${(invoice.amount || 0).toLocaleString()}</td>
               </tr>
