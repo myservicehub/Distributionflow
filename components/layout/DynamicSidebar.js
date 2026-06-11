@@ -82,6 +82,7 @@ export default function DynamicSidebar() {
               {userProfile.role === 'manager' && 'Manager'}
               {userProfile.role === 'sales_rep' && 'Sales Representative'}
               {userProfile.role === 'warehouse' && 'Warehouse Staff'}
+              {userProfile.role === 'driver' && 'Driver'}
             </p>
           </div>
 
