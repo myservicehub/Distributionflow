@@ -41,12 +41,16 @@ export async function PUT(request, { params }) {
       }
     )
 
-    // Update user profile
+    // Build update data - don't allow email changes
     const updateData = {}
     if (body.name !== undefined) updateData.name = body.name
     if (body.role !== undefined) updateData.role = body.role
     if (body.status !== undefined) updateData.status = body.status
     if (body.phone !== undefined) updateData.phone = body.phone
+    
+    // Don't allow email updates (email is immutable)
+    // Add updated_at timestamp
+    updateData.updated_at = new Date().toISOString()
 
     const { data: user, error: updateError } = await supabaseAdmin
       .from('users')
@@ -56,13 +60,24 @@ export async function PUT(request, { params }) {
       .select()
       .single()
 
-    if (updateError) throw updateError
+    if (updateError) {
+      console.error('Update error:', updateError)
+      throw updateError
+    }
 
     // Update auth metadata if role changed
     if (body.role !== undefined) {
-      await supabaseAdmin.auth.admin.updateUserById(userId, {
-        user_metadata: { role: body.role }
-      })
+      try {
+        await supabaseAdmin.auth.admin.updateUserById(userId, {
+          user_metadata: { 
+            role: body.role,
+            name: body.name || user.name
+          }
+        })
+      } catch (authError) {
+        console.error('Auth metadata update error:', authError)
+        // Don't fail the whole request if auth metadata update fails
+      }
     }
 
     // Audit log
@@ -79,7 +94,7 @@ export async function PUT(request, { params }) {
     return successResponse({ success: true, data: user })
   } catch (error) {
     console.error('Error updating staff:', error)
-    return errorResponse('Failed to update staff member', 500)
+    return errorResponse(error.message || 'Failed to update staff member', 500)
   }
 }
 

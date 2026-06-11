@@ -221,10 +221,13 @@ export default function StaffPage() {
     setSubmitting(true)
 
     try {
+      // Don't send email field (it's immutable)
+      const { email, ...updateData } = formData
+      
       const response = await fetch(`/api/staff/${selectedStaff.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(updateData)
       })
 
       if (response.ok) {
@@ -232,8 +235,10 @@ export default function StaffPage() {
         setSelectedStaff(null)
         setFormData({ name: '', email: '', role: 'sales_rep' })
         fetchStaff()
+        alert('Staff member updated successfully')
       } else {
-        alert('Failed to update staff member')
+        const error = await response.json()
+        alert(error.error || 'Failed to update staff member')
       }
     } catch (error) {
       console.error('Error updating staff:', error)

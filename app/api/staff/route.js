@@ -131,7 +131,24 @@ export async function POST(request) {
       }
     })
 
-    if (authError) throw authError
+    if (authError) {
+      console.error('Auth error:', authError)
+      
+      // Handle specific auth errors
+      if (authError.code === 'email_exists' || authError.status === 422) {
+        return errorResponse(
+          'This email is already registered in the system.',
+          409,
+          {
+            error: 'Email already exists',
+            code: 'EMAIL_EXISTS',
+            field: 'email'
+          }
+        )
+      }
+      
+      throw authError
+    }
 
     // Create user profile
     const { data: user, error: profileError } = await supabaseAdmin
@@ -182,7 +199,20 @@ export async function POST(request) {
     }, 201)
   } catch (error) {
     console.error('Error creating staff:', error)
-    return errorResponse('Failed to create staff member', 500)
+    
+    // Return more specific error messages
+    if (error.code === 'email_exists' || error.status === 422) {
+      return errorResponse('This email is already registered in the system.', 409)
+    }
+    
+    if (error.code === '23505') {
+      return errorResponse('A user with this email already exists.', 409)
+    }
+    
+    return errorResponse(
+      error.message || 'Failed to create staff member', 
+      error.status || 500
+    )
   }
 }
 
