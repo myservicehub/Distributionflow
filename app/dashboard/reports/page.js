@@ -425,12 +425,14 @@ export default function ReportsPage() {
       </div>
 
       <Tabs defaultValue="debt" className="space-y-6">
-        <TabsList className="bg-white border border-neutral-200 p-1">
-          <TabsTrigger value="debt" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">Debt Aging</TabsTrigger>
-          <TabsTrigger value="sales" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">Sales by Rep</TabsTrigger>
-          <TabsTrigger value="inventory" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">Inventory Report</TabsTrigger>
-          <TabsTrigger value="drivers" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">Driver Performance</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+          <TabsList className="bg-white border border-neutral-200 p-1 w-max md:w-auto inline-flex md:grid md:grid-cols-4">
+            <TabsTrigger value="debt" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white whitespace-nowrap">Debt Aging</TabsTrigger>
+            <TabsTrigger value="sales" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white whitespace-nowrap">Sales by Rep</TabsTrigger>
+            <TabsTrigger value="inventory" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white whitespace-nowrap">Inventory</TabsTrigger>
+            <TabsTrigger value="drivers" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white whitespace-nowrap">Driver Performance</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Debt Aging Report */}
         <TabsContent value="debt" className="space-y-4">
@@ -841,59 +843,59 @@ export default function ReportsPage() {
         <TabsContent value="drivers" className="space-y-4">
           {/* Summary Cards */}
           {driverSummary && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
               <Card className="border-2 border-emerald-200">
-                <CardContent className="p-4">
+                <CardContent className="p-3 md:p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <TruckIcon className="h-4 w-4 text-emerald-600" />
-                    <p className="text-sm text-neutral-600">Total Drivers</p>
+                    <p className="text-xs md:text-sm text-neutral-600">Drivers</p>
                   </div>
-                  <p className="text-2xl font-bold text-emerald-600">{driverSummary.active_drivers}/{driverSummary.total_drivers}</p>
+                  <p className="text-xl md:text-2xl font-bold text-emerald-600">{driverSummary.active_drivers}/{driverSummary.total_drivers}</p>
                   <p className="text-xs text-neutral-500 mt-1">Active</p>
                 </CardContent>
               </Card>
               <Card className="border-2 border-blue-200">
-                <CardContent className="p-4">
+                <CardContent className="p-3 md:p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Package className="h-4 w-4 text-blue-600" />
-                    <p className="text-sm text-neutral-600">Deliveries ({rangeLabel})</p>
+                    <p className="text-xs md:text-sm text-neutral-600">Deliveries</p>
                   </div>
-                  <p className="text-2xl font-bold text-blue-600">{driverSummary.total_deliveries_in_range}</p>
-                  <p className="text-xs text-neutral-500 mt-1">Total: {driverSummary.total_deliveries_all_time}</p>
+                  <p className="text-xl md:text-2xl font-bold text-blue-600">{driverSummary.total_deliveries_in_range}</p>
+                  <p className="text-xs text-neutral-500 mt-1">{rangeLabel}</p>
                 </CardContent>
               </Card>
               <Card className="border-2 border-green-200">
-                <CardContent className="p-4">
+                <CardContent className="p-3 md:p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <p className="text-sm text-neutral-600">Success Rate</p>
+                    <p className="text-xs md:text-sm text-neutral-600">Success</p>
                   </div>
-                  <p className="text-2xl font-bold text-green-600">{driverSummary.overall_success_rate}%</p>
-                  <p className="text-xs text-neutral-500 mt-1">{driverSummary.successful_deliveries} successful</p>
+                  <p className="text-xl md:text-2xl font-bold text-green-600">{driverSummary.overall_success_rate}%</p>
+                  <p className="text-xs text-neutral-500 mt-1">{driverSummary.successful_deliveries} OK</p>
                 </CardContent>
               </Card>
               <Card className="border-2 border-red-200">
-                <CardContent className="p-4">
+                <CardContent className="p-3 md:p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <XCircle className="h-4 w-4 text-red-600" />
-                    <p className="text-sm text-neutral-600">Failed Deliveries</p>
+                    <p className="text-xs md:text-sm text-neutral-600">Failed</p>
                   </div>
-                  <p className="text-2xl font-bold text-red-600">{driverSummary.failed_deliveries}</p>
-                  <p className="text-xs text-neutral-500 mt-1">In selected range</p>
+                  <p className="text-xl md:text-2xl font-bold text-red-600">{driverSummary.failed_deliveries}</p>
+                  <p className="text-xs text-neutral-500 mt-1">{rangeLabel}</p>
                 </CardContent>
               </Card>
             </div>
           )}
 
           {/* Date Range Filter */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-cyan-100 rounded-lg">
                 <TruckIcon className="h-5 w-5 text-cyan-600" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-neutral-900">Driver Performance</h3>
-                <p className="text-sm text-neutral-600">Track delivery metrics and success rates</p>
+                <h3 className="text-lg md:text-xl font-bold text-neutral-900">Driver Performance</h3>
+                <p className="text-xs md:text-sm text-neutral-600">Track delivery metrics</p>
               </div>
             </div>
             <DateRangeFilter value={dateRange} onChange={handleDateChange} />
