@@ -313,7 +313,11 @@ function BillingPageContent() {
         <CardContent>
           <div className="grid gap-6 md:grid-cols-3">
             {plans.map((plan) => {
-              const isCurrent = plan.id === currentPlan?.id
+              // Check if this is the current plan by both ID and name
+              const isCurrent = 
+                plan.id === currentPlan?.id || 
+                plan.name === currentPlan?.name ||
+                plan.display_name === currentPlan?.display_name
               const features = plan.features || {}
 
               return (
@@ -378,7 +382,15 @@ function BillingPageContent() {
                         )}
                       </ul>
 
-                      {!isCurrent && (
+                      {isCurrent ? (
+                        <Button
+                          className="w-full bg-emerald-600 hover:bg-emerald-700"
+                          disabled
+                        >
+                          <Check className="w-4 h-4 mr-2" />
+                          Current Plan
+                        </Button>
+                      ) : (
                         <Button
                           className="w-full"
                           onClick={() => handleUpgrade(plan.id)}
