@@ -8,6 +8,7 @@ import {
   logSubscriptionEvent,
   createInvoice
 } from '@/lib/subscription'
+import { sendInvoiceReceipt } from '@/lib/email'
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -77,37 +78,87 @@ export async function POST(request) {
 
 async function handleChargeSuccess(supabase, data) {
   try {
-    const { reference, metadata } = data
+    const { reference, metadata, amount } = data
 
     if (metadata?.type !== 'subscription_payment') {
       return
     }
 
+    const businessId = metadata.business_id
+    const planId = metadata.plan_id
+
+    // Get business and plan details for email
+    const { data: business } = await supabase
+      .from('businesses')
+      .select('name, email')
+      .eq('id', businessId)
+      .single()
+
+    const { data: plan } = await supabase
+      .from('plans')
+      .select('display_name, base_price')
+      .eq('id', planId)
+      .single()
+
     // Update subscription
+    const nextBillingDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
     const { error } = await supabase
       .from('subscriptions')
       .update({
         status: 'active',
         payment_provider_reference: reference,
-        next_billing_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        next_billing_date: nextBillingDate.toISOString()
       })
       .eq('payment_provider_reference', reference)
 
     if (error) throw error
 
     // Update business
-    await updateBusinessSubscription(metadata.business_id, {
+    const subscriptionEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    await updateBusinessSubscription(businessId, {
       subscription_status: 'active',
       subscription_start: new Date().toISOString(),
-      subscription_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      subscription_end: subscriptionEnd.toISOString()
     })
+
+    // Create invoice
+    const invoiceNumber = `INV-${Date.now().toString().slice(-8)}`
+    const { data: invoice } = await supabase
+      .from('invoices')
+      .insert({
+        business_id: businessId,
+        plan_id: planId,
+        invoice_number: invoiceNumber,
+        amount: amount / 100, // Paystack sends amount in kobo
+        status: 'paid',
+        billing_period_start: new Date().toISOString(),
+        billing_period_end: subscriptionEnd.toISOString(),
+        payment_provider_reference: reference
+      })
+      .select()
+      .single()
+
+    // Send invoice receipt email
+    if (business && plan && invoice) {
+      await sendInvoiceReceipt({
+        to: business.email,
+        businessName: business.name,
+        invoiceNumber: invoice.invoice_number,
+        amount: invoice.amount,
+        planName: plan.display_name,
+        billingPeriodStart: invoice.billing_period_start,
+        billingPeriodEnd: invoice.billing_period_end,
+        invoiceId: invoice.id
+      })
+      console.log('Invoice receipt email sent to:', business.email)
+    }
 
     // Log event
     await logSubscriptionEvent({
-      business_id: metadata.business_id,
+      business_id: businessId,
       event_type: 'payment_succeeded',
       new_status: 'active',
-      metadata: { reference, amount: data.amount }
+      metadata: { reference, amount: amount / 100, invoice_number: invoiceNumber }
     })
 
     console.log('Charge success handled:', reference)
