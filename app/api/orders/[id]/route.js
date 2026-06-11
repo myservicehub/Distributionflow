@@ -3,6 +3,15 @@ import { createSupabaseClient, getUserBusinessId, handleCORS, errorResponse, suc
 import { enforceSubscription } from '@/lib/api/subscription'
 import { logAudit, AUDIT_ACTIONS, RESOURCE_TYPES } from '@/lib/audit-logger'
 import { sendNotification } from '@/lib/notifications'
+import { sendDriverDispatchSMS, sendDeliverySMS, formatNigerianPhone } from '@/lib/sms-notifications'
+import { createClient } from '@supabase/supabase-js'
+
+// Create admin client for driver lookups
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const adminSupabase = createClient(supabaseUrl, supabaseKey, {
+  auth: { autoRefreshToken: false, persistSession: false }
+})
 
 export async function GET(request, { params }) {
   const supabase = createSupabaseClient()
@@ -40,7 +49,7 @@ export async function PUT(request, { params }) {
 
   try {
     const body = await request.json()
-    const { order_status, payment_status, notes, delivery_notes } = body
+    const { order_status, payment_status, notes, delivery_notes, driver_id, driver_name, driver_phone, vehicle_number } = body
 
     // Permission checks by action
     if (order_status === 'approved' || order_status === 'rejected') {
@@ -61,6 +70,17 @@ export async function PUT(request, { params }) {
     if (payment_status !== undefined) updatePayload.payment_status = payment_status
     if (notes !== undefined) updatePayload.notes = notes
     if (delivery_notes !== undefined) updatePayload.delivery_notes = delivery_notes
+    if (driver_id !== undefined) updatePayload.driver_id = driver_id
+    if (driver_name !== undefined) updatePayload.driver_name = driver_name
+    if (vehicle_number !== undefined) updatePayload.vehicle_number = vehicle_number
+    
+    // Set dispatched_at timestamp when status changes to dispatched
+    if (order_status === 'dispatched' || order_status === 'out_for_delivery') {
+      updatePayload.dispatched_at = new Date().toISOString()
+      if (order_status === 'out_for_delivery') {
+        updatePayload.delivery_status = 'out_for_delivery'
+      }
+    }
 
     const { data: order, error: updateError } = await supabase
       .from('orders')
@@ -75,11 +95,88 @@ export async function PUT(request, { params }) {
 
     // Send notifications on status changes
     if (order_status === 'approved') {
-      await sendNotification(supabase, order.sales_rep_id, userContext.businessId,
-        'order_approved', `Order #${order.order_number} has been approved.`, { order_id: order.id })
+      await sendNotification({
+        title: 'Order Approved',
+        message: `Order #${order.order_number} has been approved.`,
+        type: 'order',
+        targetRoles: ['sales_rep'],
+        businessId: userContext.businessId,
+        triggeredBy: userContext.userId,
+        relatedTable: 'orders',
+        relatedRecordId: order.id
+      })
     } else if (order_status === 'rejected') {
-      await sendNotification(supabase, order.sales_rep_id, userContext.businessId,
-        'order_rejected', `Order #${order.order_number} has been rejected.`, { order_id: order.id })
+      await sendNotification({
+        title: 'Order Rejected',
+        message: `Order #${order.order_number} has been rejected.`,
+        type: 'order',
+        targetRoles: ['sales_rep'],
+        businessId: userContext.businessId,
+        triggeredBy: userContext.userId,
+        relatedTable: 'orders',
+        relatedRecordId: order.id
+      })
+    }
+
+    // Handle driver assignment and dispatch notifications
+    if (body.driver_id || body.driver_name) {
+      try {
+        // Get full order details with retailer info
+        const { data: fullOrder } = await adminSupabase
+          .from('orders')
+          .select('*, retailers(shop_name, address, phone), drivers(name, phone, user_id)')
+          .eq('id', params.id)
+          .single()
+
+        if (fullOrder) {
+          // Send in-app notification to driver if driver has a user account
+          if (fullOrder.drivers?.user_id) {
+            await sendNotification({
+              title: 'New Delivery Assignment',
+              message: `You've been assigned to deliver Order #${fullOrder.order_number} to ${fullOrder.retailers?.shop_name || 'a retailer'}.`,
+              type: 'order',
+              targetRoles: ['driver'],
+              businessId: userContext.businessId,
+              triggeredBy: userContext.userId,
+              relatedTable: 'orders',
+              relatedRecordId: fullOrder.id
+            })
+          }
+
+          // Send SMS to driver if phone is available
+          const driverPhone = fullOrder.drivers?.phone || body.driver_phone
+          if (driverPhone) {
+            const formattedPhone = formatNigerianPhone(driverPhone)
+            if (formattedPhone) {
+              await sendDriverDispatchSMS({
+                to: formattedPhone,
+                driverName: fullOrder.drivers?.name || body.driver_name || 'Driver',
+                orderReference: fullOrder.order_number,
+                retailerName: fullOrder.retailers?.shop_name || 'the retailer',
+                deliveryAddress: fullOrder.retailers?.address || 'the delivery address'
+              })
+            }
+          }
+
+          // Send SMS to retailer about dispatch
+          if (fullOrder.retailers?.phone && order_status === 'dispatched') {
+            const retailerPhone = formatNigerianPhone(fullOrder.retailers.phone)
+            if (retailerPhone) {
+              await sendDeliverySMS({
+                to: retailerPhone,
+                orderReference: fullOrder.order_number,
+                status: 'out_for_delivery',
+                retailerName: fullOrder.retailers.shop_name,
+                driverName: fullOrder.drivers?.name || body.driver_name,
+                vehicleNumber: fullOrder.vehicle_number || body.vehicle_number
+              })
+            }
+          }
+        }
+      } catch (notifError) {
+        console.error('Error sending driver notifications:', notifError)
+        // Don't fail the whole request if notifications fail
+      }
     }
 
     await logAudit(supabase, userContext.userId, userContext.businessId,
