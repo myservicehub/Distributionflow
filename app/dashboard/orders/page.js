@@ -199,6 +199,17 @@ export default function OrdersPage() {
       // Handle both old format (array) and new format (object with data property)
       const data = Array.isArray(responseData) ? responseData : (responseData.data || [])
       console.log('📦 Orders loaded:', data.length, 'orders')
+      
+      // Log sales rep info for debugging
+      data.forEach(order => {
+        if (!order.sales_rep || !order.sales_rep.name) {
+          console.log(`⚠️ Order ${order.id.slice(0, 8)} has no sales_rep:`, {
+            sales_rep_id: order.sales_rep_id,
+            sales_rep: order.sales_rep
+          })
+        }
+      })
+      
       if (data.length > 0 && data[0].order_items && data[0].order_items.length > 0) {
         console.log('📦 First order_item:', JSON.stringify(data[0].order_items[0], null, 2))
       }
