@@ -126,7 +126,7 @@ export async function GET(request) {
     if (route === 'retailer-empty-balances') {
       const retailerId = searchParams.get('retailer_id')
       
-      let query = supabase
+      let query = adminSupabase
         .from('retailer_empty_balances')
         .select(`
           *,
@@ -623,6 +623,13 @@ export async function POST(request) {
     if (route === 'process-empty-return') {
       const { retailer_id, empty_item_id, quantity, order_id, notes } = body
 
+      // Validate input
+      if (!retailer_id || !empty_item_id || !quantity || quantity <= 0) {
+        return handleCORS(NextResponse.json({ 
+          error: 'Missing required fields: retailer_id, empty_item_id, quantity' 
+        }, { status: 400 }))
+      }
+
       // Validate retailer balance (from VIEW)
       const { data: balance } = await adminSupabase
         .from('retailer_empty_balances')
@@ -642,20 +649,44 @@ export async function POST(request) {
       // The view will automatically recalculate after we log the movement below
 
       // Increase warehouse inventory
-      const { data: warehouse } = await adminSupabase
+      const { data: warehouse, error: warehouseSelectError } = await adminSupabase
         .from('warehouse_empty_inventory')
         .select('quantity_available')
         .eq('business_id', userProfile.business_id)
         .eq('empty_item_id', empty_item_id)
-        .single()
+        .maybeSingle()
 
-      const { error: warehouseError } = await adminSupabase
-        .from('warehouse_empty_inventory')
-        .update({ quantity_available: (warehouse?.quantity_available || 0) + quantity })
-        .eq('business_id', userProfile.business_id)
-        .eq('empty_item_id', empty_item_id)
+      if (warehouseSelectError) {
+        console.error('Error fetching warehouse inventory:', warehouseSelectError)
+        throw warehouseSelectError
+      }
 
-      if (warehouseError) throw warehouseError
+      if (warehouse) {
+        // Update existing warehouse inventory
+        const { error: warehouseError } = await adminSupabase
+          .from('warehouse_empty_inventory')
+          .update({ 
+            quantity_available: warehouse.quantity_available + quantity,
+            updated_at: new Date().toISOString()
+          })
+          .eq('business_id', userProfile.business_id)
+          .eq('empty_item_id', empty_item_id)
+
+        if (warehouseError) throw warehouseError
+      } else {
+        // Create new warehouse inventory record
+        const { error: createError } = await adminSupabase
+          .from('warehouse_empty_inventory')
+          .insert({
+            business_id: userProfile.business_id,
+            empty_item_id,
+            quantity_available: quantity,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+
+        if (createError) throw createError
+      }
 
       // Log movement
       const { data: movement } = await adminSupabase
