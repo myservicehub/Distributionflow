@@ -171,9 +171,15 @@ export async function GET(request) {
         `)
         .eq('id', invoiceId)
         .eq('business_id', userProfile.business_id)
-        .single()
+        .maybeSingle()
 
-      if (error || !invoice) {
+      if (error) {
+        console.error('Error fetching invoice:', error)
+        return handleCORS(NextResponse.json({ error: 'Error fetching invoice: ' + error.message }, { status: 500 }))
+      }
+
+      if (!invoice) {
+        console.error('Invoice not found:', invoiceId, 'for business:', userProfile.business_id)
         return handleCORS(NextResponse.json({ error: 'Invoice not found' }, { status: 404 }))
       }
 
