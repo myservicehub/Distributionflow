@@ -592,47 +592,8 @@ export async function POST(request) {
         throw updateWarehouseError
       }
 
-      // Increase or create retailer balance
-      const { data: existingBalance } = await adminSupabase
-        .from('retailer_empty_balances')
-        .select('quantity_outstanding')
-        .eq('business_id', userProfile.business_id)
-        .eq('retailer_id', retailer_id)
-        .eq('empty_item_id', empty_item_id)
-        .maybeSingle()
-
-      if (existingBalance) {
-        // Update existing balance
-        const { error: balanceError } = await adminSupabase
-          .from('retailer_empty_balances')
-          .update({ 
-            quantity_outstanding: existingBalance.quantity_outstanding + quantity,
-            updated_at: new Date().toISOString()
-          })
-          .eq('business_id', userProfile.business_id)
-          .eq('retailer_id', retailer_id)
-          .eq('empty_item_id', empty_item_id)
-
-        if (balanceError) {
-          console.error('Error updating retailer balance:', balanceError)
-          throw balanceError
-        }
-      } else {
-        // Create new balance record
-        const { error: balanceError } = await adminSupabase
-          .from('retailer_empty_balances')
-          .insert({
-            business_id: userProfile.business_id,
-            retailer_id,
-            empty_item_id,
-            quantity_outstanding: quantity
-          })
-
-        if (balanceError) {
-          console.error('Error creating retailer balance:', balanceError)
-          throw balanceError
-        }
-      }
+      // Note: retailer_empty_balances is a VIEW that auto-calculates from empty_movements
+      // No need to manually update it - just log the movement below
 
       // Log movement
       const { data: movement } = await adminSupabase
@@ -662,14 +623,14 @@ export async function POST(request) {
     if (route === 'process-empty-return') {
       const { retailer_id, empty_item_id, quantity, order_id, notes } = body
 
-      // Validate retailer balance
+      // Validate retailer balance (from VIEW)
       const { data: balance } = await adminSupabase
         .from('retailer_empty_balances')
         .select('quantity_outstanding')
         .eq('business_id', userProfile.business_id)
         .eq('retailer_id', retailer_id)
         .eq('empty_item_id', empty_item_id)
-        .single()
+        .maybeSingle()
 
       if (!balance || balance.quantity_outstanding < quantity) {
         return handleCORS(NextResponse.json({ 
@@ -677,15 +638,8 @@ export async function POST(request) {
         }, { status: 400 }))
       }
 
-      // Reduce retailer balance
-      const { error: balanceError } = await adminSupabase
-        .from('retailer_empty_balances')
-        .update({ quantity_outstanding: balance.quantity_outstanding - quantity })
-        .eq('business_id', userProfile.business_id)
-        .eq('retailer_id', retailer_id)
-        .eq('empty_item_id', empty_item_id)
-
-      if (balanceError) throw balanceError
+      // Note: No need to manually update retailer_empty_balances (it's a VIEW)
+      // The view will automatically recalculate after we log the movement below
 
       // Increase warehouse inventory
       const { data: warehouse } = await adminSupabase
