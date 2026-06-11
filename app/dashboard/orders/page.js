@@ -435,7 +435,7 @@ export default function OrdersPage() {
       const response = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'approve' })
+        body: JSON.stringify({ order_status: 'approved' })
       })
 
       if (!response.ok) {
@@ -455,7 +455,7 @@ export default function OrdersPage() {
       const response = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reject', reason: 'Rejected by admin' })
+        body: JSON.stringify({ order_status: 'rejected' })
       })
 
       if (!response.ok) {
@@ -463,7 +463,7 @@ export default function OrdersPage() {
         throw new Error(error.error || 'Failed to reject order')
       }
 
-      toast.success('Order rejected')
+      toast.success('Order rejected successfully!')
       loadOrders()
     } catch (error) {
       toast.error(error.message)
