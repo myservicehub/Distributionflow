@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { ChevronDown, ChevronUp, TrendingDown, BarChart3, Package, Store, Calendar, CreditCard, AlertTriangle, DollarSign, ShoppingBag, Download } from 'lucide-react'
+import { ChevronDown, ChevronUp, TrendingDown, BarChart3, Package, Store, Calendar, CreditCard, AlertTriangle, DollarSign, ShoppingBag, Download, TruckIcon, CheckCircle2, XCircle, Clock } from 'lucide-react'
 import { DateRangeFilter, getDateRangeStart } from '@/components/ui/date-range-filter'
 
 // CSV Export utility function
@@ -235,10 +235,101 @@ function InventoryMobileCard({ product }) {
   )
 }
 
+// Mobile Card for Driver Performance
+function DriverPerformanceMobileCard({ driver }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const successRate = driver.success_rate || 0
+
+  return (
+    <Card className="border-2 border-neutral-200 hover:border-emerald-200 transition-all shadow-sm">
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <TruckIcon className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+                <h3 className="font-bold text-neutral-900 truncate">{driver.name}</h3>
+              </div>
+              <p className="text-xs text-neutral-500">{driver.vehicle_number || 'No vehicle'}</p>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <p className="text-xl font-bold text-emerald-600">
+                {driver.deliveries_in_range}
+              </p>
+              <p className="text-xs text-neutral-500">deliveries</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="py-2 px-3 bg-green-50 rounded-lg">
+              <div className="flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3 text-green-600" />
+                <span className="text-xs text-neutral-600">Success</span>
+              </div>
+              <p className="text-sm font-bold text-green-700">{driver.successful_in_range}</p>
+            </div>
+            <div className="py-2 px-3 bg-red-50 rounded-lg">
+              <div className="flex items-center gap-1">
+                <XCircle className="h-3 w-3 text-red-600" />
+                <span className="text-xs text-neutral-600">Failed</span>
+              </div>
+              <p className="text-sm font-bold text-red-700">{driver.failed_in_range}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between py-2 px-3 bg-emerald-50 rounded-lg">
+            <span className="text-sm text-neutral-600">Success Rate:</span>
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+              successRate >= 90 ? 'bg-green-100 text-green-800 border border-green-200' :
+              successRate >= 75 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+              successRate >= 50 ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+              'bg-red-100 text-red-800 border border-red-200'
+            }`}>
+              {successRate}%
+            </span>
+          </div>
+
+          {isExpanded && (
+            <div className="space-y-2 pt-2 animate-slide-down border-t border-neutral-200">
+              <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 rounded-lg">
+                <span className="text-sm text-neutral-600">Total (All-Time):</span>
+                <span className="font-medium text-neutral-900">{driver.total_deliveries}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-3 bg-neutral-50 rounded-lg">
+                <span className="text-sm text-neutral-600">Avg. Time:</span>
+                <span className="font-medium text-neutral-900">{driver.avg_delivery_time_hours}h</span>
+              </div>
+              <div className="flex items-center justify-between py-2 px-3 bg-emerald-50 rounded-lg">
+                <span className="text-sm text-neutral-600">Revenue:</span>
+                <span className="font-medium text-emerald-700">₦{parseFloat(driver.total_revenue || 0).toLocaleString()}</span>
+              </div>
+            </div>
+          )}
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full hover:bg-emerald-50 hover:border-emerald-300 border-2 transition-all"
+          >
+            {isExpanded ? (
+              <><ChevronUp className="h-4 w-4 mr-1" />Show Less</>
+            ) : (
+              <><ChevronDown className="h-4 w-4 mr-1" />View More Details</>
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function ReportsPage() {
   const [debtAging, setDebtAging] = useState([])
   const [salesByRep, setSalesByRep] = useState([])
   const [inventory, setInventory] = useState([])
+  const [driverPerformance, setDriverPerformance] = useState([])
+  const [driverSummary, setDriverSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [expandedReps, setExpandedReps] = useState({})
   const [dateRange, setDateRange] = useState('30d')
@@ -294,6 +385,16 @@ export default function ReportsPage() {
         const inventoryData = await inventoryResponse.json()
         setInventory(inventoryData)
       }
+
+      // Driver performance - apply date filter
+      const driverResponse = await fetch(`/api/reports/driver-performance?${params}&${rangeParam}`, { signal })
+      if (driverResponse.ok) {
+        const driverData = await driverResponse.json()
+        if (driverData.success && driverData.data) {
+          setDriverPerformance(driverData.data.drivers || [])
+          setDriverSummary(driverData.data.summary || null)
+        }
+      }
     } catch (error) {
       if (error.name === 'AbortError') return
       console.error('Error loading reports:', error)
@@ -328,6 +429,7 @@ export default function ReportsPage() {
           <TabsTrigger value="debt" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">Debt Aging</TabsTrigger>
           <TabsTrigger value="sales" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">Sales by Rep</TabsTrigger>
           <TabsTrigger value="inventory" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">Inventory Report</TabsTrigger>
+          <TabsTrigger value="drivers" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">Driver Performance</TabsTrigger>
         </TabsList>
 
         {/* Debt Aging Report */}
@@ -732,6 +834,199 @@ export default function ReportsPage() {
                 </div>
               </CardContent>
             </Card>
+          )}
+        </TabsContent>
+
+        {/* Driver Performance Report */}
+        <TabsContent value="drivers" className="space-y-4">
+          {/* Summary Cards */}
+          {driverSummary && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <Card className="border-2 border-emerald-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TruckIcon className="h-4 w-4 text-emerald-600" />
+                    <p className="text-sm text-neutral-600">Total Drivers</p>
+                  </div>
+                  <p className="text-2xl font-bold text-emerald-600">{driverSummary.active_drivers}/{driverSummary.total_drivers}</p>
+                  <p className="text-xs text-neutral-500 mt-1">Active</p>
+                </CardContent>
+              </Card>
+              <Card className="border-2 border-blue-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Package className="h-4 w-4 text-blue-600" />
+                    <p className="text-sm text-neutral-600">Deliveries ({rangeLabel})</p>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-600">{driverSummary.total_deliveries_in_range}</p>
+                  <p className="text-xs text-neutral-500 mt-1">Total: {driverSummary.total_deliveries_all_time}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-2 border-green-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <p className="text-sm text-neutral-600">Success Rate</p>
+                  </div>
+                  <p className="text-2xl font-bold text-green-600">{driverSummary.overall_success_rate}%</p>
+                  <p className="text-xs text-neutral-500 mt-1">{driverSummary.successful_deliveries} successful</p>
+                </CardContent>
+              </Card>
+              <Card className="border-2 border-red-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <XCircle className="h-4 w-4 text-red-600" />
+                    <p className="text-sm text-neutral-600">Failed Deliveries</p>
+                  </div>
+                  <p className="text-2xl font-bold text-red-600">{driverSummary.failed_deliveries}</p>
+                  <p className="text-xs text-neutral-500 mt-1">In selected range</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Date Range Filter */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-cyan-100 rounded-lg">
+                <TruckIcon className="h-5 w-5 text-cyan-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-neutral-900">Driver Performance</h3>
+                <p className="text-sm text-neutral-600">Track delivery metrics and success rates</p>
+              </div>
+            </div>
+            <DateRangeFilter value={dateRange} onChange={handleDateChange} />
+          </div>
+
+          {/* Mobile View */}
+          <div className="block md:hidden space-y-4 animate-fade-in">
+            {driverPerformance.length === 0 ? (
+              <Card className="border-2 border-neutral-200">
+                <CardContent className="p-8 text-center">
+                  <TruckIcon className="h-12 w-12 text-neutral-400 mx-auto mb-3" />
+                  <p className="text-neutral-600 text-lg font-medium">No drivers yet</p>
+                  <p className="text-neutral-500 text-sm mt-1">Add drivers from the Staff page</p>
+                </CardContent>
+              </Card>
+            ) : (
+              driverPerformance.map((driver) => (
+                <DriverPerformanceMobileCard key={driver.id} driver={driver} />
+              ))
+            )}
+          </div>
+
+          {/* Desktop View */}
+          <Card className="hidden md:block border-2 border-neutral-200 shadow-soft animate-fade-in">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-neutral-50">
+                      <TableHead className="font-semibold">Driver</TableHead>
+                      <TableHead className="font-semibold">Vehicle</TableHead>
+                      <TableHead className="font-semibold text-center">Deliveries ({rangeLabel})</TableHead>
+                      <TableHead className="font-semibold text-center">Success</TableHead>
+                      <TableHead className="font-semibold text-center">Failed</TableHead>
+                      <TableHead className="font-semibold text-center">Success Rate</TableHead>
+                      <TableHead className="font-semibold text-center">Avg. Time</TableHead>
+                      <TableHead className="font-semibold text-right">Total (All-Time)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {driverPerformance.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-16">
+                          <TruckIcon className="h-12 w-12 text-neutral-400 mx-auto mb-3" />
+                          <p className="text-neutral-600 text-lg font-medium">No drivers yet</p>
+                          <p className="text-neutral-500 text-sm mt-1">Add drivers from the Staff page</p>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      driverPerformance.map((driver) => {
+                        const successRate = driver.success_rate || 0
+                        return (
+                          <TableRow key={driver.id} className="hover:bg-emerald-50 transition-colors">
+                            <TableCell>
+                              <div>
+                                <p className="font-medium text-neutral-900">{driver.name}</p>
+                                <p className="text-xs text-neutral-500">{driver.phone || 'No phone'}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm text-neutral-700">{driver.vehicle_number || 'N/A'}</span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className="font-semibold text-blue-600">{driver.deliveries_in_range}</span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                <span className="font-medium text-green-700">{driver.successful_in_range}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <XCircle className="h-4 w-4 text-red-600" />
+                                <span className="font-medium text-red-700">{driver.failed_in_range}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                successRate >= 90 ? 'bg-green-100 text-green-800' :
+                                successRate >= 75 ? 'bg-emerald-100 text-emerald-800' :
+                                successRate >= 50 ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {successRate}%
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <Clock className="h-4 w-4 text-neutral-500" />
+                                <span className="text-sm text-neutral-700">{driver.avg_delivery_time_hours}h</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span className="font-semibold text-neutral-900">{driver.total_deliveries}</span>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Export Button */}
+          {driverPerformance.length > 0 && (
+            <div className="flex justify-end">
+              <Button
+                onClick={() => exportToCSV(
+                  driverPerformance,
+                  'driver-performance',
+                  [
+                    { label: 'Driver Name', getValue: (d) => d.name },
+                    { label: 'Vehicle', getValue: (d) => d.vehicle_number || 'N/A' },
+                    { label: 'Phone', getValue: (d) => d.phone || 'N/A' },
+                    { label: `Deliveries (${rangeLabel})`, getValue: (d) => d.deliveries_in_range },
+                    { label: 'Successful', getValue: (d) => d.successful_in_range },
+                    { label: 'Failed', getValue: (d) => d.failed_in_range },
+                    { label: 'Success Rate (%)', getValue: (d) => d.success_rate },
+                    { label: 'Avg. Delivery Time (hours)', getValue: (d) => d.avg_delivery_time_hours },
+                    { label: 'Total Deliveries (All-Time)', getValue: (d) => d.total_deliveries },
+                    { label: 'Total Revenue', getValue: (d) => d.total_revenue }
+                  ]
+                )}
+                variant="outline"
+                className="border-2 hover:border-emerald-300 hover:bg-emerald-50"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export to CSV
+              </Button>
+            </div>
           )}
         </TabsContent>
       </Tabs>
