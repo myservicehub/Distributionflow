@@ -286,7 +286,8 @@ export default function StaffPage() {
       admin: 'bg-purple-100 text-purple-700 border-purple-200',
       manager: 'bg-blue-100 text-blue-700 border-blue-200',
       sales_rep: 'bg-success-100 text-success-700 border-success-200',
-      warehouse: 'bg-orange-100 text-orange-700 border-orange-200'
+      warehouse: 'bg-orange-100 text-orange-700 border-orange-200',
+      driver: 'bg-cyan-100 text-cyan-700 border-cyan-200'
     }
     return colors[role] || 'bg-neutral-100 text-neutral-700 border-neutral-200'
   }
@@ -535,6 +536,7 @@ export default function StaffPage() {
                     <SelectItem value="manager">Manager</SelectItem>
                     <SelectItem value="sales_rep">Sales Representative</SelectItem>
                     <SelectItem value="warehouse">Warehouse Staff</SelectItem>
+                    <SelectItem value="driver">Driver</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -599,6 +601,7 @@ export default function StaffPage() {
                     <SelectItem value="manager">Manager</SelectItem>
                     <SelectItem value="sales_rep">Sales Representative</SelectItem>
                     <SelectItem value="warehouse">Warehouse Staff</SelectItem>
+                    <SelectItem value="driver">Driver</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
