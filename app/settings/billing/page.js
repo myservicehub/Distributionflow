@@ -137,12 +137,27 @@ function BillingPageContent() {
     )
   }
 
-  const currentPlan = billingData?.plan
+  const currentPlan = billingData?.plans || billingData?.plan
   const subscriptionStatus = billingData?.subscription_status
   const trialEndDate = billingData?.trial_end_date
   const isOnTrial = subscriptionStatus === 'trial'
   const isExpired = subscriptionStatus === 'expired'
   const isActive = subscriptionStatus === 'active'
+
+  // Debug logging
+  console.log('📊 Billing Data:', { 
+    billingData,
+    currentPlan, 
+    subscriptionStatus,
+    planId: currentPlan?.id,
+    planName: currentPlan?.name,
+    planDisplayName: currentPlan?.display_name
+  })
+  console.log('📋 Available Plans:', plans.map(p => ({ 
+    id: p.id, 
+    name: p.name, 
+    display_name: p.display_name 
+  })))
 
   const daysUntilTrialEnd = isOnTrial && trialEndDate
     ? Math.ceil((new Date(trialEndDate) - new Date()) / (1000 * 60 * 60 * 24))
