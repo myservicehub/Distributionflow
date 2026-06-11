@@ -114,7 +114,7 @@ function StockMovementMobileCard({ movement }) {
         <div className="space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-neutral-900 truncate">{movement.product?.name || 'Unknown Product'}</h3>
+              <h3 className="font-bold text-neutral-900 truncate">{movement.products?.name || movement.product?.name || 'Unknown Product'}</h3>
               <p className="text-xs text-neutral-500 flex items-center gap-1 mt-1">
                 <Calendar className="h-3 w-3" />
                 {new Date(movement.created_at).toLocaleDateString()}
@@ -619,7 +619,7 @@ export default function InventoryPage() {
                             {new Date(movement.created_at).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="font-medium text-neutral-900">
-                            {movement.product?.name || 'Unknown Product'}
+                            {movement.products?.name || movement.product?.name || 'Unknown Product'}
                           </TableCell>
                           <TableCell>
                             {movement.type === 'in' ? (
