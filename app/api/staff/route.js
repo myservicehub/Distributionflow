@@ -170,14 +170,27 @@ export async function POST(request) {
 
     // Send invitation email
     try {
-      await sendStaffInvitation(
-        validatedData.email,
-        validatedData.name,
-        tempPassword,
-        userContext.businessId
-      )
+      // Get business name for email
+      const { data: business } = await supabaseAdmin
+        .from('businesses')
+        .select('name')
+        .eq('id', userContext.businessId)
+        .single()
+
+      const loginUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://distrib-flow-2.preview.emergentagent.com'}/login`
+
+      await sendStaffInvitation({
+        to: validatedData.email,
+        staffName: validatedData.name,
+        businessName: business?.name || 'Your Business',
+        role: validatedData.role,
+        tempPassword: tempPassword,
+        loginUrl: loginUrl
+      })
+      
+      console.log('✅ Invitation email sent to:', validatedData.email)
     } catch (emailError) {
-      console.error('Failed to send invitation email:', emailError)
+      console.error('❌ Failed to send invitation email:', emailError)
       // Don't fail the request if email fails
     }
 
