@@ -126,7 +126,8 @@ export async function POST(request) {
       email_confirm: true,
       user_metadata: {
         name: validatedData.name,
-        role: validatedData.role
+        role: validatedData.role,
+        needs_password_change: true  // Force password change on first login
       }
     })
 
@@ -137,6 +138,7 @@ export async function POST(request) {
       .from('users')
       .insert([{
         id: authUser.user.id,
+        auth_user_id: authUser.user.id,  // Add auth_user_id
         name: validatedData.name,
         email: validatedData.email,
         role: validatedData.role,
