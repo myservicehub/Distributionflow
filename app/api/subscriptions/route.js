@@ -3,6 +3,7 @@
 
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import {
   getAvailablePlans,
@@ -28,6 +29,7 @@ import {
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 async function getSupabaseClient() {
   const cookieStore = await cookies()
@@ -45,6 +47,15 @@ async function getSupabaseClient() {
         } catch {}
       },
     },
+  })
+}
+
+function getAdminClient() {
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
   })
 }
 
