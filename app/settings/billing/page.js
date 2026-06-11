@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, CreditCard, Users, Calendar, AlertTriangle, Check, TrendingUp, Menu, RefreshCw } from 'lucide-react'
+import { Loader2, CreditCard, Users, Calendar, AlertTriangle, Check, TrendingUp, Menu, RefreshCw, FileText } from 'lucide-react'
 import DynamicSidebar from '@/components/layout/DynamicSidebar'
 import { toast } from 'sonner'
 
@@ -449,19 +449,33 @@ function BillingPageContent() {
               {invoices.map((invoice) => (
                 <div
                   key={invoice.id}
-                  className="flex items-center justify-between p-4 border rounded-lg"
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-neutral-50 transition-colors"
                 >
-                  <div>
+                  <div className="flex-1">
                     <p className="font-medium">{invoice.invoice_number}</p>
                     <p className="text-sm text-muted-foreground">
-                      {new Date(invoice.created_at).toLocaleDateString()}
+                      {new Date(invoice.created_at).toLocaleDateString('en-GB', { 
+                        day: '2-digit', 
+                        month: 'short', 
+                        year: 'numeric' 
+                      })}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium">₦{invoice.amount?.toLocaleString()}</p>
-                    <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'}>
-                      {invoice.status}
-                    </Badge>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="font-medium">₦{invoice.amount?.toLocaleString()}</p>
+                      <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'}>
+                        {invoice.status}
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(`/api/subscriptions?route=view-invoice&invoice_id=${invoice.id}`, '_blank')}
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      View
+                    </Button>
                   </div>
                 </div>
               ))}

@@ -142,6 +142,116 @@ export async function GET(request) {
     }
 
     // ============================================
+    // GET: View Invoice (for download/view)
+    // ============================================
+    if (route === 'view-invoice') {
+      const invoiceId = searchParams.get('invoice_id')
+      if (!invoiceId) {
+        return handleCORS(NextResponse.json({ error: 'Invoice ID required' }, { status: 400 }))
+      }
+
+      const supabase = getAdminClient()
+      const { data: invoice, error } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          businesses(name, email, address, phone),
+          plans(display_name, base_price)
+        `)
+        .eq('id', invoiceId)
+        .eq('business_id', userProfile.business_id)
+        .single()
+
+      if (error || !invoice) {
+        return handleCORS(NextResponse.json({ error: 'Invoice not found' }, { status: 404 }))
+      }
+
+      // Generate HTML invoice
+      const invoiceHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Invoice ${invoice.invoice_number}</title>
+          <style>
+            body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
+            .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #059669; padding-bottom: 20px; }
+            .header h1 { color: #059669; margin: 0; }
+            .invoice-info { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+            .company-info, .invoice-details { }
+            .invoice-details { text-align: right; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+            th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+            th { background-color: #f3f4f6; font-weight: 600; }
+            .total { text-align: right; font-size: 1.5em; font-weight: bold; color: #059669; }
+            .footer { text-align: center; margin-top: 60px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; }
+            .status-badge { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 0.85em; font-weight: 600; }
+            .status-paid { background-color: #d1fae5; color: #065f46; }
+            .status-pending { background-color: #fef3c7; color: #92400e; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>DISTRIBUTIONFLOW</h1>
+            <p>Invoice Receipt</p>
+          </div>
+
+          <div class="invoice-info">
+            <div class="company-info">
+              <h3>Bill To:</h3>
+              <p><strong>${invoice.businesses?.name || 'N/A'}</strong></p>
+              <p>${invoice.businesses?.email || 'N/A'}</p>
+              <p>${invoice.businesses?.phone || 'N/A'}</p>
+              <p>${invoice.businesses?.address || 'N/A'}</p>
+            </div>
+            <div class="invoice-details">
+              <h3>Invoice Details:</h3>
+              <p><strong>Invoice #:</strong> ${invoice.invoice_number}</p>
+              <p><strong>Date:</strong> ${new Date(invoice.created_at).toLocaleDateString('en-GB')}</p>
+              <p><strong>Status:</strong> <span class="status-badge status-${invoice.status}">${invoice.status.toUpperCase()}</span></p>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th>Plan</th>
+                <th>Period</th>
+                <th style="text-align: right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Subscription Payment</td>
+                <td>${invoice.plans?.display_name || 'N/A'}</td>
+                <td>${invoice.billing_period_start ? new Date(invoice.billing_period_start).toLocaleDateString('en-GB') : 'N/A'} - ${invoice.billing_period_end ? new Date(invoice.billing_period_end).toLocaleDateString('en-GB') : 'N/A'}</td>
+                <td style="text-align: right;">₦${(invoice.amount || 0).toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="total">
+            Total: ₦${(invoice.amount || 0).toLocaleString()}
+          </div>
+
+          <div class="footer">
+            <p>Thank you for your business!</p>
+            <p>For support, contact us at support@distributionflow.com</p>
+          </div>
+        </body>
+        </html>
+      `
+
+      return new NextResponse(invoiceHTML, {
+        headers: {
+          'Content-Type': 'text/html',
+          'Content-Disposition': `inline; filename="invoice-${invoice.invoice_number}.html"`
+        }
+      })
+    }
+
+    // ============================================
     // GET: Invoices (for billing dashboard)
     // ============================================
     if (route === 'get-invoices') {
