@@ -80,7 +80,7 @@ export default function DeliveryBoardPage() {
       const response = await fetch(`/api/orders/${orderId}`)
       if (!response.ok) throw new Error('Failed to load order details')
       const data = await response.json()
-      setOrderItems(data.items || [])
+      setOrderItems(data.order_items || [])  // Fixed: API returns order_items, not items
       setViewingOrderDetails(data)
     } catch (error) {
       console.error('Failed to load order items:', error)
