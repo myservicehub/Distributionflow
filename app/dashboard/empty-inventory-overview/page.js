@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth-context'
 
@@ -416,6 +416,9 @@ export default function EmptyInventoryOverviewPage() {
               <Package className="h-5 w-5 text-emerald-600" />
               {selectedItem?.name}
             </DialogTitle>
+            <DialogDescription>
+              View detailed inventory breakdown for this empty bottle item.
+            </DialogDescription>
           </DialogHeader>
           {selectedItem && (
             <div className="space-y-4 py-4">
