@@ -25,7 +25,7 @@ export async function GET(request, { params }) {
         *,
         retailers(shop_name, owner_name, phone, address),
         sales_rep:users!orders_sales_rep_id_fkey(name, email),
-        order_items(*, products(name, sku, unit_price, empty_item_id))
+        order_items(*, products(name, sku, selling_price, cost_price, empty_item_id))
       `)
       .eq('id', params.id)
       .eq('business_id', userContext.businessId)
