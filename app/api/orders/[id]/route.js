@@ -49,25 +49,59 @@ export async function PUT(request, { params }) {
 
   try {
     const body = await request.json()
-    const { order_status, payment_status, notes, delivery_notes, driver_id, driver_name, driver_phone, vehicle_number } = body
+    const { action, order_status, payment_status, notes, delivery_notes, driver_id, driver_name, driver_phone, vehicle_number } = body
 
-    // Permission checks by action
-    if (order_status === 'confirmed' || order_status === 'cancelled') {
+    // Build update payload first
+    const updatePayload = { updated_at: new Date().toISOString() }
+
+    // Handle action-based updates from delivery board
+    let effectiveOrderStatus = order_status
+    let effectiveDeliveryStatus = body.delivery_status
+    
+    if (action) {
+      switch (action) {
+        case 'pack':
+          effectiveDeliveryStatus = 'packed'
+          updatePayload.packed_at = new Date().toISOString()
+          break
+        case 'dispatch':
+          effectiveDeliveryStatus = 'out_for_delivery'
+          updatePayload.dispatched_at = new Date().toISOString()
+          break
+        case 'deliver':
+          effectiveDeliveryStatus = 'delivered'
+          effectiveOrderStatus = 'completed'
+          updatePayload.delivered_at = new Date().toISOString()
+          break
+        default:
+          // Unknown action - ignore
+          break
+      }
+    }
+
+    // Permission checks by action or status
+    if (effectiveOrderStatus === 'confirmed' || effectiveOrderStatus === 'cancelled') {
       if (!['admin', 'manager'].includes(userContext.role)) {
         return errorResponse('Forbidden: Only admins and managers can approve/reject orders', 403)
       }
     }
 
-    if (order_status === 'packed' || order_status === 'dispatched') {
+    if (effectiveDeliveryStatus === 'packed' || effectiveDeliveryStatus === 'out_for_delivery') {
       if (!['admin', 'manager', 'warehouse'].includes(userContext.role)) {
         return errorResponse('Forbidden: Only warehouse staff can update delivery status', 403)
       }
     }
-
-    // Build update payload — only include fields that were sent
-    const updatePayload = { updated_at: new Date().toISOString() }
-    // Map order_status to the database column 'status'
-    if (order_status !== undefined) updatePayload.status = order_status
+    
+    // Map order_status to BOTH new and old database columns for compatibility
+    if (effectiveOrderStatus !== undefined) {
+      updatePayload.status = effectiveOrderStatus  // Old column for legacy orders
+      updatePayload.order_status = effectiveOrderStatus  // New column for workflow orders
+    }
+    
+    if (effectiveDeliveryStatus !== undefined) {
+      updatePayload.delivery_status = effectiveDeliveryStatus
+    }
+    
     if (payment_status !== undefined) updatePayload.payment_status = payment_status
     if (notes !== undefined) updatePayload.notes = notes
     if (delivery_notes !== undefined) updatePayload.delivery_notes = delivery_notes
@@ -75,11 +109,10 @@ export async function PUT(request, { params }) {
     if (driver_name !== undefined) updatePayload.driver_name = driver_name
     if (vehicle_number !== undefined) updatePayload.vehicle_number = vehicle_number
     
-    // Set dispatched_at timestamp when status changes to dispatched
-    if (order_status === 'dispatched' || order_status === 'out_for_delivery') {
-      updatePayload.dispatched_at = new Date().toISOString()
-      if (order_status === 'out_for_delivery') {
-        updatePayload.delivery_status = 'out_for_delivery'
+    // Set dispatched_at timestamp when status changes to dispatched (if not already set by action)
+    if (effectiveOrderStatus === 'dispatched' || effectiveDeliveryStatus === 'out_for_delivery') {
+      if (!updatePayload.dispatched_at) {
+        updatePayload.dispatched_at = new Date().toISOString()
       }
     }
 

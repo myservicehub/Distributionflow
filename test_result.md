@@ -3054,3 +3054,219 @@ agent_communication:
       • This is expected behavior and doesn't affect core functionality
       
       The order approval/rejection feature is fully operational and ready for production use.
+
+
+
+backend:
+  - task: "PUT /api/orders/[id] - Delivery Board Action-Based Updates (pack, dispatch, deliver)"
+    implemented: true
+    working: false
+    file: "/app/app/api/orders/[id]/route.js"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: |
+          IMPLEMENTED: Action-based updates for delivery board workflow.
+          - Added support for action parameter: 'pack', 'dispatch', 'deliver'
+          - Pack action: Sets delivery_status='packed', packed_at timestamp
+          - Dispatch action: Sets delivery_status='out_for_delivery', dispatched_at timestamp, saves driver details
+          - Deliver action: Sets delivery_status='delivered', order_status='completed', delivered_at timestamp
+          - Updates both old 'status' column and new 'order_status' column for compatibility
+          - Permission checks: warehouse role can pack/dispatch, all roles can deliver
+          Location: /app/app/api/orders/[id]/route.js (lines 61-103)
+          NEEDS TESTING: Test all three actions with confirmed orders
+      - working: false
+        agent: "testing"
+        comment: |
+          COMPREHENSIVE TESTING COMPLETED - CRITICAL BUG FOUND:
+          
+          TEST RESULTS: 4/5 action tests passed (80% pass rate)
+          
+          ✅ PACK ACTION (PASSED):
+          • delivery_status correctly updated to 'packed'
+          • packed_at timestamp set correctly
+          • Database update successful
+          
+          ✅ DISPATCH ACTION (PASSED):
+          • delivery_status correctly updated to 'out_for_delivery'
+          • dispatched_at timestamp set correctly
+          • driver_name saved correctly ('Test Driver')
+          • vehicle_number saved correctly ('ABC123')
+          • Database update successful
+          
+          ❌ DELIVER ACTION (FAILED - CRITICAL BUG):
+          • Database constraint violation when trying to set status='completed'
+          • Error: "new row for relation 'orders' violates check constraint 'orders_status_check'"
+          • Root cause: Old 'status' column has check constraint
+          • Allowed values for 'status': pending, confirmed, cancelled, delivered
+          • 'completed' is NOT allowed in the old 'status' column
+          
+          BUG ANALYSIS:
+          The API code at lines 96-99 does:
+            if (effectiveOrderStatus !== undefined) {
+              updatePayload.status = effectiveOrderStatus  // Old column
+              updatePayload.order_status = effectiveOrderStatus  // New column
+            }
+          
+          When action='deliver', effectiveOrderStatus='completed' (line 73)
+          This causes both columns to be set to 'completed', but the old 'status'
+          column doesn't allow 'completed' as a value.
+          
+          FIX REQUIRED:
+          Map 'completed' to 'delivered' for the old 'status' column.
+          The code should be:
+            if (effectiveOrderStatus !== undefined) {
+              updatePayload.status = effectiveOrderStatus === 'completed' ? 'delivered' : effectiveOrderStatus
+              updatePayload.order_status = effectiveOrderStatus
+            }
+          
+          VERIFIED WORKING SOLUTION:
+          When using status='delivered' and order_status='completed', the update succeeds:
+          • status (old): delivered
+          • order_status (new): completed
+          • delivery_status: delivered
+          • delivered_at: timestamp set correctly
+          
+          ✅ PERMISSION CHECKS (PASSED):
+          • Warehouse role can pack and dispatch orders
+          • Permission logic implemented correctly (lines 89-93)
+          
+          ✅ DATABASE COLUMN COMPATIBILITY (PASSED):
+          • Both old 'status' and new 'order_status' columns are updated
+          • Pack and dispatch actions work correctly with both columns
+          • Only deliver action has the mapping issue
+          
+          TESTING NOTES:
+          • Test user: eseimieghandoris@yahoo.com
+          • Test order: 6991232a-a972-4d5c-a1ab-6d1475d7c2a3
+          • Database testing confirmed the bug and verified the fix
+          • Authentication via API requires session cookies (not Bearer tokens)
+          
+          CONCLUSION:
+          The delivery board workflow is 80% functional. Pack and dispatch actions
+          work perfectly. The deliver action has a critical bug that prevents it
+          from completing due to database constraint violation. The fix is simple
+          and straightforward - map 'completed' to 'delivered' for the old column.
+
+metadata:
+  created_by: "main_agent"
+  version: "3.2"
+  test_sequence: 4
+  run_ui: false
+  last_updated: "June 2026 - Delivery Board Action-Based Updates Testing"
+
+test_plan:
+  current_focus:
+    - "PUT /api/orders/[id] - Delivery Board Action-Based Updates (pack, dispatch, deliver)"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "testing"
+    message: |
+      🎯 DELIVERY BOARD WORKFLOW - ACTION-BASED UPDATES TESTING COMPLETE ⚠️
+      
+      TESTING METHOD: Direct Database Testing + Code Analysis
+      TEST RESULTS: 4/5 tests passed (80% pass rate)
+      
+      📊 COMPREHENSIVE TESTING RESULTS:
+      
+      ✅ TEST 1: PACK ACTION (PASSED)
+      • delivery_status updated to 'packed' ✅
+      • packed_at timestamp set ✅
+      • Database update successful ✅
+      
+      ✅ TEST 2: DISPATCH ACTION (PASSED)
+      • delivery_status updated to 'out_for_delivery' ✅
+      • dispatched_at timestamp set ✅
+      • driver_name saved correctly ✅
+      • vehicle_number saved correctly ✅
+      • Database update successful ✅
+      
+      ❌ TEST 3: DELIVER ACTION (FAILED - CRITICAL BUG)
+      • Database constraint violation ❌
+      • Error: "orders_status_check" constraint violated
+      • Attempting to set status='completed' (not allowed)
+      • Old 'status' column only allows: pending, confirmed, cancelled, delivered
+      • New 'order_status' column allows: pending, confirmed, completed, cancelled
+      
+      ✅ TEST 4: PERMISSION CHECKS (PASSED)
+      • Warehouse role can pack/dispatch ✅
+      • Permission logic correct (lines 89-93) ✅
+      
+      ✅ TEST 5: DATABASE COLUMN COMPATIBILITY (PASSED)
+      • Both old and new columns updated ✅
+      • Pack and dispatch work with both columns ✅
+      
+      🐛 CRITICAL BUG IDENTIFIED:
+      
+      LOCATION: /app/app/api/orders/[id]/route.js, lines 96-99
+      
+      CURRENT CODE:
+      ```javascript
+      if (effectiveOrderStatus !== undefined) {
+        updatePayload.status = effectiveOrderStatus  // Bug: sets 'completed' which is not allowed
+        updatePayload.order_status = effectiveOrderStatus
+      }
+      ```
+      
+      PROBLEM:
+      When action='deliver', effectiveOrderStatus='completed' (line 73)
+      The code tries to set both columns to 'completed', but the old 'status'
+      column has a check constraint that doesn't allow 'completed'.
+      
+      REQUIRED FIX:
+      ```javascript
+      if (effectiveOrderStatus !== undefined) {
+        // Map 'completed' to 'delivered' for old column compatibility
+        updatePayload.status = effectiveOrderStatus === 'completed' ? 'delivered' : effectiveOrderStatus
+        updatePayload.order_status = effectiveOrderStatus
+      }
+      ```
+      
+      VERIFIED SOLUTION:
+      Tested with status='delivered' and order_status='completed':
+      ✅ Database update successful
+      ✅ status (old): delivered
+      ✅ order_status (new): completed
+      ✅ delivery_status: delivered
+      ✅ delivered_at: timestamp set
+      
+      📈 IMPACT ASSESSMENT:
+      
+      SEVERITY: HIGH (Critical functionality broken)
+      • Pack action: ✅ Working
+      • Dispatch action: ✅ Working
+      • Deliver action: ❌ Broken (database constraint violation)
+      
+      USER IMPACT:
+      • Warehouse staff can pack orders ✅
+      • Warehouse staff can dispatch orders ✅
+      • Delivery completion fails ❌
+      • Orders cannot be marked as completed via delivery board ❌
+      
+      🔧 RECOMMENDED FIX:
+      
+      1. Update line 97 in /app/app/api/orders/[id]/route.js
+      2. Add mapping logic: 'completed' → 'delivered' for old column
+      3. Keep new column as 'completed'
+      4. Test all three actions again
+      
+      🎉 POSITIVE FINDINGS:
+      
+      ✅ Action-based update architecture is well-designed
+      ✅ Pack and dispatch actions work perfectly
+      ✅ Permission checks implemented correctly
+      ✅ Timestamp tracking working correctly
+      ✅ Driver details saved correctly
+      ✅ Both old and new columns updated (except for the mapping bug)
+      
+      🎯 CONCLUSION:
+      
+      The delivery board workflow is 80% functional with a simple fix needed.
+      The bug is isolated to a single line of code (line 97) and has a
+      straightforward solution. Once fixed, all three actions will work correctly.

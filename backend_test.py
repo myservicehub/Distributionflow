@@ -1,51 +1,45 @@
 #!/usr/bin/env python3
 """
-Backend API Test Suite for Order Approval and Rejection
-Tests the PUT /api/orders/[id] endpoint for approving and rejecting orders
+Backend API Testing Script for Delivery Board Workflow
+Tests action-based updates: pack, dispatch, deliver
 """
 
 import os
 import sys
 import requests
-import json
-from datetime import datetime
 from supabase import create_client, Client
+from datetime import datetime
 
 # Configuration
-SUPABASE_URL = "https://ghleuwwnrerfanyfyclt.supabase.co"
-SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdobGV1d3ducmVyZmFueWZ5Y2x0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDQ1NTksImV4cCI6MjA4NzkyMDU1OX0.5pFbmyonMfNjE7CE-FQDco3IxYiBD0lKMY75QqJTIW8"
 BASE_URL = "https://distrib-flow-2.preview.emergentagent.com"
-API_BASE = f"{BASE_URL}/api"
+API_URL = f"{BASE_URL}/api"
 
-# Test credentials
+# Supabase Configuration
+SUPABASE_URL = "https://ghleuwwnrerfanyfyclt.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdobGV1d3ducmVyZmFueWZ5Y2x0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDQ1NTksImV4cCI6MjA4NzkyMDU1OX0.5pFbmyonMfNjE7CE-FQDco3IxYiBD0lKMY75QqJTIW8"
+
+# Test Credentials
 TEST_EMAIL = "eseimieghandoris@yahoo.com"
 TEST_PASSWORD = "Doris@1981"
 
-# Global Supabase client and session
-supabase: Client = None
-session_data = None
-user_role = None
-
 def print_test_header(test_name):
-    """Print formatted test header"""
+    """Print a formatted test header"""
     print(f"\n{'='*80}")
     print(f"TEST: {test_name}")
     print(f"{'='*80}")
 
-def print_result(passed, message):
+def print_result(success, message):
     """Print test result"""
-    status = "✅ PASS" if passed else "❌ FAIL"
+    status = "✅ PASS" if success else "❌ FAIL"
     print(f"{status}: {message}")
-    return passed
 
-def login():
-    """Login using Supabase client"""
-    global supabase, session_data, user_role
-    print_test_header("Authentication - Login with Supabase")
+def login_and_get_session():
+    """Login and get session cookies"""
+    print_test_header("Authentication - Login")
     
     try:
         # Create Supabase client
-        supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
         
         # Sign in
         response = supabase.auth.sign_in_with_password({
@@ -53,405 +47,445 @@ def login():
             "password": TEST_PASSWORD
         })
         
-        if response.user and response.session:
-            session_data = response.session
-            print_result(True, f"Login successful for {TEST_EMAIL}")
+        if response.user:
+            print_result(True, f"Logged in as {TEST_EMAIL}")
             print(f"User ID: {response.user.id}")
             
-            # Get user role from users table
-            try:
-                user_data = supabase.table('users').select('role, business_id').eq('id', response.user.id).single().execute()
-                if user_data.data:
-                    user_role = user_data.data.get('role')
-                    print(f"User Role: {user_role}")
-                    print(f"Business ID: {user_data.data.get('business_id')}")
-            except Exception as e:
-                print(f"Warning: Could not fetch user role: {e}")
+            # Get session token
+            session = supabase.auth.get_session()
+            if session:
+                access_token = session.access_token
+                print_result(True, "Session token obtained")
+                return access_token, response.user.id
+            else:
+                print_result(False, "Failed to get session")
+                return None, None
+        else:
+            print_result(False, "Login failed")
+            return None, None
             
+    except Exception as e:
+        print_result(False, f"Login error: {str(e)}")
+        return None, None
+
+def get_confirmed_order(access_token):
+    """Get an existing confirmed order"""
+    print_test_header("Get Confirmed Order")
+    
+    try:
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        supabase.auth.set_session(access_token, access_token)
+        
+        # Try to find an existing confirmed order
+        response = supabase.table('orders').select('*').eq('order_status', 'confirmed').limit(1).execute()
+        
+        if response.data and len(response.data) > 0:
+            order = response.data[0]
+            print_result(True, f"Found existing confirmed order: {order['id']}")
+            print(f"Order Number: {order.get('order_number', 'N/A')}")
+            print(f"Order Status: {order.get('order_status', 'N/A')}")
+            print(f"Delivery Status: {order.get('delivery_status', 'N/A')}")
+            print(f"Business ID: {order.get('business_id', 'N/A')}")
+            return order['id'], order.get('business_id')
+        else:
+            print_result(False, "No confirmed orders found. Trying to find any order...")
+            
+            # Try to find any order
+            response = supabase.table('orders').select('*').limit(1).execute()
+            if response.data and len(response.data) > 0:
+                order = response.data[0]
+                print_result(True, f"Found order: {order['id']}")
+                print(f"Order Number: {order.get('order_number', 'N/A')}")
+                print(f"Order Status: {order.get('order_status', 'N/A')}")
+                print(f"Delivery Status: {order.get('delivery_status', 'N/A')}")
+                return order['id'], order.get('business_id')
+            else:
+                print_result(False, "No orders found in database")
+                return None, None
+            
+    except Exception as e:
+        print_result(False, f"Error getting order: {str(e)}")
+        return None, None
+
+def reset_order_to_confirmed(access_token, order_id):
+    """Reset order to confirmed status for testing"""
+    print_test_header("Reset Order to Confirmed Status")
+    
+    try:
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        supabase.auth.set_session(access_token, access_token)
+        
+        # Reset order to confirmed status
+        response = supabase.table('orders').update({
+            'order_status': 'confirmed',
+            'status': 'confirmed',
+            'delivery_status': 'not_started',
+            'packed_at': None,
+            'dispatched_at': None,
+            'delivered_at': None,
+            'driver_name': None,
+            'vehicle_number': None
+        }).eq('id', order_id).execute()
+        
+        if response.data:
+            print_result(True, "Order reset to confirmed status")
             return True
         else:
-            print_result(False, "Login failed - no user or session returned")
+            print_result(False, "Failed to reset order")
             return False
             
     except Exception as e:
-        print_result(False, f"Login failed: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        print_result(False, f"Error resetting order: {str(e)}")
         return False
 
-def make_authenticated_request(method, url, json_data=None):
-    """Make an authenticated request using Supabase session cookies"""
-    
-    # Create cookies from Supabase session
-    cookies = {}
-    if session_data:
-        # Supabase uses these cookie names for SSR
-        cookies['sb-ghleuwwnrerfanyfyclt-auth-token'] = json.dumps({
-            'access_token': session_data.access_token,
-            'refresh_token': session_data.refresh_token,
-            'expires_at': session_data.expires_at,
-            'expires_in': session_data.expires_in,
-            'token_type': 'bearer',
-            'user': {
-                'id': session_data.user.id,
-                'email': session_data.user.email
-            }
-        })
-    
-    headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-    }
-    
-    if method == 'GET':
-        return requests.get(url, headers=headers, cookies=cookies)
-    elif method == 'PUT':
-        return requests.put(url, headers=headers, cookies=cookies, json=json_data)
-    elif method == 'POST':
-        return requests.post(url, headers=headers, cookies=cookies, json=json_data)
-    elif method == 'DELETE':
-        return requests.delete(url, headers=headers, cookies=cookies)
-
-def get_or_create_test_order():
-    """Get an existing pending order or create a new one"""
-    print_test_header("Get or Create Test Order")
+def test_pack_action(access_token, order_id):
+    """Test pack action"""
+    print_test_header("Test Pack Action")
     
     try:
-        # First, try to get existing pending orders
-        orders_response = supabase.table('orders').select('*').eq('status', 'pending').limit(1).execute()
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json'
+        }
         
-        if orders_response.data and len(orders_response.data) > 0:
-            order = orders_response.data[0]
-            print_result(True, f"Found existing pending order: {order['id']}")
-            print(f"Order Number: {order.get('order_number', 'N/A')}")
-            print(f"Status: {order.get('status', 'N/A')}")
-            return order
+        payload = {
+            'action': 'pack'
+        }
         
-        # If no pending orders, try to find any order and reset it to pending
-        all_orders_response = supabase.table('orders').select('*').limit(1).execute()
-        
-        if all_orders_response.data and len(all_orders_response.data) > 0:
-            order = all_orders_response.data[0]
-            # Reset to pending status
-            update_response = supabase.table('orders').update({'status': 'pending'}).eq('id', order['id']).execute()
-            if update_response.data:
-                print_result(True, f"Reset existing order to pending: {order['id']}")
-                print(f"Order Number: {order.get('order_number', 'N/A')}")
-                return update_response.data[0]
-        
-        print_result(False, "No orders found in the system. Please create an order first.")
-        return None
-        
-    except Exception as e:
-        print_result(False, f"Error getting/creating test order: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return None
-
-def test_approve_order(order_id):
-    """Test 1: Approve an order (change status to confirmed)"""
-    print_test_header("Test 1: Approve Order (Status: pending → confirmed)")
-    
-    try:
-        payload = {"order_status": "confirmed"}
-        response = make_authenticated_request(
-            'PUT',
-            f"{API_BASE}/orders/{order_id}",
-            payload
+        response = requests.put(
+            f"{API_URL}/orders/{order_id}",
+            json=payload,
+            headers=headers
         )
         
-        print(f"Request: PUT /api/orders/{order_id}")
-        print(f"Payload: {json.dumps(payload)}")
         print(f"Response Status: {response.status_code}")
         
         if response.status_code == 200:
-            try:
-                data = response.json()
-                print(f"Response: {json.dumps(data, indent=2)}")
-                
-                # Check response format
-                if data.get('success') and 'data' in data:
-                    order = data['data']
-                    
-                    # Verify status was updated to confirmed
-                    if order.get('status') == 'confirmed':
-                        # Verify in database
-                        db_order = supabase.table('orders').select('status').eq('id', order_id).single().execute()
-                        if db_order.data and db_order.data.get('status') == 'confirmed':
-                            return print_result(True, "✅ Order approved successfully. Status updated to 'confirmed' in database.")
-                        else:
-                            return print_result(False, f"Order approved in response but database status is: {db_order.data.get('status') if db_order.data else 'unknown'}")
-                    else:
-                        return print_result(False, f"Order updated but status not set to 'confirmed'. Got: {order.get('status')}")
-                else:
-                    return print_result(False, f"Response format incorrect. Expected {{success: true, data: <order>}}, got: {data}")
-            except Exception as json_error:
-                print(f"JSON parse error: {json_error}")
-                print(f"Response text: {response.text[:500]}")
-                return print_result(False, "Response is not valid JSON")
-        elif response.status_code == 403:
-            print(f"Response text: {response.text[:500]}")
-            return print_result(False, f"Permission denied (403). User role '{user_role}' may not have permission to approve orders.")
-        else:
-            print(f"Response text: {response.text[:500]}")
-            return print_result(False, f"Failed to approve order: {response.status_code}")
+            data = response.json()
+            order = data.get('data', {})
             
-    except Exception as e:
-        return print_result(False, f"Error approving order: {str(e)}")
-
-def test_reject_order(order_id):
-    """Test 2: Reject an order (change status to cancelled)"""
-    print_test_header("Test 2: Reject Order (Status: confirmed → cancelled)")
-    
-    try:
-        # First reset order to pending
-        supabase.table('orders').update({'status': 'pending'}).eq('id', order_id).execute()
-        print("Reset order to 'pending' status")
-        
-        payload = {"order_status": "cancelled"}
-        response = make_authenticated_request(
-            'PUT',
-            f"{API_BASE}/orders/{order_id}",
-            payload
-        )
-        
-        print(f"Request: PUT /api/orders/{order_id}")
-        print(f"Payload: {json.dumps(payload)}")
-        print(f"Response Status: {response.status_code}")
-        
-        if response.status_code == 200:
-            try:
-                data = response.json()
-                print(f"Response: {json.dumps(data, indent=2)}")
-                
-                # Check response format
-                if data.get('success') and 'data' in data:
-                    order = data['data']
-                    
-                    # Verify status was updated to cancelled
-                    if order.get('status') == 'cancelled':
-                        # Verify in database
-                        db_order = supabase.table('orders').select('status').eq('id', order_id).single().execute()
-                        if db_order.data and db_order.data.get('status') == 'cancelled':
-                            return print_result(True, "✅ Order rejected successfully. Status updated to 'cancelled' in database.")
-                        else:
-                            return print_result(False, f"Order rejected in response but database status is: {db_order.data.get('status') if db_order.data else 'unknown'}")
-                    else:
-                        return print_result(False, f"Order updated but status not set to 'cancelled'. Got: {order.get('status')}")
-                else:
-                    return print_result(False, f"Response format incorrect. Expected {{success: true, data: <order>}}, got: {data}")
-            except Exception as json_error:
-                print(f"JSON parse error: {json_error}")
-                print(f"Response text: {response.text[:500]}")
-                return print_result(False, "Response is not valid JSON")
-        elif response.status_code == 403:
-            print(f"Response text: {response.text[:500]}")
-            return print_result(False, f"Permission denied (403). User role '{user_role}' may not have permission to reject orders.")
-        else:
-            print(f"Response text: {response.text[:500]}")
-            return print_result(False, f"Failed to reject order: {response.status_code}")
+            # Verify delivery_status is 'packed'
+            delivery_status = order.get('delivery_status')
+            packed_at = order.get('packed_at')
             
-    except Exception as e:
-        return print_result(False, f"Error rejecting order: {str(e)}")
-
-def test_invalid_order_id():
-    """Test 3: Test with invalid order ID (should return 404)"""
-    print_test_header("Test 3: Invalid Order ID (Should Return 404)")
-    
-    try:
-        invalid_id = "00000000-0000-0000-0000-000000000000"
-        payload = {"order_status": "confirmed"}
-        
-        response = make_authenticated_request(
-            'PUT',
-            f"{API_BASE}/orders/{invalid_id}",
-            payload
-        )
-        
-        print(f"Request: PUT /api/orders/{invalid_id}")
-        print(f"Response Status: {response.status_code}")
-        
-        if response.status_code == 404:
-            return print_result(True, "✅ Correctly returned 404 for invalid order ID")
-        else:
-            print(f"Response text: {response.text[:500]}")
-            return print_result(False, f"Expected 404, got {response.status_code}")
+            print(f"Delivery Status: {delivery_status}")
+            print(f"Packed At: {packed_at}")
             
-    except Exception as e:
-        return print_result(False, f"Error testing invalid order ID: {str(e)}")
-
-def test_permission_check():
-    """Test 4: Verify permission checks (admin/manager only)"""
-    print_test_header("Test 4: Permission Check (Admin/Manager Only)")
-    
-    try:
-        # Check if current user has admin or manager role
-        if user_role in ['admin', 'manager']:
-            return print_result(True, f"✅ User has '{user_role}' role - can approve/reject orders")
-        elif user_role:
-            return print_result(True, f"⚠️  User has '{user_role}' role - should get 403 when trying to approve/reject (tested in other tests)")
-        else:
-            return print_result(True, "⚠️  Could not determine user role (non-critical)")
+            success = True
             
-    except Exception as e:
-        return print_result(False, f"Error checking permissions: {str(e)}")
-
-def test_database_column_fix(order_id):
-    """Test 5: Verify database column fix (order_status → status)"""
-    print_test_header("Test 5: Database Column Fix (order_status → status)")
-    
-    try:
-        # Reset order to pending
-        supabase.table('orders').update({'status': 'pending'}).eq('id', order_id).execute()
-        
-        # Try to approve order
-        payload = {"order_status": "confirmed"}
-        response = make_authenticated_request(
-            'PUT',
-            f"{API_BASE}/orders/{order_id}",
-            payload
-        )
-        
-        print(f"Request: PUT /api/orders/{order_id}")
-        print(f"Payload: {json.dumps(payload)}")
-        print(f"Response Status: {response.status_code}")
-        
-        if response.status_code == 200:
-            # Check if status was actually updated in database
-            db_order = supabase.table('orders').select('status').eq('id', order_id).single().execute()
-            
-            if db_order.data:
-                db_status = db_order.data.get('status')
-                print(f"Database status: {db_status}")
-                
-                if db_status == 'confirmed':
-                    return print_result(True, "✅ Database column fix verified. 'order_status' correctly mapped to 'status' column.")
-                else:
-                    return print_result(False, f"Database status not updated. Expected 'confirmed', got '{db_status}'")
+            if delivery_status == 'packed':
+                print_result(True, "Pack action successful - delivery_status updated to 'packed'")
             else:
-                return print_result(False, "Could not fetch order from database")
+                print_result(False, f"Pack action failed - delivery_status is '{delivery_status}' instead of 'packed'")
+                success = False
+                
+            if packed_at:
+                print_result(True, "Packed timestamp set")
+            else:
+                print_result(False, "Packed timestamp not set")
+                success = False
+                
+            return success
         else:
-            print(f"Response text: {response.text[:500]}")
-            return print_result(False, f"API request failed with status {response.status_code}")
+            print_result(False, f"Pack action failed with status {response.status_code}")
+            print(f"Response: {response.text}")
+            return False
             
     except Exception as e:
-        return print_result(False, f"Error testing database column fix: {str(e)}")
+        print_result(False, f"Error testing pack action: {str(e)}")
+        return False
 
-def test_audit_log_created(order_id):
-    """Test 6: Verify audit log is created for order approval/rejection"""
-    print_test_header("Test 6: Verify Audit Log Created")
+def test_dispatch_action(access_token, order_id):
+    """Test dispatch action"""
+    print_test_header("Test Dispatch Action")
     
     try:
-        # Get audit logs from Supabase
-        logs_response = supabase.table('audit_logs').select('*').eq('resource_type', 'ORDER').eq('resource_id', order_id).order('created_at', desc=True).limit(5).execute()
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json'
+        }
         
-        logs = logs_response.data
-        print(f"Found {len(logs)} audit logs for this order")
+        payload = {
+            'action': 'dispatch',
+            'driver_name': 'Test Driver',
+            'vehicle_number': 'ABC123'
+        }
         
-        # Look for recent UPDATE action
-        recent_update = None
-        for log in logs:
-            if log.get('action') == 'UPDATE':
-                recent_update = log
-                print(f"Found UPDATE audit log: {log.get('created_at')}")
-                print(f"Details: {log.get('details')}")
-                break
+        response = requests.put(
+            f"{API_URL}/orders/{order_id}",
+            json=payload,
+            headers=headers
+        )
         
-        if recent_update:
-            return print_result(True, "✅ Audit log found for order update")
+        print(f"Response Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            order = data.get('data', {})
+            
+            # Verify delivery_status is 'out_for_delivery'
+            delivery_status = order.get('delivery_status')
+            dispatched_at = order.get('dispatched_at')
+            driver_name = order.get('driver_name')
+            vehicle_number = order.get('vehicle_number')
+            
+            print(f"Delivery Status: {delivery_status}")
+            print(f"Dispatched At: {dispatched_at}")
+            print(f"Driver Name: {driver_name}")
+            print(f"Vehicle Number: {vehicle_number}")
+            
+            success = True
+            
+            if delivery_status == 'out_for_delivery':
+                print_result(True, "Dispatch action successful - delivery_status updated to 'out_for_delivery'")
+            else:
+                print_result(False, f"Dispatch action failed - delivery_status is '{delivery_status}' instead of 'out_for_delivery'")
+                success = False
+                
+            if dispatched_at:
+                print_result(True, "Dispatched timestamp set")
+            else:
+                print_result(False, "Dispatched timestamp not set")
+                success = False
+                
+            if driver_name == 'Test Driver':
+                print_result(True, "Driver name saved correctly")
+            else:
+                print_result(False, f"Driver name is '{driver_name}' instead of 'Test Driver'")
+                success = False
+                
+            if vehicle_number == 'ABC123':
+                print_result(True, "Vehicle number saved correctly")
+            else:
+                print_result(False, f"Vehicle number is '{vehicle_number}' instead of 'ABC123'")
+                success = False
+                
+            return success
         else:
-            # This is not critical, just informational
-            return print_result(True, "⚠️  No audit log found for order update (non-critical)")
+            print_result(False, f"Dispatch action failed with status {response.status_code}")
+            print(f"Response: {response.text}")
+            return False
             
     except Exception as e:
-        # Audit logs may not be accessible or may have issues
-        print(f"Audit log check error: {str(e)}")
-        return print_result(True, "⚠️  Could not check audit logs (non-critical)")
+        print_result(False, f"Error testing dispatch action: {str(e)}")
+        return False
 
-def run_all_tests():
-    """Run all tests"""
+def test_deliver_action(access_token, order_id):
+    """Test deliver action"""
+    print_test_header("Test Deliver Action")
+    
+    try:
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json'
+        }
+        
+        payload = {
+            'action': 'deliver'
+        }
+        
+        response = requests.put(
+            f"{API_URL}/orders/{order_id}",
+            json=payload,
+            headers=headers
+        )
+        
+        print(f"Response Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            order = data.get('data', {})
+            
+            # Verify delivery_status is 'delivered' and order_status is 'completed'
+            delivery_status = order.get('delivery_status')
+            order_status = order.get('order_status')
+            status = order.get('status')  # Old column
+            delivered_at = order.get('delivered_at')
+            
+            print(f"Delivery Status: {delivery_status}")
+            print(f"Order Status (new): {order_status}")
+            print(f"Status (old): {status}")
+            print(f"Delivered At: {delivered_at}")
+            
+            success = True
+            
+            if delivery_status == 'delivered':
+                print_result(True, "Deliver action successful - delivery_status updated to 'delivered'")
+            else:
+                print_result(False, f"Deliver action failed - delivery_status is '{delivery_status}' instead of 'delivered'")
+                success = False
+                
+            if order_status == 'completed':
+                print_result(True, "Order status (new column) updated to 'completed'")
+            else:
+                print_result(False, f"Order status (new column) is '{order_status}' instead of 'completed'")
+                success = False
+                
+            if status == 'completed':
+                print_result(True, "Status (old column) updated to 'completed'")
+            else:
+                print_result(False, f"Status (old column) is '{status}' instead of 'completed'")
+                success = False
+                
+            if delivered_at:
+                print_result(True, "Delivered timestamp set")
+            else:
+                print_result(False, "Delivered timestamp not set")
+                success = False
+                
+            return success
+        else:
+            print_result(False, f"Deliver action failed with status {response.status_code}")
+            print(f"Response: {response.text}")
+            return False
+            
+    except Exception as e:
+        print_result(False, f"Error testing deliver action: {str(e)}")
+        return False
+
+def verify_database_columns(access_token, order_id):
+    """Verify both old and new database columns are updated"""
+    print_test_header("Verify Database Columns")
+    
+    try:
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        supabase.auth.set_session(access_token, access_token)
+        
+        response = supabase.table('orders').select('status, order_status, delivery_status').eq('id', order_id).single().execute()
+        
+        if response.data:
+            status = response.data.get('status')
+            order_status = response.data.get('order_status')
+            delivery_status = response.data.get('delivery_status')
+            
+            print(f"Status (old column): {status}")
+            print(f"Order Status (new column): {order_status}")
+            print(f"Delivery Status: {delivery_status}")
+            
+            # Both columns should be 'completed'
+            if status == 'completed' and order_status == 'completed':
+                print_result(True, "Both old and new status columns updated correctly")
+                return True
+            else:
+                print_result(False, f"Column mismatch - status: {status}, order_status: {order_status}")
+                return False
+        else:
+            print_result(False, "Failed to verify database columns")
+            return False
+            
+    except Exception as e:
+        print_result(False, f"Error verifying database columns: {str(e)}")
+        return False
+
+def test_unauthorized_access(order_id):
+    """Test with unauthorized role (no auth token)"""
+    print_test_header("Test Unauthorized Access")
+    
+    try:
+        headers = {
+            'Content-Type': 'application/json'
+        }
+        
+        payload = {
+            'action': 'pack'
+        }
+        
+        response = requests.put(
+            f"{API_URL}/orders/{order_id}",
+            json=payload,
+            headers=headers
+        )
+        
+        print(f"Response Status: {response.status_code}")
+        
+        # Should return 401 or 403 or redirect (307)
+        if response.status_code in [401, 403, 307]:
+            print_result(True, f"Unauthorized access correctly blocked with status {response.status_code}")
+            return True
+        else:
+            print_result(False, f"Expected 401/403/307 but got {response.status_code}")
+            return False
+            
+    except Exception as e:
+        print_result(False, f"Error testing unauthorized access: {str(e)}")
+        return False
+
+def main():
+    """Main test execution"""
     print("\n" + "="*80)
-    print("BACKEND API TEST SUITE - PUT /api/orders/[id]")
-    print("Testing Order Approval and Rejection Functionality")
-    print(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("DELIVERY BOARD WORKFLOW - ACTION-BASED UPDATES TESTING")
     print("="*80)
     
-    results = []
+    # Track test results
+    tests_passed = 0
+    tests_failed = 0
     
     # Step 1: Login
-    if not login():
-        print("\n❌ CRITICAL: Login failed. Cannot proceed with tests.")
-        return False
+    access_token, user_id = login_and_get_session()
+    if not access_token:
+        print("\n❌ CRITICAL: Authentication failed. Cannot proceed with tests.")
+        sys.exit(1)
+    tests_passed += 1
     
-    # Step 2: Get or create test order
-    order = get_or_create_test_order()
-    if not order:
-        print("\n❌ CRITICAL: No test order available. Cannot proceed with tests.")
-        return False
+    # Step 2: Get confirmed order
+    order_id, business_id = get_confirmed_order(access_token)
+    if not order_id:
+        print("\n❌ CRITICAL: No orders available. Cannot proceed with tests.")
+        sys.exit(1)
+    tests_passed += 1
     
-    order_id = order['id']
-    print(f"\n📦 Using order ID for testing: {order_id}")
-    print(f"   Order Number: {order.get('order_number', 'N/A')}")
-    print(f"   Current Status: {order.get('status', 'N/A')}")
+    # Step 3: Reset order to confirmed status
+    if reset_order_to_confirmed(access_token, order_id):
+        tests_passed += 1
+    else:
+        tests_failed += 1
     
-    # Run tests
-    print("\n" + "="*80)
-    print("RUNNING TESTS")
-    print("="*80)
+    # Step 4: Test pack action
+    if test_pack_action(access_token, order_id):
+        tests_passed += 1
+    else:
+        tests_failed += 1
     
-    # Test 1: Approve order
-    results.append(test_approve_order(order_id))
+    # Step 5: Test dispatch action
+    if test_dispatch_action(access_token, order_id):
+        tests_passed += 1
+    else:
+        tests_failed += 1
     
-    # Test 2: Reject order
-    results.append(test_reject_order(order_id))
+    # Step 6: Test deliver action
+    if test_deliver_action(access_token, order_id):
+        tests_passed += 1
+    else:
+        tests_failed += 1
     
-    # Test 3: Invalid order ID
-    results.append(test_invalid_order_id())
+    # Step 7: Verify database columns
+    if verify_database_columns(access_token, order_id):
+        tests_passed += 1
+    else:
+        tests_failed += 1
     
-    # Test 4: Permission check
-    results.append(test_permission_check())
+    # Step 8: Test unauthorized access
+    if test_unauthorized_access(order_id):
+        tests_passed += 1
+    else:
+        tests_failed += 1
     
-    # Test 5: Database column fix
-    results.append(test_database_column_fix(order_id))
-    
-    # Test 6: Audit log created
-    results.append(test_audit_log_created(order_id))
-    
-    # Summary
+    # Print summary
     print("\n" + "="*80)
     print("TEST SUMMARY")
     print("="*80)
+    print(f"Total Tests: {tests_passed + tests_failed}")
+    print(f"✅ Passed: {tests_passed}")
+    print(f"❌ Failed: {tests_failed}")
+    print(f"Pass Rate: {(tests_passed / (tests_passed + tests_failed) * 100):.1f}%")
+    print("="*80)
     
-    passed = sum(1 for r in results if r is True)
-    failed = sum(1 for r in results if r is False)
-    skipped = sum(1 for r in results if r is None)
-    total = len(results)
-    
-    print(f"\nTotal Tests: {total}")
-    print(f"✅ Passed: {passed}")
-    print(f"❌ Failed: {failed}")
-    print(f"⚠️  Skipped: {skipped}")
-    
-    pass_rate = (passed / (total - skipped) * 100) if (total - skipped) > 0 else 0
-    print(f"📊 Pass Rate: {pass_rate:.1f}%")
-    
-    if failed == 0 and passed > 0:
-        print("\n🎉 ALL TESTS PASSED!")
-        print("\n✅ ORDER APPROVAL/REJECTION FIX VERIFIED:")
-        print("   - Database column fix working (order_status → status)")
-        print("   - Order approval functionality working")
-        print("   - Order rejection functionality working")
-        print("   - 404 error handling for invalid order IDs")
-        print("   - Permission checks working")
-        print("   - Audit logging working")
-        return True
-    elif failed > 0:
-        print(f"\n⚠️  {failed} TEST(S) FAILED")
-        return False
+    if tests_failed == 0:
+        print("\n🎉 ALL TESTS PASSED! Delivery board workflow is working correctly.")
+        sys.exit(0)
     else:
-        print("\n⚠️  NO TESTS COMPLETED")
-        return False
+        print(f"\n⚠️  {tests_failed} TEST(S) FAILED. Please review the failures above.")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    success = run_all_tests()
-    sys.exit(0 if success else 1)
+    main()
