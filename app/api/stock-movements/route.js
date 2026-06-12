@@ -114,7 +114,7 @@ export async function POST(request) {
       newStock = qty // Set to exact quantity
     }
 
-    // Create movement record
+    // Create movement record with correct column name
     const { data: movement, error: createError } = await supabase
       .from('stock_movements')
       .insert([{
@@ -125,7 +125,7 @@ export async function POST(request) {
         quantity_before: currentStock,
         quantity_after: newStock,
         notes: notes || null,
-        user_id: userContext.userId
+        created_by: userContext.userId  // Use created_by instead of user_id
       }])
       .select()
       .single()
