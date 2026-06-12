@@ -98,6 +98,7 @@ export async function GET(request) {
         .from('empty_items')
         .select('*')
         .eq('business_id', userProfile.business_id)
+        .is('deleted_at', null)
         .order('name', { ascending: true })
 
       if (error) throw error
@@ -416,6 +417,7 @@ export async function POST(request) {
         .eq('business_id', userProfile.business_id)
         .ilike('name', name.trim())
         .eq('is_active', true)
+        .is('deleted_at', null)
         .maybeSingle()
 
       if (existingItem) {
@@ -874,12 +876,70 @@ export async function POST(request) {
         .limit(1)
 
       if (movements && movements.length > 0) {
-        return handleCORS(NextResponse.json({ 
-          error: 'Cannot delete. This empty item has movement history. Consider marking it as inactive instead.' 
-        }, { status: 400 }))
+        const { data: warehouseStock } = await adminSupabase
+          .from('warehouse_empty_inventory')
+          .select('quantity_available')
+          .eq('business_id', userProfile.business_id)
+          .eq('empty_item_id', id)
+          .maybeSingle()
+
+        const warehouseQty = warehouseStock?.quantity_available || 0
+
+        const { data: retailerHoldings } = await adminSupabase
+          .from('retailer_empty_balances')
+          .select('quantity_outstanding, retailers(shop_name)')
+          .eq('business_id', userProfile.business_id)
+          .eq('empty_item_id', id)
+          .gt('quantity_outstanding', 0)
+
+        const totalRetailerQty = (retailerHoldings || [])
+          .reduce((sum, r) => sum + (r.quantity_outstanding || 0), 0)
+
+        if (warehouseQty > 0 || totalRetailerQty > 0) {
+          const parts = []
+          if (warehouseQty > 0) {
+            parts.push(`${warehouseQty} unit(s) still in the warehouse`)
+          }
+          if (totalRetailerQty > 0) {
+            const shops = (retailerHoldings || [])
+              .slice(0, 3)
+              .map(r => r.retailers?.shop_name)
+              .filter(Boolean)
+              .join(', ')
+            const extra = retailerHoldings.length > 3 ? ` and ${retailerHoldings.length - 3} more` : ''
+            parts.push(`${totalRetailerQty} unit(s) held by retailers${shops ? ` (${shops}${extra})` : ''}`)
+          }
+          return handleCORS(NextResponse.json({
+            error: `Cannot delete — outstanding stock: ${parts.join('; ')}. Clear the stock (return to manufacturer, issue to retailers, or write off via adjustment) before deleting.`,
+            code: 'OUTSTANDING_STOCK',
+            warehouseQty,
+            retailerQty: totalRetailerQty
+          }, { status: 400 }))
+        }
+
+        const { error: softDeleteError } = await adminSupabase
+          .from('empty_items')
+          .update({
+            deleted_at: new Date().toISOString(),
+            is_active: false,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id)
+          .eq('business_id', userProfile.business_id)
+
+        if (softDeleteError) {
+          console.error('Error soft-deleting empty item:', softDeleteError)
+          return handleCORS(NextResponse.json({ error: softDeleteError.message }, { status: 400 }))
+        }
+
+        console.log(`✅ Empty item soft-deleted (history preserved): ${id}`)
+        return handleCORS(NextResponse.json({
+          success: true,
+          message: 'Empty item removed. Movement history has been preserved for reporting.',
+          softDeleted: true
+        }))
       }
 
-      // Delete the empty item
       const { error: deleteError } = await adminSupabase
         .from('empty_items')
         .delete()

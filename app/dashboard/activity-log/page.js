@@ -126,8 +126,9 @@ export default function ActivityLogPage() {
       const response = await fetch(`/api/audit-logs?${params}`)
       if (response.ok) {
         const data = await response.json()
-        // Ensure data is always an array
-        setLogs(Array.isArray(data) ? data : [])
+        // API returns { data: [...], pagination: {...} } — fall back to raw array for safety
+        const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []
+        setLogs(list)
       } else {
         console.error('Error response:', response.status)
         setLogs([])

@@ -16,6 +16,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { toast } from 'sonner'
 import { Plus, Eye, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, ShoppingCart, User, Calendar, DollarSign, Search } from 'lucide-react'
 import BottleExchangeSection from '@/components/BottleExchangeSection'
+import { InvoiceActions } from '@/components/InvoiceActions'
 import { Pagination } from '@/components/ui/pagination'
 import { DateRangeFilter, getDateRangeStart } from '@/components/ui/date-range-filter'
 
@@ -155,7 +156,8 @@ export default function OrdersPage() {
   const [bottleExchange, setBottleExchange] = useState({ enabled: false, empties: [] })
   const [formData, setFormData] = useState({
     retailer_id: '',
-    payment_status: 'paid'
+    payment_status: 'paid',
+    amount_paid: ''
   })
   const [submitting, setSubmitting] = useState(false)
   const supabase = createClient()
@@ -363,6 +365,9 @@ export default function OrdersPage() {
         body: JSON.stringify({
           retailer_id: formData.retailer_id,
           payment_status: formData.payment_status,
+          amount_paid: formData.payment_status === 'partial'
+            ? parseFloat(formData.amount_paid || 0)
+            : undefined,
           total_amount: orderTotal, // Include deposit in total
           items: orderItems,
           bottle_exchange: bottleExchange.enabled ? {
@@ -406,7 +411,7 @@ export default function OrdersPage() {
   }
 
   const resetForm = () => {
-    setFormData({ retailer_id: '', payment_status: 'paid' })
+    setFormData({ retailer_id: '', payment_status: 'paid', amount_paid: '' })
     setOrderItems([{ product_id: '', quantity: 1, unit_price: 0, total_price: 0 }])
     setBottleExchange({ enabled: false, empties: [] })
   }
@@ -565,6 +570,24 @@ export default function OrdersPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {formData.payment_status === 'partial' && (
+                <div>
+                  <Label htmlFor="amount_paid">Amount Paid Now *</Label>
+                  <Input
+                    id="amount_paid"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.amount_paid}
+                    onChange={(e) => setFormData({ ...formData, amount_paid: e.target.value })}
+                    placeholder={`e.g. ${(calculateTotal() / 2).toFixed(2)} (half of total)`}
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">
+                    Order total: ₦{calculateTotal().toLocaleString()} · Outstanding will be added to retailer balance.
+                  </p>
+                </div>
+              )}
 
               <div className="border-t pt-4">
                 <div className="flex justify-between items-center mb-4">
@@ -758,6 +781,7 @@ export default function OrdersPage() {
                   <TableHead className="font-semibold">Payment Status</TableHead>
                   <TableHead className="font-semibold">Order Status</TableHead>
                   <TableHead className="font-semibold">Date</TableHead>
+                  <TableHead className="font-semibold">Invoice</TableHead>
                   {canApproveOrders() && <TableHead className="font-semibold">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
@@ -794,6 +818,9 @@ export default function OrdersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-neutral-600">{new Date(order.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <InvoiceActions orderId={order.id} retailer={order.retailers} compact />
+                      </TableCell>
                       {canApproveOrders() && (
                         <TableCell>
                           {order.status === 'pending' && (
@@ -825,7 +852,7 @@ export default function OrdersPage() {
                     </TableRow>
                     {expandedOrders[order.id] && (
                       <TableRow>
-                        <TableCell colSpan={canApproveOrders() ? 9 : 8} className="bg-neutral-50 border-t border-neutral-200">
+                        <TableCell colSpan={canApproveOrders() ? 10 : 9} className="bg-neutral-50 border-t border-neutral-200">
                           <div className="p-6">
                             <h4 className="font-semibold text-lg text-neutral-900 mb-4">Order Items</h4>
                             {order.order_items && order.order_items.length > 0 ? (

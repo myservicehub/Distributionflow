@@ -47,7 +47,7 @@ export async function PUT(request, { params }) {
 
     await logAudit(supabase, userContext.userId, userContext.businessId,
       AUDIT_ACTIONS.UPDATE, RESOURCE_TYPES.PAYMENT, payment.id,
-      { amount: payment.amount })
+      { amount: payment.amount_paid })
 
     return successResponse({ success: true, data: payment })
   } catch (error) {

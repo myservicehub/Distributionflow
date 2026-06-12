@@ -91,7 +91,7 @@ export async function POST(request) {
       .select('id, created_at')
       .eq('business_id', userContext.businessId)
       .eq('retailer_id', validatedData.retailer_id)
-      .eq('amount', validatedData.amount)
+      .eq('amount_paid', validatedData.amount_paid)
       .eq('payment_method', validatedData.payment_method)
       .gte('created_at', thirtySecondsAgo)
       .maybeSingle()
@@ -120,7 +120,7 @@ export async function POST(request) {
     }
 
     const currentBalance = parseFloat(retailer.current_balance || 0)
-    const paymentAmount = parseFloat(validatedData.amount)
+    const paymentAmount = parseFloat(validatedData.amount_paid)
 
     // Create payment record
     const { data: payment, error: createError } = await supabase
@@ -128,12 +128,10 @@ export async function POST(request) {
       .insert([{
         business_id: userContext.businessId,
         retailer_id: validatedData.retailer_id,
-        amount: paymentAmount,
+        amount_paid: paymentAmount,
         payment_method: validatedData.payment_method,
-        reference: validatedData.reference || null,
         notes: validatedData.notes || null,
-        received_by: userContext.userId,
-        status: 'completed'
+        recorded_by: userContext.userId
       }])
       .select()
       .single()

@@ -187,7 +187,7 @@ export default function RetailerEmptyBalancesPage() {
           route: 'process-empty-return',
           retailer_id: selectedBalance.retailer_id,
           empty_item_id: selectedBalance.empty_item_id,
-          quantity_returned: parseInt(returnQuantity),
+          quantity: parseInt(returnQuantity),
           notes: returnNotes || `Return from ${selectedBalance.retailers?.shop_name}`
         })
       })

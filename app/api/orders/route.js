@@ -101,6 +101,23 @@ export async function POST(request) {
       sum + (item.quantity * item.unit_price), 0
     )
 
+    // Determine the amount actually paid based on payment_status
+    let amountPaid = 0
+    if (validatedData.payment_status === 'paid') {
+      amountPaid = subtotal
+    } else if (validatedData.payment_status === 'partial') {
+      const partial = validatedData.amount_paid
+      if (partial === undefined || partial === null || partial <= 0) {
+        return errorResponse('For a partial payment, amount_paid must be greater than 0.', 400)
+      }
+      if (partial >= subtotal) {
+        return errorResponse('Partial amount must be less than the order total. Use "Paid" instead.', 400)
+      }
+      amountPaid = partial
+    } // 'credit' → amountPaid stays 0
+
+    const outstanding = subtotal - amountPaid
+
     // DUPLICATE CHECK: Check for identical order in last 60 seconds (double-submit guard)
     const sixtySecondsAgo = new Date(Date.now() - 60000).toISOString()
     const calculatedTotal = subtotal
@@ -160,6 +177,36 @@ export async function POST(request) {
       .insert(orderItems)
 
     if (itemsError) throw itemsError
+
+    // Update retailer balance with any outstanding amount, and record the payment
+    if (outstanding > 0) {
+      const { data: retailer } = await supabase
+        .from('retailers')
+        .select('current_balance')
+        .eq('id', validatedData.retailer_id)
+        .eq('business_id', userContext.businessId)
+        .single()
+
+      const newBalance = parseFloat(retailer?.current_balance || 0) + outstanding
+      await supabase
+        .from('retailers')
+        .update({ current_balance: newBalance, updated_at: new Date().toISOString() })
+        .eq('id', validatedData.retailer_id)
+        .eq('business_id', userContext.businessId)
+    }
+
+    if (amountPaid > 0) {
+      await supabase
+        .from('payments')
+        .insert({
+          business_id: userContext.businessId,
+          retailer_id: validatedData.retailer_id,
+          amount_paid: amountPaid,
+          payment_method: 'cash',
+          notes: `Payment recorded with order ${order.id} (${validatedData.payment_status})`,
+          recorded_by: userContext.userId,
+        })
+    }
 
     // Audit log
     await logAudit(

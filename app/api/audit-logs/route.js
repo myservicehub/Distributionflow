@@ -20,11 +20,19 @@ export async function GET(request) {
 
   try {
     const { page, pageSize, from, to } = getPaginationParams(request)
+    const { searchParams } = new URL(request.url)
+    const fromDate = searchParams.get('from')   // ISO date string from the page (Today / 7d / 30d / 90d)
+    const toDate   = searchParams.get('to')     // optional upper bound
 
-    const { data: logs, error, count } = await supabase
+    let query = supabase
       .from('audit_logs')
       .select('*, users!audit_logs_user_id_fkey(name, email)', { count: 'exact' })
       .eq('business_id', userContext.businessId)
+
+    if (fromDate) query = query.gte('created_at', fromDate)
+    if (toDate)   query = query.lte('created_at', toDate)
+
+    const { data: logs, error, count } = await query
       .order('created_at', { ascending: false })
       .range(from, to)
 
