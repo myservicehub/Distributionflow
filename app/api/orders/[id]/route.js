@@ -52,7 +52,7 @@ export async function PUT(request, { params }) {
     const { order_status, payment_status, notes, delivery_notes, driver_id, driver_name, driver_phone, vehicle_number } = body
 
     // Permission checks by action
-    if (order_status === 'approved' || order_status === 'rejected') {
+    if (order_status === 'confirmed' || order_status === 'cancelled') {
       if (!['admin', 'manager'].includes(userContext.role)) {
         return errorResponse('Forbidden: Only admins and managers can approve/reject orders', 403)
       }
