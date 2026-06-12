@@ -98,6 +98,15 @@ export async function PUT(request, { params }) {
       // Map 'completed' to 'delivered' for backwards compatibility
       updatePayload.status = effectiveOrderStatus === 'completed' ? 'delivered' : effectiveOrderStatus
       updatePayload.order_status = effectiveOrderStatus  // New column accepts 'completed'
+      
+      // Auto-set delivery_status based on order_status for delivery workflow
+      if (effectiveOrderStatus === 'confirmed' && effectiveDeliveryStatus === undefined) {
+        effectiveDeliveryStatus = 'preparing'  // Start delivery workflow
+        updatePayload.confirmed_at = new Date().toISOString()
+        updatePayload.confirmed_by = userContext.userId
+      } else if (effectiveOrderStatus === 'cancelled' && effectiveDeliveryStatus === undefined) {
+        effectiveDeliveryStatus = 'not_started'  // Cancel delivery workflow
+      }
     }
     
     if (effectiveDeliveryStatus !== undefined) {

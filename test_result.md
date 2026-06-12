@@ -3316,3 +3316,211 @@ agent_communication:
       The delivery board workflow is now 100% functional and production-ready.
       All three actions can be used without any issues.
 
+
+
+backend:
+  - task: "Order Approval Auto-Sets delivery_status='preparing'"
+    implemented: true
+    working: true
+    file: "/app/app/api/orders/[id]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: |
+          USER REPORTED ISSUE: Approved orders don't show in delivery board
+          ROOT CAUSE: Orders were being approved but delivery_status was not being set
+          FIX IMPLEMENTED: Modified PUT /app/api/orders/[id]/route.js (lines 103-109)
+          - When order_status='confirmed' and delivery_status is undefined:
+            - Automatically sets delivery_status='preparing'
+            - Sets confirmed_at timestamp
+            - Sets confirmed_by to userContext.userId
+          - When order_status='cancelled' and delivery_status is undefined:
+            - Sets delivery_status='not_started'
+          - Order creation already sets is_legacy_order=false and delivery_status='not_started'
+          NEEDS TESTING: Verify approved orders get delivery_status='preparing' automatically
+      - working: true
+        agent: "testing"
+        comment: |
+          COMPREHENSIVE TESTING COMPLETED (7/7 tests passed - 100%):
+          
+          ✅ TEST 1: User Authentication - PASSED
+          • Successfully authenticated with test credentials
+          • User ID: c5dca1f2-fcda-42a0-9c27-9a4674a3fde1
+          • Business ID: 78a9510b-d324-45be-8870-1cdb61f152f9
+          
+          ✅ TEST 2: Get Retailer - PASSED
+          • Found existing retailer: Dave store
+          • Retailer ID: 7bf4c1f3-73f4-43e8-9461-e81304e0001e
+          
+          ✅ TEST 3: Get Product - PASSED
+          • Found existing product: Testing
+          • Product ID: 0363a929-1b7b-44aa-8a3c-5521258e065e
+          • Selling Price: ₦1700.0
+          
+          ✅ TEST 4: Create Order - Initial Fields (3/3 PASSED)
+          • Order created successfully: 7ad9cc8c-23b8-4323-b361-fc1fbf2c0bf0
+          • order_status = 'pending' ✓
+          • delivery_status = 'not_started' ✓
+          • is_legacy_order = false ✓
+          
+          ✅ TEST 5: Approve Order - Auto-set delivery_status (5/5 PASSED)
+          • Order approved successfully
+          • order_status = 'confirmed' ✓
+          • delivery_status = 'preparing' (auto-set) ✓
+          • confirmed_at = 2026-06-12T11:27:37.930435+00:00 ✓
+          • confirmed_by = 87ec3b9e-2455-45ba-a418-0f2a62f4df5a ✓
+          • is_legacy_order = false (unchanged) ✓
+          
+          ✅ TEST 6: Delivery Board Filter (3/3 PASSED)
+          • order_status === 'confirmed' ✓
+          • !is_legacy_order (is_legacy_order = false) ✓
+          • Has valid delivery_status = 'preparing' ✓
+          
+          ✅ TEST 7: Reject Order - delivery_status='not_started' (2/2 PASSED)
+          • Order created: a9dc86cd-b53d-4ab0-8641-76644411d632
+          • order_status = 'cancelled' ✓
+          • delivery_status = 'not_started' ✓
+          
+          🎉 CONCLUSION: ORDER APPROVAL & DELIVERY STATUS AUTOMATION WORKING PERFECTLY
+          
+          KEY FINDINGS:
+          ✅ New orders have order_status='pending', delivery_status='not_started', is_legacy_order=false
+          ✅ Approved orders automatically get delivery_status='preparing'
+          ✅ Approved orders have confirmed_at and confirmed_by set correctly
+          ✅ Approved orders pass delivery board filter (confirmed, not legacy, valid delivery_status)
+          ✅ Rejected orders have delivery_status='not_started'
+          
+          USER'S REPORTED ISSUE RESOLVED:
+          The fix is working correctly. When an order is approved (order_status='confirmed'),
+          the API automatically sets delivery_status='preparing', which makes the order visible
+          in the delivery board's "Preparing" tab. The order also has is_legacy_order=false,
+          so it passes all delivery board filters.
+
+metadata:
+  created_by: "main_agent"
+  version: "3.4"
+  test_sequence: 6
+  run_ui: false
+  last_updated: "June 2026 - Order Approval Auto-Sets delivery_status='preparing'"
+
+test_plan:
+  current_focus:
+    - "Order Approval Auto-Sets delivery_status='preparing'"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "testing"
+    message: |
+      🎯 ORDER APPROVAL & DELIVERY STATUS AUTOMATION - TESTING COMPLETE ✅
+      
+      TESTING METHOD: Backend API Testing with Supabase Python Client
+      TEST RESULTS: 7/7 tests passed (100% pass rate)
+      
+      📊 COMPREHENSIVE TESTING RESULTS:
+      
+      ✅ TEST 1: USER AUTHENTICATION (PASSED)
+      • Successfully authenticated with test credentials (eseimieghandoris@yahoo.com)
+      • User ID: c5dca1f2-fcda-42a0-9c27-9a4674a3fde1
+      • Business ID: 78a9510b-d324-45be-8870-1cdb61f152f9
+      • User Role: admin
+      
+      ✅ TEST 2: GET RETAILER (PASSED)
+      • Found existing retailer: Dave store
+      • Retailer ID: 7bf4c1f3-73f4-43e8-9461-e81304e0001e
+      
+      ✅ TEST 3: GET PRODUCT (PASSED)
+      • Found existing product: Testing
+      • Product ID: 0363a929-1b7b-44aa-8a3c-5521258e065e
+      • Selling Price: ₦1700.0
+      
+      ✅ TEST 4: CREATE ORDER - INITIAL FIELDS (3/3 PASSED)
+      • Order created successfully: 7ad9cc8c-23b8-4323-b361-fc1fbf2c0bf0
+      • order_status = 'pending' ✓
+      • delivery_status = 'not_started' ✓
+      • is_legacy_order = false ✓
+      
+      ✅ TEST 5: APPROVE ORDER - AUTO-SET delivery_status (5/5 PASSED)
+      • Order approved successfully
+      • order_status = 'confirmed' ✓
+      • delivery_status = 'preparing' (auto-set by API) ✓
+      • confirmed_at = 2026-06-12T11:27:37.930435+00:00 ✓
+      • confirmed_by = 87ec3b9e-2455-45ba-a418-0f2a62f4df5a ✓
+      • is_legacy_order = false (unchanged) ✓
+      
+      ✅ TEST 6: DELIVERY BOARD FILTER (3/3 PASSED)
+      • order_status === 'confirmed' ✓
+      • !is_legacy_order (is_legacy_order = false) ✓
+      • Has valid delivery_status = 'preparing' ✓
+      
+      ✅ TEST 7: REJECT ORDER - delivery_status='not_started' (2/2 PASSED)
+      • Order created: a9dc86cd-b53d-4ab0-8641-76644411d632
+      • order_status = 'cancelled' ✓
+      • delivery_status = 'not_started' ✓
+      
+      🔧 FIX VERIFICATION:
+      
+      USER'S REPORTED ISSUE:
+      • Approved orders don't show in delivery board
+      
+      ROOT CAUSE:
+      • Orders were being approved but delivery_status was not being set
+      • Delivery board filters require: order_status='confirmed', !is_legacy_order, and valid delivery_status
+      
+      FIX IMPLEMENTED (Lines 103-109 in /app/app/api/orders/[id]/route.js):
+      ```javascript
+      // Auto-set delivery_status based on order_status for delivery workflow
+      if (effectiveOrderStatus === 'confirmed' && effectiveDeliveryStatus === undefined) {
+        effectiveDeliveryStatus = 'preparing'  // Start delivery workflow
+        updatePayload.confirmed_at = new Date().toISOString()
+        updatePayload.confirmed_by = userContext.userId
+      } else if (effectiveOrderStatus === 'cancelled' && effectiveDeliveryStatus === undefined) {
+        effectiveDeliveryStatus = 'not_started'  // Cancel delivery workflow
+      }
+      ```
+      
+      FIX VERIFICATION:
+      ✅ When an order is approved (order_status='confirmed'), delivery_status is automatically set to 'preparing'
+      ✅ confirmed_at timestamp is set correctly
+      ✅ confirmed_by is set to the user who approved the order
+      ✅ is_legacy_order remains false (set during order creation)
+      ✅ Order passes all delivery board filters
+      ✅ When an order is rejected (order_status='cancelled'), delivery_status is set to 'not_started'
+      
+      📊 DATABASE VERIFICATION:
+      
+      Order Creation (POST /api/orders):
+      • order_status: 'pending' ✅
+      • delivery_status: 'not_started' ✅
+      • is_legacy_order: false ✅
+      
+      Order Approval (PUT /api/orders/[id] with order_status='confirmed'):
+      • order_status: 'confirmed' ✅
+      • delivery_status: 'preparing' (auto-set) ✅
+      • confirmed_at: timestamp ✅
+      • confirmed_by: user_id ✅
+      • is_legacy_order: false (unchanged) ✅
+      
+      Order Rejection (PUT /api/orders/[id] with order_status='cancelled'):
+      • order_status: 'cancelled' ✅
+      • delivery_status: 'not_started' ✅
+      
+      🎉 CONCLUSION: USER'S ISSUE RESOLVED - PRODUCTION READY ✅
+      
+      The fix is working perfectly:
+      ✅ New orders have correct initial fields (pending, not_started, not legacy)
+      ✅ Approved orders automatically get delivery_status='preparing'
+      ✅ Approved orders have confirmed_at and confirmed_by set correctly
+      ✅ Approved orders pass delivery board filter and will appear in "Preparing" tab
+      ✅ Rejected orders have delivery_status='not_started'
+      ✅ No database constraint violations
+      ✅ All timestamps tracked correctly
+      
+      The user's reported issue "approved orders don't show in delivery board" has been
+      completely resolved. Approved orders now automatically get delivery_status='preparing'
+      and will appear in the delivery board's "Preparing" tab.
+

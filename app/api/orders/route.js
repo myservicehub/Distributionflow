@@ -137,6 +137,8 @@ export async function POST(request) {
         total_amount: subtotal,
         payment_status: validatedData.payment_status,
         order_status: 'pending',
+        delivery_status: 'not_started',  // Initialize delivery workflow
+        is_legacy_order: false,  // Mark as new workflow order
         notes: validatedData.notes || null
       }])
       .select()
