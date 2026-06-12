@@ -203,6 +203,11 @@ export default function InventoryPage() {
       setProducts(productsData)
       setStockMovements(movementsData)
     } catch (error) {
+      // Ignore AbortError - it's a normal React development behavior
+      if (error.name === 'AbortError') {
+        console.log('Request aborted (React Strict Mode behavior)')
+        return
+      }
       console.error('Error loading data:', error)
       toast.error('Failed to load inventory data')
     } finally {

@@ -71,13 +71,16 @@ export async function POST(request) {
 
   try {
     const body = await request.json()
-    const { product_id, movement_type, quantity, notes } = body
+    const { product_id, movement_type, type, quantity, notes } = body
+    
+    // Accept either movement_type or type for backwards compatibility
+    const movementType = type || movement_type
 
-    if (!product_id || !movement_type || !quantity) {
+    if (!product_id || !movementType || !quantity) {
       return errorResponse('Product ID, movement type, and quantity are required', 400)
     }
 
-    if (!['in', 'out', 'adjustment'].includes(movement_type)) {
+    if (!['in', 'out', 'adjustment'].includes(movementType)) {
       return errorResponse('Invalid movement type. Must be in, out, or adjustment', 400)
     }
 
@@ -102,11 +105,11 @@ export async function POST(request) {
     let newStock = currentStock
 
     // Calculate new stock based on movement type
-    if (movement_type === 'in') {
+    if (movementType === 'in') {
       newStock = currentStock + qty
-    } else if (movement_type === 'out') {
+    } else if (movementType === 'out') {
       newStock = Math.max(0, currentStock - qty)
-    } else if (movement_type === 'adjustment') {
+    } else if (movementType === 'adjustment') {
       newStock = qty // Set to exact quantity
     }
 
@@ -116,7 +119,7 @@ export async function POST(request) {
       .insert([{
         business_id: userContext.businessId,
         product_id,
-        movement_type,
+        type: movementType,  // Use 'type' column
         quantity: qty,
         quantity_before: currentStock,
         quantity_after: newStock,
