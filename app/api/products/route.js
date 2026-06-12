@@ -111,10 +111,11 @@ export async function POST(request) {
     }
 
     // Create product
+    const { quantity, ...productData } = validatedData  // Remove quantity from spread
     const { data: product, error: createError } = await supabase
       .from('products')
       .insert([{
-        ...validatedData,
+        ...productData,
         business_id: userContext.businessId,
         stock_quantity: validatedData.quantity || 0,
         status: 'active'

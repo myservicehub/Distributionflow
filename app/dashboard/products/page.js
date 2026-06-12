@@ -174,9 +174,21 @@ export default function ProductsPage() {
       const url = editingProduct ? `/api/products` : '/api/products'
       const method = editingProduct ? 'PUT' : 'POST'
       
-      const submitData = editingProduct 
-        ? { ...formData, product_id: editingProduct.id }
-        : formData
+      // Map frontend field names to API field names
+      const submitData = {
+        ...formData,
+        unit_price: formData.selling_price,  // Map selling_price -> unit_price
+        quantity: formData.stock_quantity,    // Map stock_quantity -> quantity
+      }
+      
+      // Remove the old field names
+      delete submitData.selling_price
+      delete submitData.stock_quantity
+      
+      // Add product_id if editing
+      if (editingProduct) {
+        submitData.product_id = editingProduct.id
+      }
       
       const response = await fetch(url, {
         method,
