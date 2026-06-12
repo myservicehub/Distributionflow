@@ -192,9 +192,13 @@ export default function RetailersPage() {
     try {
       const response = await fetch('/api/staff', { signal })
       if (!response.ok) throw new Error('Failed to load staff')
-      const data = await response.json()
+      const result = await response.json()
+      
+      // Handle both { data: [...] } and direct array formats
+      const staffData = result.data || result
+      
       // Only show sales reps in the assignment dropdown
-      setStaff(Array.isArray(data) ? data.filter(s => s.role === 'sales_rep') : [])
+      setStaff(Array.isArray(staffData) ? staffData.filter(s => s.role === 'sales_rep') : [])
     } catch (error) {
       if (error.name !== 'AbortError') {
         console.error('Error loading staff:', error)
