@@ -25,13 +25,21 @@ export async function GET(request, { params }) {
         *,
         retailers(shop_name, owner_name, phone, address),
         sales_rep:users!orders_sales_rep_id_fkey(name, email),
-        order_items(*, products(name, sku, unit_price))
+        order_items(*, products(name, sku, unit_price, empty_item_id))
       `)
       .eq('id', params.id)
       .eq('business_id', userContext.businessId)
       .single()
 
-    if (error || !order) return errorResponse('Order not found', 404)
+    if (error) {
+      console.error('Error fetching order:', error)
+      return errorResponse('Order not found', 404)
+    }
+    
+    if (!order) {
+      return errorResponse('Order not found', 404)
+    }
+    
     return successResponse(order)
   } catch (error) {
     console.error('Error fetching order:', error)

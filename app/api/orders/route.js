@@ -59,7 +59,7 @@ export async function GET(request) {
     const formattedOrders = (orders || []).map(order => ({
       ...order,
       retailer_name: order.retailers?.shop_name || 'N/A',
-      sales_rep_name: order.users?.name || 'N/A'
+      sales_rep_name: order.sales_rep?.name || 'N/A'  // Fixed: use sales_rep alias, not users
     }))
 
     const response = buildPaginationResponse(formattedOrders, count, { page, pageSize })
