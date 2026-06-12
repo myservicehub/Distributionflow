@@ -118,7 +118,6 @@ export async function POST(request) {
         ...productData,
         business_id: userContext.businessId,
         stock_quantity: validatedData.quantity || 0,
-        status: 'active'
       }])
       .select()
       .single()
