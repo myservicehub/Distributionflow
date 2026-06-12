@@ -232,10 +232,23 @@ export async function PUT(request) {
       }
     }
 
-    // Update product
+    // Update product - map validation fields to actual database columns
+    const { quantity, unit_price, cost_price, ...productData } = validatedData
+    
+    // Build update object with mapped fields
+    const updateFields = {
+      ...productData,
+      updated_at: new Date().toISOString()
+    }
+    
+    // Only add fields that were actually provided
+    if (unit_price !== undefined) updateFields.selling_price = unit_price
+    if (cost_price !== undefined) updateFields.cost_price = cost_price
+    if (quantity !== undefined) updateFields.stock_quantity = quantity
+    
     const { data: product, error: updateError } = await supabase
       .from('products')
-      .update(validatedData)
+      .update(updateFields)
       .eq('id', product_id)
       .eq('business_id', userContext.businessId)
       .select()
