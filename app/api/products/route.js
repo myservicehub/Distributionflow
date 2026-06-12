@@ -110,14 +110,17 @@ export async function POST(request) {
       }
     }
 
-    // Create product
-    const { quantity, ...productData } = validatedData  // Remove quantity from spread
+    // Create product - map validation fields to actual database columns
+    const { quantity, unit_price, cost_price, ...productData } = validatedData
+    
     const { data: product, error: createError } = await supabase
       .from('products')
       .insert([{
         ...productData,
         business_id: userContext.businessId,
-        stock_quantity: validatedData.quantity || 0,
+        selling_price: unit_price,           // Map unit_price -> selling_price
+        cost_price: cost_price,              // cost_price exists in DB
+        stock_quantity: quantity || 0,       // Map quantity -> stock_quantity
       }])
       .select()
       .single()
