@@ -34,11 +34,9 @@ export async function GET(request) {
     // Format response with type (was movement_type)
     const formattedMovements = (movements || []).map(movement => ({
       ...movement,
-      movement_type: movement.type  // Map type back to movement_type for frontend compatibility
-    }))
-      ...movement,
+      movement_type: movement.type,  // Map type back to movement_type for frontend compatibility
       product_name: movement.products?.name || 'N/A',
-      user_name: 'System' // Default since user_id FK is broken
+      user_name: 'System' // Default since user_id FK might not be populated yet
     }))
 
     const response = buildPaginationResponse(formattedMovements, count, { page, pageSize })
