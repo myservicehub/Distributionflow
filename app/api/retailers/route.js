@@ -124,9 +124,12 @@ export async function POST(request) {
     }
 
     const body = await request.json()
+    console.log('Creating retailer with data:', body)
+    
     const { error: validationError, data: validatedData } = parseBody(CreateRetailerSchema, body)
     
     if (validationError) {
+      console.error('Retailer validation error:', validationError)
       return validationError
     }
 
