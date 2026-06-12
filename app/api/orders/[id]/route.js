@@ -66,7 +66,8 @@ export async function PUT(request, { params }) {
 
     // Build update payload — only include fields that were sent
     const updatePayload = { updated_at: new Date().toISOString() }
-    if (order_status !== undefined) updatePayload.order_status = order_status
+    // Map order_status to the database column 'status'
+    if (order_status !== undefined) updatePayload.status = order_status
     if (payment_status !== undefined) updatePayload.payment_status = payment_status
     if (notes !== undefined) updatePayload.notes = notes
     if (delivery_notes !== undefined) updatePayload.delivery_notes = delivery_notes
@@ -90,7 +91,14 @@ export async function PUT(request, { params }) {
       .select()
       .single()
 
-    if (updateError) throw updateError
+    if (updateError) {
+      // Check if order not found
+      if (updateError.code === 'PGRST116') {
+        return errorResponse('Order not found', 404)
+      }
+      throw updateError
+    }
+    
     if (!order) return errorResponse('Order not found', 404)
 
     // Send notifications on status changes
@@ -179,9 +187,12 @@ export async function PUT(request, { params }) {
       }
     }
 
-    await logAudit(supabase, userContext.userId, userContext.businessId,
-      AUDIT_ACTIONS.UPDATE, RESOURCE_TYPES.ORDER, order.id,
-      { order_number: order.order_number, new_status: order_status || payment_status })
+    // Only log audit if we have valid context
+    if (userContext.businessId && userContext.userId) {
+      await logAudit(supabase, userContext.userId, userContext.businessId,
+        AUDIT_ACTIONS.UPDATE, RESOURCE_TYPES.ORDER, order.id,
+        { order_number: order.order_number, new_status: order_status || payment_status })
+    }
 
     return successResponse({ success: true, data: order })
   } catch (error) {
