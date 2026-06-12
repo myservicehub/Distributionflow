@@ -86,6 +86,12 @@ export async function PUT(request, { params }) {
   }
 }
 
+// PATCH handler for partial updates (e.g., linking empty bottles)
+// Uses the same logic as PUT
+export async function PATCH(request, { params }) {
+  return PUT(request, { params })
+}
+
 export async function DELETE(request, { params }) {
   const supabase = createSupabaseClient()
   const userContext = await getUserBusinessId(supabase)
