@@ -73,11 +73,24 @@ export async function PUT(request, { params }) {
       .select()
       .single()
 
-    if (updateError) throw updateError
+    if (updateError) {
+      // Check if product not found
+      if (updateError.code === 'PGRST116') {
+        return errorResponse('Product not found', 404)
+      }
+      throw updateError
+    }
 
-    await logAudit(supabase, userContext.userId, userContext.businessId,
-      AUDIT_ACTIONS.UPDATE, RESOURCE_TYPES.PRODUCT, product.id,
-      { product_name: product.name })
+    if (!product) {
+      return errorResponse('Product not found', 404)
+    }
+
+    // Only log audit if we have valid context
+    if (userContext.businessId && userContext.userId) {
+      await logAudit(supabase, userContext.userId, userContext.businessId,
+        AUDIT_ACTIONS.UPDATE, RESOURCE_TYPES.PRODUCT, product.id,
+        { product_name: product.name })
+    }
 
     return successResponse({ success: true, data: product })
   } catch (error) {
