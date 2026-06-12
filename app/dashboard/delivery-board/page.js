@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Package, Truck, CheckCircle, XCircle, Search, Calendar, User, CreditCard, Eye, FileText } from 'lucide-react'
@@ -498,6 +498,9 @@ export default function DeliveryBoardPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Dispatch Order</DialogTitle>
+            <DialogDescription>
+              Enter driver and vehicle details to dispatch this order for delivery.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
@@ -531,6 +534,9 @@ export default function DeliveryBoardPage() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Mark as Delivered</DialogTitle>
+            <DialogDescription>
+              Confirm delivery completion and record any empty bottles returned by the customer.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -572,6 +578,9 @@ export default function DeliveryBoardPage() {
               <FileText className="h-5 w-5" />
               Order Details - #{viewingOrderDetails?.id?.substring(0, 8)}
             </DialogTitle>
+            <DialogDescription>
+              View complete order information including items, pricing, and delivery status.
+            </DialogDescription>
           </DialogHeader>
           
           {loadingOrderItems ? (
