@@ -18,10 +18,10 @@ export async function GET(request) {
   try {
     const { page, pageSize, from, to } = getPaginationParams(request)
 
-    // FIXED: Select only columns that exist in the table
+    // Select with correct column names after migration
     const { data: movements, error, count } = await supabase
       .from('stock_movements')
-      .select('id, product_id, movement_type, quantity, notes, created_at, business_id, products(name)', { count: 'exact' })
+      .select('id, product_id, type, quantity, quantity_before, quantity_after, notes, created_at, business_id, user_id, products(name)', { count: 'exact' })
       .eq('business_id', userContext.businessId)
       .order('created_at', { ascending: false })
       .range(from, to)
@@ -31,8 +31,11 @@ export async function GET(request) {
       throw error
     }
 
-    // Format response
+    // Format response with type (was movement_type)
     const formattedMovements = (movements || []).map(movement => ({
+      ...movement,
+      movement_type: movement.type  // Map type back to movement_type for frontend compatibility
+    }))
       ...movement,
       product_name: movement.products?.name || 'N/A',
       user_name: 'System' // Default since user_id FK is broken
