@@ -18,12 +18,21 @@ export async function GET(request) {
   }
 
   try {
+    const { searchParams } = new URL(request.url)
     const { page, pageSize, from, to } = getPaginationParams(request)
+    const showInactive = searchParams.get('show_inactive') === 'true'
 
-    const { data: products, error, count } = await supabase
+    let query = supabase
       .from('products')
       .select('*', { count: 'exact' })
       .eq('business_id', userContext.businessId)
+    
+    // Filter by status - only show active products unless explicitly requested
+    if (!showInactive) {
+      query = query.eq('status', 'active')
+    }
+    
+    const { data: products, error, count } = await query
       .order('created_at', { ascending: false })
       .range(from, to)
 
@@ -121,6 +130,7 @@ export async function POST(request) {
         selling_price: unit_price,           // Map unit_price -> selling_price
         cost_price: cost_price,              // cost_price exists in DB
         stock_quantity: quantity || 0,       // Map quantity -> stock_quantity
+        status: 'active'                     // Set status to active by default
       }])
       .select()
       .single()
