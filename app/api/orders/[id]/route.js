@@ -94,8 +94,10 @@ export async function PUT(request, { params }) {
     
     // Map order_status to BOTH new and old database columns for compatibility
     if (effectiveOrderStatus !== undefined) {
-      updatePayload.status = effectiveOrderStatus  // Old column for legacy orders
-      updatePayload.order_status = effectiveOrderStatus  // New column for workflow orders
+      // Old status column only accepts: pending, confirmed, delivered, cancelled
+      // Map 'completed' to 'delivered' for backwards compatibility
+      updatePayload.status = effectiveOrderStatus === 'completed' ? 'delivered' : effectiveOrderStatus
+      updatePayload.order_status = effectiveOrderStatus  // New column accepts 'completed'
     }
     
     if (effectiveDeliveryStatus !== undefined) {
