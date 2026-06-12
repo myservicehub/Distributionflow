@@ -215,12 +215,11 @@ export default function RetailersPage() {
       const method = editingRetailer ? 'PUT' : 'POST'
       
       // Prepare data - convert "none" to empty string for assigned_rep_id
-      const submitData = {
-        ...formData,
-        assigned_rep_id: formData.assigned_rep_id === 'none' || formData.assigned_rep_id === '' 
-          ? '' 
-          : formData.assigned_rep_id
-      }
+      // Remove email field since retailers table doesn't have it
+      const { email, ...submitData } = formData
+      submitData.assigned_rep_id = formData.assigned_rep_id === 'none' || formData.assigned_rep_id === '' 
+        ? '' 
+        : formData.assigned_rep_id
       
       const response = await fetch(url, {
         method,
