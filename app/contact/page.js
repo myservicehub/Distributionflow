@@ -91,7 +91,7 @@ export default function ContactPage() {
                       </div>
                       <div>
                         <CardTitle className="text-lg mb-2">Email Support</CardTitle>
-                        <p className="text-neutral-600">support@distributionflow.ng</p>
+                        <p className="text-neutral-600">support@distribution-flow.com</p>
                         <p className="text-sm text-neutral-500 mt-1">We reply within 24 hours</p>
                       </div>
                     </div>
